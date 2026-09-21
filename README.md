@@ -85,16 +85,28 @@ uvicorn backend.app.main:app --reload --port 8000
 
 ---
 
-### Método 3: Ejecutar en tu iPhone con Expo Go
+### Método 3: Despliegue en la Nube (Vercel / Render) & Uso Standalone en iPhone (Sin PC)
+
+El proyecto incluye preconfiguración oficial para **Vercel** ([`vercel.json`](vercel.json), [`api/index.py`](api/index.py)) y **Render** ([`render.yaml`](render.yaml)):
+
+1. Inicia sesión en [Vercel](https://vercel.com) con tu cuenta de GitHub.
+2. Haz clic en **Add New...** $\rightarrow$ **Project**.
+3. Selecciona tu repositorio `WithBaz/aurea-finanzas` y haz clic en **Import**.
+4. Haz clic en **Deploy**. En menos de 1 minuto tendrás tu URL HTTPS pública y activa (ej. `https://aurea-finanzas.vercel.app`).
+5. **En tu iPhone:** Abre esa URL en Safari o Chrome, toca **"Compartir"** $\rightarrow$ **"Agregar a pantalla de inicio"**.
+6. ¡Listo! AUREA se abrirá a pantalla completa como una app independiente en tu teléfono, sin depender de tu PC ni de Expo Go, con tus atajos de Apple Pay y SMS recibiendo pagos las 24 horas del día.
+
+---
+
+### Método 4: Ejecutar en tu iPhone en Desarrollo con Expo Go
 
 1. Descarga la aplicación gratuita **Expo Go** desde la App Store en tu iPhone.
 2. En una terminal dentro de la carpeta `mobile/`:
    ```bash
    cd mobile
-   npm install
-   npx expo start
+   npx expo start --tunnel
    ```
-3. Escanea el código QR que aparecerá en la consola con la cámara de tu iPhone. ¡La app se abrirá nativamente en tu teléfono!
+3. Escanea el código QR con la cámara de tu iPhone para abrir el entorno de desarrollo nativo.
 
 ---
 
