@@ -116,80 +116,8 @@ def seed_data():
             icono="compass"
         )
         db.add_all([meta_fondo, meta_viaje])
-
-        # 5. Transacciones Históricas de Demostración
-        ahora = datetime.now(timezone.utc)
-        txs = [
-            Transaccion(
-                monto=4500000.0,
-                tipo=TipoTransaccion.INGRESO,
-                medio=MedioCaptura.MANUAL,
-                fecha=ahora - timedelta(days=20),
-                comercio="Nómina Mensual Empresa",
-                descripcion="Abono mensual de salario",
-                cuenta_origen_id=c_debito.id,
-                categoria_id=cat_nomina.id,
-                es_gasto_hormiga=False
-            ),
-            Transaccion(
-                monto=1200000.0,
-                tipo=TipoTransaccion.EGRESO,
-                medio=MedioCaptura.MANUAL,
-                fecha=ahora - timedelta(days=19),
-                comercio="Arriendo Apartamento",
-                descripcion="Pago arriendo mensual",
-                cuenta_origen_id=c_debito.id,
-                categoria_id=cat_serv.id,
-                es_gasto_hormiga=False
-            ),
-            Transaccion(
-                monto=200000.0,
-                tipo=TipoTransaccion.TRANSFERENCIA_INTERNA,
-                medio=MedioCaptura.SMS,
-                fecha=ahora - timedelta(days=10),
-                comercio="Cajero Automático Éxito",
-                descripcion="Retiro de efectivo conciliado",
-                cuenta_origen_id=c_debito.id,
-                cuenta_destino_id=c_efectivo.id,
-                es_gasto_hormiga=False
-            ),
-            Transaccion(
-                monto=32500.0,
-                tipo=TipoTransaccion.EGRESO,
-                medio=MedioCaptura.APPLE_PAY,
-                fecha=ahora - timedelta(days=2),
-                comercio="Tiendas D1 Calle 53",
-                descripcion="Compra Apple Pay mercado básico",
-                cuenta_origen_id=c_debito.id,
-                categoria_id=cat_alim.id,
-                es_gasto_hormiga=False
-            ),
-            Transaccion(
-                monto=14500.0,
-                tipo=TipoTransaccion.EGRESO,
-                medio=MedioCaptura.APPLE_PAY,
-                fecha=ahora - timedelta(hours=5),
-                comercio="Juan Valdez Café",
-                descripcion="Café y merienda tarde",
-                cuenta_origen_id=c_debito.id,
-                categoria_id=cat_alim.id,
-                es_gasto_hormiga=True  # Gasto hormiga!
-            ),
-            Transaccion(
-                monto=8500.0,
-                tipo=TipoTransaccion.EGRESO,
-                medio=MedioCaptura.MANUAL,
-                fecha=ahora - timedelta(hours=2),
-                comercio="Snack en Efectivo",
-                descripcion="Compra de agua y golosinas en calle",
-                cuenta_origen_id=c_efectivo.id,
-                categoria_id=cat_alim.id,
-                es_gasto_hormiga=True  # Gasto hormiga!
-            )
-        ]
-        db.add_all(txs)
         db.commit()
-        print("Seed completado exitosamente con 4 cuentas, 6 categorías y transacciones iniciales en COP.")
+        print("Seed completado exitosamente: cuentas base listas sin transacciones ficticias.")
     finally:
         db.close()
 

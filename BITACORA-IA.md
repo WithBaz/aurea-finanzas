@@ -47,7 +47,34 @@ Registro cronológico y auditable de las interacciones, decisiones técnicas, pr
   * *Síntoma:* Expo Go solicitó paridad de autenticación (`You're signed in to Expo Go as 'withbaz', but not signed in to Expo CLI`).
   * *Solución:* Orientación al usuario para vinculación directa o lectura anónima.
 
-### 2. Refinamiento de Interfaz de Usuario (UX)
-* **Reubicación del Botón de Registro de Gastos (`+ Gasto`):**
-  * El botón original en la esquina superior derecha colisionaba con el botón flotante nativo de herramientas de Expo Go.
-  * Se rediseñó la experiencia incorporando un **Botón de Acción Flotante (FAB - Floating Action Button)** prominente y centrado en la barra de navegación inferior (al estilo de apps financieras como Nequi y Nu), garantizando ergonomía táctil con el pulgar y cero interferencias con controles del sistema operativo.
+
+---
+
+## Sesión 3: 21 de Septiembre de 2026 - PWA Autónoma iOS, Apple Intelligence NLP y Gestión de Cuentas Reales
+
+### 1. Requerimientos del Usuario
+* **Autonomía Móvil Total:** Usar la aplicación en el iPhone como una app nativa en la Pantalla de Inicio, sin depender de tener el PC encendido 24/7 ni pagar los $99 USD/año del Apple Developer Program.
+* **Eliminación de Marcos Simulados:** Ajustar el diseño visual para que no se muestre como "un celular dentro de otro", aprovechando la pantalla completa de borde a borde (*edge-to-edge*) con *safe areas* de iOS.
+* **Eliminación Definitiva de Datos Demo:** Retirar botones de "borrar datos demo" y transacciones simuladas; la aplicación queda limpia y lista para uso real.
+* **Gestión Total de Cuentas y Saldos:** Permitir registrar saldos en todas las cuentas bancarias (Bancolombia, Nequi, Nu, Daviplata, Efectivo) y agregar nuevas cuentas.
+* **Entrada Rápida con Apple Intelligence / Siri:** Registrar gastos por dictado de voz o texto libre (ej: *"Pagué 15 mil de taxi en efectivo"*).
+* **Detección Automática y Pregunta Inteligente de Cuenta:** Detectar la cuenta usada o presentar un selector de 1 toque si el gasto no especifica la fuente de dinero.
+
+### 2. Implementaciones Realizadas
+* **Arquitectura de Despliegue en la Nube (Opción B):**
+  * Configuración Serverless con FastAPI en Vercel (`api/index.py`, `vercel.json`) y Render (`render.yaml`).
+  * PWA nativa con `apple-mobile-web-app-capable`, `status-bar-style: black-translucent` y viewport viewport-fit=cover.
+* **Servicio NLP Apple Intelligence (`backend/app/services/nlp_expense_parser.py`):**
+  * Extracción inteligente de montos colombianos ("15 mil", "25k", "$45.000", "8500").
+  * Detección contextual de cuenta (Efectivo, Débito, Crédito, Nu/Rendimiento) y concepto.
+  * Endpoint `POST /api/v1/transacciones/ia-rapida` con retorno `status: "requiere_cuenta"` si la cuenta es ambigua.
+* **Asignación y Rebalanceo Dinámico (`PATCH /transacciones/{id}/asignar-cuenta`):**
+  * Rebalanceo automático de saldos entre cuentas de origen si el usuario cambia la cuenta asignada.
+* **Refactorización de Interfaz Nativa (`backend/app/main.py`):**
+  * Eliminación de bordes simulados y dynamic islands ficticias; diseño puro Tailwind CSS oscuro para OLED de iPhone.
+  * Barra de Apple Intelligence con gradiente Siri y botón de dictado/voz.
+  * Modal interactivo de creación de cuentas y edición rápida de saldos en 1 toque.
+  * Modal emergente cuando un gasto requiere confirmar la cuenta de pago.
+* **Pruebas Automatizadas:**
+  * Configuración centralizada `tests/conftest.py`.
+  * Cobertura de 23 tests unitarios en `pytest` pasando al 100% en < 0.4s.

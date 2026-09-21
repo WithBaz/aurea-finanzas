@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AUREA - API Financiera Personal",
-    description="Backend para la app móvil AUREA con ingesta desatendida de Apple Pay y SMS bancarios en Colombia (COP).",
+    description="Backend para la app móvil AUREA con ingesta desatendida de Apple Pay, SMS bancarios y Apple Intelligence en Colombia (COP).",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -41,8 +41,8 @@ app.include_router(api_router, prefix="/api/v1")
 def mobile_dashboard_preview():
     """
     Interfaz Web Nativa para iPhone (PWA Standalone) en COP.
-    Diseño fluido de borde a borde sin marcos de celular simulados, con personalización de cuentas reales,
-    modo privacidad, edición de saldos y configuración del ciclo de nómina.
+    Diseño minimalista y limpio de borde a borde, con entrada por lenguaje natural (Apple Intelligence),
+    gestión completa de cuentas reales, asignación inteligente de compras y cero datos ficticios.
     """
     html_content = """
     <!DOCTYPE html>
@@ -69,7 +69,7 @@ def mobile_dashboard_preview():
                 padding-bottom: calc(var(--sab) + 70px);
             }
             .ios-card {
-                background: rgba(19, 25, 42, 0.85);
+                background: rgba(19, 25, 42, 0.90);
                 backdrop-filter: blur(25px);
                 -webkit-backdrop-filter: blur(25px);
                 border: 1px solid rgba(255, 255, 255, 0.08);
@@ -77,7 +77,6 @@ def mobile_dashboard_preview():
             .glow-primary {
                 box-shadow: 0 4px 20px -2px rgba(245, 158, 11, 0.15);
             }
-            /* Ocultar barra de scroll para estética iOS */
             ::-webkit-scrollbar { display: none; }
         </style>
     </head>
@@ -92,25 +91,37 @@ def mobile_dashboard_preview():
                         <span class="w-2 h-2 rounded-full bg-amber-400"></span>
                         <span class="text-[11px] font-bold tracking-widest text-amber-400 uppercase">AUREA • COP</span>
                     </div>
-                    <h1 class="text-2xl font-extrabold text-white tracking-tight">Mi Billetera</h1>
+                    <h1 class="text-2xl font-black text-white tracking-tight">Mi Billetera</h1>
                 </div>
                 <div class="flex items-center gap-2">
-                    <!-- Botón Modo Privacidad 👁️ -->
+                    <!-- Modo Privacidad 👁️ -->
                     <button onclick="toggleModoPrivacidad()" id="btn-privacidad" class="w-10 h-10 rounded-2xl ios-card flex items-center justify-center text-slate-300 hover:text-white active:scale-95 transition" title="Ocultar saldos">
                         <i class="fa-solid fa-eye text-sm" id="icono-ojo"></i>
                     </button>
-                    <!-- Botón Configuración de Nómina Real ⚙️ -->
+                    <!-- Ajustes de Nómina Real ⚙️ -->
                     <button onclick="abrirModalPerfil()" class="w-10 h-10 rounded-2xl ios-card flex items-center justify-center text-slate-300 hover:text-white active:scale-95 transition" title="Configurar nómina real">
                         <i class="fa-solid fa-gear text-sm"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Card 1: Balance Neto Disponible -->
+            <!-- Apple Intelligence: Entrada Inteligente por Voz o Texto Rápido -->
+            <div class="ios-card rounded-2xl p-2 mb-4 flex items-center gap-2 border border-amber-500/40 bg-gradient-to-r from-slate-900 to-amber-950/20">
+                <div class="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400 text-sm">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+                <input type="text" id="input-ia" placeholder="Dicta o escribe: '15 mil de taxi en efectivo'..." class="bg-transparent flex-1 text-xs text-white placeholder-slate-500 outline-none" onkeydown="if(event.key==='Enter') enviarAppleIntelligence()">
+                <button onclick="enviarAppleIntelligence()" class="px-3 py-1.5 rounded-xl bg-amber-500 active:scale-90 text-slate-950 font-extrabold text-xs flex items-center gap-1 transition">
+                    <span>Registrar</span>
+                    <i class="fa-solid fa-arrow-up text-[10px]"></i>
+                </button>
+            </div>
+
+            <!-- Card 1: Patrimonio Líquido / Balance Neto Real -->
             <div class="ios-card rounded-3xl p-5 mb-4 glow-primary">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Patrimonio Líquido Disponible</span>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Patrimonio Líquido Real</span>
                         <div class="text-3xl font-black text-white mt-1 tracking-tight" id="balance-neto-total">$ 0 COP</div>
                     </div>
                     <span class="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
@@ -134,7 +145,7 @@ def mobile_dashboard_preview():
             <div id="semaforo-card" class="ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-emerald-500/30">
                 <div class="flex justify-between items-start mb-2">
                     <div>
-                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Disponible para gastar hoy</span>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Disponible para gastar hoy</span>
                         <div class="text-2xl font-black text-emerald-400 mt-0.5" id="disponible-hoy">$ 0 COP</div>
                     </div>
                     <span id="badge-color" class="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
@@ -155,29 +166,30 @@ def mobile_dashboard_preview():
                 </div>
             </div>
 
-            <!-- Card 3: Rendimientos Nu Colombia (12.5% E.A.) -->
-            <div class="ios-card rounded-2xl p-4 mb-4 border border-violet-500/30 bg-violet-950/20 flex items-center justify-between">
+            <!-- Card 3: Rendimientos Cuentas de Alto Rendimiento (Nu / Lulo) -->
+            <div id="card-rendimientos" class="ios-card rounded-2xl p-4 mb-4 border border-violet-500/30 bg-violet-950/20 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-violet-600/30 flex items-center justify-center text-violet-400 text-base">
                         <i class="fa-solid fa-arrow-trend-up"></i>
                     </div>
                     <div>
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-violet-300">Rendimientos Nu (12.5% E.A.)</span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-violet-300">Rendimientos Diarios Nu</span>
                         <div class="text-sm font-black text-white" id="rendimiento-diario">+ $ 0 COP hoy</div>
                     </div>
                 </div>
                 <span class="text-[10px] text-violet-300 font-bold bg-violet-900/60 px-2.5 py-1 rounded-lg">Automático</span>
             </div>
 
-            <!-- Card 4: Cuentas e Instrumentos con Edición Rápida -->
+            <!-- Card 4: Todas Mis Cuentas (Con saldo editable y botón de agregar) -->
             <div class="mb-5">
                 <div class="flex justify-between items-center mb-3 px-1">
                     <div>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Mis Instrumentos</span>
-                        <span class="text-[11px] text-slate-500 block">Toca el lápiz para poner tus saldos reales</span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Mis Cuentas e Instrumentos</span>
+                        <span class="text-[10px] text-slate-500 block">Toca el lápiz para registrar tu saldo actual</span>
                     </div>
-                    <button onclick="abrirModalNuevaCuenta()" class="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold border border-amber-500/30 flex items-center gap-1">
-                        <i class="fa-solid fa-plus"></i> Cuenta
+                    <button onclick="abrirModalNuevaCuenta()" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold border border-amber-500/40 flex items-center gap-1.5 active:scale-95 transition">
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                        <span>Agregar Cuenta</span>
                     </button>
                 </div>
                 <div id="cuentas-list" class="space-y-2.5">
@@ -185,30 +197,10 @@ def mobile_dashboard_preview():
                 </div>
             </div>
 
-            <!-- Accesos Rápidos de Simulación & Limpieza -->
-            <div class="ios-card rounded-2xl p-3 mb-6">
-                <div class="flex justify-between items-center mb-2 px-1">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        <i class="fa-brands fa-apple mr-1"></i> Probar Atajos o Limpiar
-                    </span>
-                    <button onclick="limpiarDatosDemo()" class="text-[10px] text-rose-400 hover:text-rose-300 font-bold underline">
-                        Borrar transacciones demo
-                    </button>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="simularApplePay()" class="bg-gradient-to-r from-amber-500 to-amber-600 active:scale-95 text-slate-950 font-bold text-xs py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5">
-                        <i class="fa-brands fa-apple"></i> Probar Apple Pay
-                    </button>
-                    <button onclick="simularRetiroSMS()" class="bg-gradient-to-r from-blue-600 to-indigo-600 active:scale-95 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-money-bill-transfer"></i> Probar Retiro SMS
-                    </button>
-                </div>
-            </div>
-
-            <!-- Movimientos Recientes -->
+            <!-- Card 5: Movimientos Recientes -->
             <div class="mb-6">
                 <div class="flex justify-between items-center mb-3 px-1">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Últimos Movimientos</span>
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Movimientos Registrados</span>
                     <span class="text-[11px] text-slate-500" id="conteo-tx">0 movimientos</span>
                 </div>
                 <div id="transacciones-list" class="space-y-2">
@@ -218,14 +210,14 @@ def mobile_dashboard_preview():
 
         </div>
 
-        <!-- Barra de Navegación Inferior Flotante Estilo iOS con Botón Central (+) -->
-        <div class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/90 backdrop-blur-xl border-t border-slate-800/80 px-6 py-2.5 flex justify-between items-center max-w-lg mx-auto">
+        <!-- Barra de Navegación Inferior Flotante con Botón Central (+) -->
+        <div class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/90 backdrop-blur-xl border-t border-slate-800/80 px-8 py-2.5 flex justify-between items-center max-w-lg mx-auto">
             <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex flex-col items-center text-amber-400">
                 <i class="fa-solid fa-wallet text-lg"></i>
                 <span class="text-[10px] font-bold mt-1">Billetera</span>
             </button>
 
-            <!-- Botón Central Destacado (+) para Registrar Gasto -->
+            <!-- Botón Central Destacado (+) para Registrar Gasto Rápido -->
             <button onclick="abrirModalGasto()" class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 to-amber-400 -mt-6 shadow-lg shadow-amber-500/30 flex items-center justify-center text-slate-950 text-xl font-black active:scale-90 transition border-4 border-[#090D16]">
                 <i class="fa-solid fa-plus"></i>
             </button>
@@ -236,7 +228,24 @@ def mobile_dashboard_preview():
             </button>
         </div>
 
-        <!-- Modal 1: Registrar Gasto / Ingreso Manual -->
+        <!-- Modal 1: ¿De qué cuenta fue la compra? (Detección y Confirmación Inteligente) -->
+        <div id="modal-preguntar-cuenta" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-slate-900 border border-slate-700">
+                <div class="text-center mb-4">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 text-xl flex items-center justify-center mx-auto mb-2">
+                        <i class="fa-solid fa-question"></i>
+                    </div>
+                    <h3 class="text-lg font-black text-white" id="pregunta-titulo">¿De qué cuenta fue el pago?</h3>
+                    <p class="text-xs text-slate-300 mt-1" id="pregunta-subtitulo">Selecciona la cuenta para descontar el saldo:</p>
+                </div>
+                <div id="opciones-cuentas-pregunta" class="space-y-2 mb-4">
+                    <!-- Dinámico -->
+                </div>
+                <button onclick="cerrarModalPreguntaCuenta()" class="w-full py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- Modal 2: Registrar Gasto / Ingreso Manual -->
         <div id="modal-gasto" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
             <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-slate-900 border border-slate-700">
                 <div class="flex justify-between items-center mb-4">
@@ -273,7 +282,7 @@ def mobile_dashboard_preview():
             </div>
         </div>
 
-        <!-- Modal 2: Editar Saldo Real de una Cuenta -->
+        <!-- Modal 3: Editar Saldo Real de una Cuenta -->
         <div id="modal-editar-cuenta" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
             <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-slate-900 border border-slate-700">
                 <div class="flex justify-between items-center mb-3">
@@ -286,18 +295,55 @@ def mobile_dashboard_preview():
                 <input type="hidden" id="edit-cuenta-id">
                 <div class="space-y-3">
                     <div>
+                        <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Nombre de la Cuenta</label>
+                        <input type="text" id="edit-nombre-input" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-amber-400 outline-none">
+                    </div>
+                    <div>
                         <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Saldo Actual Real en COP</label>
                         <input type="number" id="edit-saldo" placeholder="0" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-bold text-lg focus:border-amber-400 outline-none">
                     </div>
                     <div class="pt-2 flex gap-2">
-                        <button onclick="cerrarModalEditarCuenta()" class="w-1/2 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">Cancelar</button>
-                        <button onclick="guardarEdicionSaldo()" class="w-1/2 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black">Actualizar Saldo</button>
+                        <button onclick="eliminarCuentaActual()" class="py-2.5 px-3 rounded-xl bg-rose-500/20 text-rose-300 text-xs font-bold border border-rose-500/30">Eliminar</button>
+                        <button onclick="guardarEdicionSaldo()" class="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black">Actualizar Saldo</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Modal 3: Configuración de Nómina Real ⚙️ -->
+        <!-- Modal 4: Agregar Nueva Cuenta Personalizada -->
+        <div id="modal-nueva-cuenta" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-slate-900 border border-slate-700">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-base font-extrabold text-white">Agregar Nueva Cuenta</h3>
+                    <button onclick="cerrarModalNuevaCuenta()" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Nombre de la Cuenta</label>
+                        <input type="text" id="nueva-cuenta-nombre" placeholder="Ej: Nequi, Daviplata, Bancolombia, Billetera" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:border-amber-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Tipo de Instrumento</label>
+                        <select id="nueva-cuenta-tipo" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:border-amber-400 outline-none">
+                            <option value="DEBITO">Cuenta Débito / Ahorros (Bancolombia, Nequi)</option>
+                            <option value="EFECTIVO">Efectivo Físico (Billetera)</option>
+                            <option value="CREDITO">Tarjeta de Crédito (Visa, Mastercard)</option>
+                            <option value="ALTO_RENDIMIENTO">Cuenta Alto Rendimiento (Nu, Lulo, Pibank)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Saldo Inicial en COP</label>
+                        <input type="number" id="nueva-cuenta-saldo" placeholder="0" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-amber-400 outline-none">
+                    </div>
+                    <div class="pt-2 flex gap-2">
+                        <button onclick="cerrarModalNuevaCuenta()" class="w-1/2 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">Cancelar</button>
+                        <button onclick="guardarNuevaCuenta()" class="w-1/2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black">Crear Cuenta</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal 5: Configuración de Nómina Real ⚙️ -->
         <div id="modal-perfil" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
             <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-slate-900 border border-slate-700 max-h-[90vh] overflow-y-auto">
                 <div class="flex justify-between items-center mb-4">
@@ -333,6 +379,7 @@ def mobile_dashboard_preview():
             let cuentasData = [];
             let modoPrivacidad = false;
             let tipoMovimientoActual = 'EGRESO';
+            let transaccionPendienteAsignar = null;
 
             function toggleModoPrivacidad() {
                 modoPrivacidad = !modoPrivacidad;
@@ -381,9 +428,13 @@ def mobile_dashboard_preview():
                 try {
                     const res = await fetch('/api/v1/metricas/rendimientos');
                     const data = await res.json();
+                    const card = document.getElementById('card-rendimientos');
                     if(data.length > 0) {
+                        card.style.display = 'flex';
                         const total = data.reduce((acc, curr) => acc + curr.rendimiento_diario_estimado, 0);
                         document.getElementById('rendimiento-diario').innerText = '+ ' + formatearCOP(total) + ' hoy';
+                    } else {
+                        card.style.display = 'none';
                     }
                 } catch(e) {
                     console.error("Error rendimientos", e);
@@ -459,14 +510,14 @@ def mobile_dashboard_preview():
 
             async function cargarTransacciones() {
                 try {
-                    const res = await fetch('/api/v1/transacciones?limit=15');
+                    const res = await fetch('/api/v1/transacciones?limit=20');
                     const txs = await res.json();
                     const container = document.getElementById('transacciones-list');
                     document.getElementById('conteo-tx').innerText = txs.length + ' movimientos';
                     container.innerHTML = '';
 
                     if(txs.length === 0) {
-                        container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs font-semibold">No hay movimientos registrados. ¡Toca (+) para registrar tu primer gasto!</div>';
+                        container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs font-semibold">No hay movimientos registrados. ¡Toca (+) o usa Apple Intelligence para registrar tu primer gasto!</div>';
                         return;
                     }
 
@@ -492,7 +543,71 @@ def mobile_dashboard_preview():
                 }
             }
 
-            // Modales y Acciones
+            // Apple Intelligence por Voz / Texto
+            async function enviarAppleIntelligence() {
+                const input = document.getElementById('input-ia');
+                const texto = input.value.trim();
+                if(!texto) return;
+
+                try {
+                    const res = await fetch('/api/v1/transacciones/ia-rapida', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ texto: texto })
+                    });
+                    const data = await res.json();
+
+                    if(data.status === 'requiere_cuenta') {
+                        // Preguntar de qué cuenta fue
+                        transaccionPendienteAsignar = data;
+                        document.getElementById('pregunta-titulo').innerText = '¿De qué cuenta pagaste?';
+                        document.getElementById('pregunta-subtitulo').innerText = 'Detectado: $' + Math.round(data.monto).toLocaleString('es-CO') + ' en ' + data.comercio;
+                        
+                        const container = document.getElementById('opciones-cuentas-pregunta');
+                        container.innerHTML = '';
+                        cuentasData.forEach(c => {
+                            const btn = document.createElement('button');
+                            btn.className = 'w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex justify-between items-center transition border border-slate-700';
+                            btn.innerHTML = `
+                                <span>${c.nombre}</span>
+                                <span class="text-emerald-400">${formatearCOP(c.saldo_actual)}</span>
+                            `;
+                            btn.onclick = () => confirmarCuentaGasto(c.id);
+                            container.appendChild(btn);
+                        });
+                        document.getElementById('modal-preguntar-cuenta').classList.remove('hidden');
+                    } else if(data.status === 'registrado') {
+                        input.value = '';
+                        recargarDatos();
+                    } else {
+                        alert(data.detail || 'No se pudo interpretar el gasto');
+                    }
+                } catch(e) {
+                    alert('Error al conectar con Apple Intelligence');
+                }
+            }
+
+            async function confirmarCuentaGasto(cuentaId) {
+                if(!transaccionPendienteAsignar) return;
+                await fetch('/api/v1/transacciones/ia-rapida', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        texto: transaccionPendienteAsignar.comercio + ' ' + transaccionPendienteAsignar.monto,
+                        cuenta_id: cuentaId
+                    })
+                });
+                cerrarModalPreguntaCuenta();
+                document.getElementById('input-ia').value = '';
+                recargarDatos();
+            }
+
+            function cerrarModalPreguntaCuenta() {
+                document.getElementById('modal-preguntar-cuenta').classList.add('hidden');
+                transaccionPendienteAsignar = null;
+            }
+
+            // Modales de Gasto Manual
             function abrirModalGasto() {
                 document.getElementById('modal-gasto').classList.remove('hidden');
                 document.getElementById('input-monto').focus();
@@ -542,8 +657,10 @@ def mobile_dashboard_preview():
                 recargarDatos();
             }
 
+            // Edición de Cuenta
             function abrirModalEditarCuenta(id, nombre, tipo, saldo) {
                 document.getElementById('edit-cuenta-id').value = id;
+                document.getElementById('edit-nombre-input').value = nombre;
                 document.getElementById('edit-nombre-cuenta').innerText = nombre;
                 document.getElementById('edit-tipo-cuenta').innerText = tipo;
                 document.getElementById('edit-saldo').value = Math.round(saldo);
@@ -556,17 +673,66 @@ def mobile_dashboard_preview():
             async function guardarEdicionSaldo() {
                 const id = document.getElementById('edit-cuenta-id').value;
                 const nuevoSaldo = parseFloat(document.getElementById('edit-saldo').value);
+                const nuevoNombre = document.getElementById('edit-nombre-input').value.trim();
                 if(isNaN(nuevoSaldo)) return;
 
                 await fetch('/api/v1/cuentas/' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ saldo_actual: nuevoSaldo })
+                    body: JSON.stringify({ 
+                        saldo_actual: nuevoSaldo,
+                        nombre: nuevoNombre || undefined
+                    })
                 });
                 cerrarModalEditarCuenta();
                 recargarDatos();
             }
 
+            async function eliminarCuentaActual() {
+                const id = document.getElementById('edit-cuenta-id').value;
+                if(!confirm('¿Seguro que deseas eliminar esta cuenta?')) return;
+                await fetch('/api/v1/cuentas/' + id, { method: 'DELETE' });
+                cerrarModalEditarCuenta();
+                recargarDatos();
+            }
+
+            // Crear Nueva Cuenta
+            function abrirModalNuevaCuenta() {
+                document.getElementById('modal-nueva-cuenta').classList.remove('hidden');
+                document.getElementById('nueva-cuenta-nombre').focus();
+            }
+            function cerrarModalNuevaCuenta() {
+                document.getElementById('modal-nueva-cuenta').classList.add('hidden');
+            }
+
+            async function guardarNuevaCuenta() {
+                const nombre = document.getElementById('nueva-cuenta-nombre').value.trim();
+                const tipo = document.getElementById('nueva-cuenta-tipo').value;
+                const saldo = parseFloat(document.getElementById('nueva-cuenta-saldo').value) || 0;
+
+                if(!nombre) {
+                    alert('Ingresa el nombre de la cuenta');
+                    return;
+                }
+
+                await fetch('/api/v1/cuentas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nombre: nombre,
+                        tipo: tipo,
+                        saldo_actual: saldo,
+                        tasa_ea: tipo === 'ALTO_RENDIMIENTO' ? 12.5 : 0
+                    })
+                });
+
+                cerrarModalNuevaCuenta();
+                document.getElementById('nueva-cuenta-nombre').value = '';
+                document.getElementById('nueva-cuenta-saldo').value = '';
+                recargarDatos();
+            }
+
+            // Ajustes Perfil
             async function abrirModalPerfil() {
                 const res = await fetch('/api/v1/metricas/perfil');
                 const perfil = await res.json();
@@ -597,41 +763,6 @@ def mobile_dashboard_preview():
                     })
                 });
                 cerrarModalPerfil();
-                recargarDatos();
-            }
-
-            async function limpiarDatosDemo() {
-                if(!confirm('¿Deseas eliminar todas las transacciones de prueba para empezar limpio con tus datos reales?')) return;
-                await fetch('/api/v1/metricas/limpiar-demo', { method: 'POST' });
-                alert('¡Datos de prueba eliminados! Tu historial ha quedado limpio.');
-                recargarDatos();
-            }
-
-            async function simularApplePay() {
-                const monto = 35000;
-                await fetch('/api/v1/webhooks/ios-shortcut', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        medio: 'APPLE_PAY',
-                        monto: monto,
-                        comercio: 'Tiendas D1 Calle 53',
-                        tarjeta: 'Bancolombia'
-                    })
-                });
-                recargarDatos();
-            }
-
-            async function simularRetiroSMS() {
-                const sms = "Bancolombia le informa retiro por $100.000 en CAJERO EXITO a las 11:00. 21/09/2026";
-                await fetch('/api/v1/webhooks/ios-shortcut', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        medio: 'SMS',
-                        texto_sms: sms
-                    })
-                });
                 recargarDatos();
             }
 

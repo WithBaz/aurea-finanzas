@@ -1,11 +1,12 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import Cuenta, Transaccion, TipoCuenta, TipoTransaccion, MedioCaptura
 from backend.app.schemas import TransaccionCreate, TransaccionResponse
 from backend.app.services.categorizer import CategorizadorComercios
+from backend.app.services.nlp_expense_parser import NLPSmartExpenseParser
 
 router = APIRouter()
 
@@ -77,7 +78,7 @@ def crear_transaccion_manual(
         monto=tx_in.monto,
         tipo=tx_in.tipo,
         medio=tx_in.medio,
-        fecha=tx_in.fecha or datetime.utcnow(),
+        fecha=tx_in.fecha or datetime.now(timezone.utc),
         comercio=tx_in.comercio,
         descripcion=tx_in.descripcion,
         cuenta_origen_id=tx_in.cuenta_origen_id,
@@ -91,3 +92,125 @@ def crear_transaccion_manual(
     db.commit()
     db.refresh(tx)
     return tx
+
+
+@router.post("/ia-rapida")
+def registrar_gasto_ia_rapida(
+    payload: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Interpreta un comando por voz o texto con Apple Intelligence / NLP
+    (ej: 'Pagué 15 mil de taxi en efectivo', 'Almuerzo 22000 con Bancolombia')
+    y registra el movimiento o solicita confirmar cuenta si es ambiguo.
+    """
+    texto = str(payload.get("texto", "")).strip()
+    if not texto:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo 'texto' es requerido")
+
+    interpretacion = NLPSmartExpenseParser.interpretar_texto_gasto(texto, db)
+    monto = interpretacion["monto"]
+    comercio = interpretacion["comercio"]
+    tipo = interpretacion["tipo"]
+    cuenta_id = interpretacion["cuenta_id"]
+
+    if monto <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se detectó un monto válido en el mensaje")
+
+    # Si se especificó cuenta explícita en el payload para forzar
+    if payload.get("cuenta_id"):
+        cuenta_id = int(payload.get("cuenta_id"))
+        cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
+        if cuenta:
+            interpretacion["cuenta_nombre"] = cuenta.nombre
+
+    # Si no se detectó cuenta, preguntar al usuario
+    if not cuenta_id:
+        return {
+            "status": "requiere_cuenta",
+            "mensaje": f"Se detectó un gasto de ${monto:,.0f} COP en '{comercio}'. ¿De qué cuenta lo pagaste?",
+            "monto": monto,
+            "comercio": comercio,
+            "tipo": tipo,
+            "categoria_id": interpretacion["categoria_id"],
+            "categoria_nombre": interpretacion["categoria_nombre"]
+        }
+
+    # Descontar saldo o registrar deuda
+    cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
+    if not cuenta:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
+
+    if tipo == "EGRESO":
+        if cuenta.tipo in [TipoCuenta.DEBITO, TipoCuenta.EFECTIVO]:
+            cuenta.saldo_actual -= monto
+        elif cuenta.tipo == TipoCuenta.CREDITO:
+            cuenta.saldo_actual += monto
+    else:
+        cuenta.saldo_actual += monto
+
+    es_hormiga = CategorizadorComercios.es_gasto_hormiga(monto)
+
+    tx = Transaccion(
+        monto=monto,
+        tipo=TipoTransaccion[tipo],
+        medio=MedioCaptura.MANUAL,
+        fecha=datetime.now(timezone.utc),
+        comercio=comercio,
+        descripcion=f"Registrado con Apple Intelligence: '{texto}'",
+        cuenta_origen_id=cuenta.id,
+        categoria_id=interpretacion["categoria_id"],
+        es_gasto_hormiga=es_hormiga,
+        raw_payload=texto
+    )
+    db.add(tx)
+    db.commit()
+    db.refresh(tx)
+
+    return {
+        "status": "registrado",
+        "mensaje": f"¡Listo! Registrado {tipo.lower()} de ${monto:,.0f} COP en '{comercio}' con {cuenta.nombre}.",
+        "transaccion_id": tx.id,
+        "monto": monto,
+        "comercio": comercio,
+        "cuenta": cuenta.nombre,
+        "saldo_cuenta_actual": cuenta.saldo_actual
+    }
+
+
+@router.patch("/{transaccion_id}/asignar-cuenta")
+def reasignar_cuenta_transaccion(
+    transaccion_id: int,
+    payload: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Permite asignar o cambiar la cuenta de un gasto cuando el sistema preguntó de dónde fue.
+    """
+    tx = db.query(Transaccion).filter(Transaccion.id == transaccion_id).first()
+    if not tx:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
+
+    nueva_cuenta_id = payload.get("cuenta_id")
+    nueva_cuenta = db.query(Cuenta).filter(Cuenta.id == nueva_cuenta_id).first()
+    if not nueva_cuenta:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
+
+    # Revertir saldo anterior si aplica
+    antigua_cuenta = tx.cuenta_origen
+    if antigua_cuenta and antigua_cuenta.id != nueva_cuenta.id:
+        if tx.tipo == TipoTransaccion.EGRESO:
+            if antigua_cuenta.tipo in [TipoCuenta.DEBITO, TipoCuenta.EFECTIVO]:
+                antigua_cuenta.saldo_actual += tx.monto
+            elif antigua_cuenta.tipo == TipoCuenta.CREDITO:
+                antigua_cuenta.saldo_actual -= tx.monto
+
+            if nueva_cuenta.tipo in [TipoCuenta.DEBITO, TipoCuenta.EFECTIVO]:
+                nueva_cuenta.saldo_actual -= tx.monto
+            elif nueva_cuenta.tipo == TipoCuenta.CREDITO:
+                nueva_cuenta.saldo_actual += tx.monto
+
+    tx.cuenta_origen_id = nueva_cuenta.id
+    db.commit()
+    db.refresh(tx)
+    return {"status": "exitoso", "mensaje": f"Gasto asignado correctamente a {nueva_cuenta.nombre}"}
