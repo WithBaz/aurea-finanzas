@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import Cuenta
-from backend.app.schemas import CuentaCreate, CuentaResponse
+from backend.app.schemas import CuentaCreate, CuentaUpdate, CuentaResponse
 
 router = APIRouter()
 
@@ -37,3 +37,38 @@ def obtener_cuenta(cuenta_id: int, db: Session = Depends(get_db)):
             detail="Cuenta no encontrada"
         )
     return cuenta
+
+
+@router.put("/{cuenta_id}", response_model=CuentaResponse)
+def actualizar_cuenta(
+    cuenta_id: int,
+    cuenta_in: CuentaUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Actualiza el saldo o datos de una cuenta existente.
+    """
+    cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
+    if not cuenta:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
+
+    update_data = cuenta_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(cuenta, field, value)
+
+    db.commit()
+    db.refresh(cuenta)
+    return cuenta
+
+
+@router.delete("/{cuenta_id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_cuenta(cuenta_id: int, db: Session = Depends(get_db)):
+    """
+    Elimina o desactiva una cuenta.
+    """
+    cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
+    if not cuenta:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
+    db.delete(cuenta)
+    db.commit()
+    return None

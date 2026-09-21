@@ -20,6 +20,17 @@ class CuentaCreate(CuentaBase):
     pass
 
 
+class CuentaUpdate(BaseModel):
+    nombre: Optional[str] = None
+    tipo: Optional[TipoCuenta] = None
+    saldo_actual: Optional[float] = None
+    cupo_total: Optional[float] = None
+    tasa_ea: Optional[float] = None
+    dia_corte: Optional[int] = None
+    dia_limite_pago: Optional[int] = None
+    activa: Optional[bool] = None
+
+
 class CuentaResponse(CuentaBase):
     id: int
     created_at: datetime
@@ -139,3 +150,26 @@ class RendimientoDiarioResponse(BaseModel):
     tasa_ea: float
     rendimiento_diario_estimado: float
     rendimiento_mensual_proyectado: float
+
+
+# --- Perfil Financiero ---
+class PerfilFinancieroBase(BaseModel):
+    dia_pago_mensual: int = Field(30, ge=1, le=31)
+    ingreso_mensual_estimado: float = Field(..., ge=0)
+    compromisos_fijos_mensual: float = Field(0.0, ge=0)
+    porcentaje_ahorro_meta: float = Field(15.0, ge=0, le=100)
+    umbral_gasto_hormiga: float = Field(25000.0, ge=0)
+
+
+class PerfilFinancieroUpdate(BaseModel):
+    dia_pago_mensual: Optional[int] = Field(None, ge=1, le=31)
+    ingreso_mensual_estimado: Optional[float] = Field(None, ge=0)
+    compromisos_fijos_mensual: Optional[float] = Field(None, ge=0)
+    porcentaje_ahorro_meta: Optional[float] = Field(None, ge=0, le=100)
+    umbral_gasto_hormiga: Optional[float] = Field(None, ge=0)
+
+
+class PerfilFinancieroResponse(PerfilFinancieroBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
