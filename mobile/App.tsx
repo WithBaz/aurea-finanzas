@@ -12,6 +12,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { ApiService } from './src/services/api';
 import { Cuenta, Transaccion, SemaforoData, RendimientoData } from './src/types';
 
@@ -27,6 +28,12 @@ export default function App() {
   const [modalVisible, setModalVisible] = useState(false);
   const [nuevoMonto, setNuevoMonto] = useState('');
   const [nuevoComercio, setNuevoComercio] = useState('');
+
+  const vibrar = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (_) {}
+  };
 
   const cargarDatos = async () => {
     try {
@@ -56,6 +63,11 @@ export default function App() {
     return '$ ' + Math.round(monto).toLocaleString('es-CO') + ' COP';
   };
 
+  const abrirModalGasto = () => {
+    vibrar();
+    setModalVisible(true);
+  };
+
   const guardarGastoRapido = async () => {
     const montoNum = parseFloat(nuevoMonto.replace(/[^0-9]/g, ''));
     if (!montoNum || !nuevoComercio) {
@@ -67,6 +79,7 @@ export default function App() {
 
     try {
       await ApiService.registrarGastoManual(montoNum, nuevoComercio, cEfectivo.id);
+      vibrar();
       Alert.alert('¡Registrado!', `Gasto de ${formatearCOP(montoNum)} guardado.`);
       setModalVisible(false);
       setNuevoMonto('');
@@ -83,18 +96,19 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Header Estilo iOS */}
+      {/* Header Limpio (Esquina superior derecha libre de botones para no chocar con Expo Go) */}
       <View style={styles.header}>
         <View>
           <Text style={styles.headerSub}>AUREA • COP</Text>
           <Text style={styles.headerTitle}>Mi Billetera</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
-          <Text style={styles.addBtnText}>+ Gasto</Text>
-        </TouchableOpacity>
+        <View style={styles.headerStatusBadge}>
+          <View style={[styles.statusDot, { backgroundColor: colorSemaforo }]} />
+          <Text style={styles.statusText}>{semaforo?.color || 'ACTIVO'}</Text>
+        </View>
       </View>
 
-      {/* Contenido Principal con RefreshControl */}
+      {/* Contenido Principal con Scroll */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={cargarDatos} tintColor="#F59E0B" />}
@@ -127,6 +141,16 @@ export default function App() {
                   </Text>
                 </View>
               </View>
+            </View>
+
+            {/* Barra de Accesos Rápidos Ergonómica */}
+            <View style={styles.quickActionsBar}>
+              <TouchableOpacity style={styles.quickActionBtnPrimary} onPress={abrirModalGasto}>
+                <Text style={styles.quickActionBtnPrimaryText}>+ Registrar Gasto</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.quickActionBtnSecondary} onPress={cargarDatos}>
+                <Text style={styles.quickActionBtnSecondaryText}>Refrescar</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Rendimientos Diarios Nu Colombia */}
@@ -202,16 +226,23 @@ export default function App() {
         )}
       </ScrollView>
 
-      {/* Barra Inferior Nativa (Tab Bar) */}
+      {/* Barra Inferior Nativa con Botón Central Destacado (+) */}
       <View style={styles.tabBar}>
-        <TouchableOpacity style={styles.tabItem} onPress={() => setTab('billetera')}>
+        <TouchableOpacity style={styles.tabItem} onPress={() => { vibrar(); setTab('billetera'); }}>
           <Text style={[styles.tabText, tab === 'billetera' && styles.tabActive]}>Billetera</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => setTab('transacciones')}>
+
+        {/* Botón Central Elevado (+) */}
+        <TouchableOpacity style={styles.centerFabBtn} onPress={abrirModalGasto} activeOpacity={0.85}>
+          <Text style={styles.centerFabText}>+</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.tabItem} onPress={() => { vibrar(); setTab('transacciones'); }}>
           <Text style={[styles.tabText, tab === 'transacciones' && styles.tabActive]}>Movimientos</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem} onPress={() => setTab('atajos')}>
-          <Text style={[styles.tabText, tab === 'atajos' && styles.tabActive]}>Atajos iOS</Text>
+
+        <TouchableOpacity style={styles.tabItem} onPress={() => { vibrar(); setTab('atajos'); }}>
+          <Text style={[styles.tabText, tab === 'atajos' && styles.tabActive]}>Atajos</Text>
         </TouchableOpacity>
       </View>
 
@@ -255,10 +286,11 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 15 },
   headerSub: { fontSize: 11, fontWeight: '700', color: '#F59E0B', letterSpacing: 1.5, textTransform: 'uppercase' },
   headerTitle: { fontSize: 26, fontWeight: '900', color: '#FFFFFF' },
-  addBtn: { backgroundColor: '#F59E0B', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
-  addBtnText: { color: '#0F172A', fontWeight: '800', fontSize: 12 },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
-  card: { backgroundColor: '#131B2E', borderRadius: 24, padding: 18, borderWidth: 1, marginBottom: 16 },
+  headerStatusBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#131B2E', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: '#1E293B', marginRight: 45 },
+  statusDot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
+  statusText: { fontSize: 9, fontWeight: '800', color: '#CBD5E1', letterSpacing: 0.5 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 50 },
+  card: { backgroundColor: '#131B2E', borderRadius: 24, padding: 18, borderWidth: 1, marginBottom: 12 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardLabel: { fontSize: 10, fontWeight: '700', color: '#94A3B8', letterSpacing: 1 },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1 },
@@ -268,6 +300,11 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: '#1E293B', marginVertical: 12 },
   statLabel: { fontSize: 11, color: '#94A3B8' },
   statVal: { fontSize: 14, fontWeight: '800', color: '#FFFFFF', marginTop: 2 },
+  quickActionsBar: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  quickActionBtnPrimary: { flex: 1, backgroundColor: '#F59E0B', paddingVertical: 12, borderRadius: 16, alignItems: 'center', shadowColor: '#F59E0B', shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  quickActionBtnPrimaryText: { color: '#0F172A', fontWeight: '800', fontSize: 13 },
+  quickActionBtnSecondary: { backgroundColor: '#1E293B', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
+  quickActionBtnSecondaryText: { color: '#CBD5E1', fontWeight: '700', fontSize: 13 },
   yieldCard: { backgroundColor: '#2E1065', borderRadius: 20, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: '#8B5CF6' },
   yieldSub: { fontSize: 10, fontWeight: '800', color: '#C4B5FD', letterSpacing: 1 },
   yieldAmount: { fontSize: 18, fontWeight: '900', color: '#FFFFFF', marginTop: 2 },
@@ -285,10 +322,12 @@ const styles = StyleSheet.create({
   emptyText: { color: '#64748B', textAlign: 'center', marginVertical: 30 },
   shortcutsTitle: { fontSize: 18, fontWeight: '800', color: '#FFFFFF', marginTop: 4 },
   shortcutsBody: { fontSize: 13, color: '#CBD5E1', lineHeight: 22, marginTop: 8 },
-  tabBar: { flexDirection: 'row', backgroundColor: '#0F172A', borderTopWidth: 1, borderColor: '#1E293B', paddingVertical: 12, justifyContent: 'space-around' },
-  tabItem: { alignItems: 'center' },
-  tabText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+  tabBar: { flexDirection: 'row', backgroundColor: '#0F172A', borderTopWidth: 1, borderColor: '#1E293B', paddingVertical: 10, paddingHorizontal: 16, justifyContent: 'space-between', alignItems: 'center' },
+  tabItem: { alignItems: 'center', paddingHorizontal: 12 },
+  tabText: { fontSize: 11, fontWeight: '700', color: '#64748B' },
   tabActive: { color: '#F59E0B' },
+  centerFabBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#F59E0B', justifyContent: 'center', alignItems: 'center', marginTop: -20, shadowColor: '#F59E0B', shadowOpacity: 0.5, shadowRadius: 10, elevation: 6, borderWidth: 3, borderColor: '#0F172A' },
+  centerFabText: { fontSize: 26, fontWeight: '900', color: '#0F172A', marginTop: -2 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 20 },
   modalCard: { backgroundColor: '#1E293B', borderRadius: 24, padding: 20 },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#FFFFFF', marginBottom: 16 },
