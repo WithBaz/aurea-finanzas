@@ -1,0 +1,32 @@
+# Entornos virtuales Python
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Bases de datos y archivos locales
+*.db
+*.sqlite3
+*.log
+
+# Node & React Native / Expo
+node_modules/
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+
+# IDE y Sistema Operativo
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
