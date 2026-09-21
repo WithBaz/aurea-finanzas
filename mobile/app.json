@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "AUREA",
+    "slug": "aurea-finanzas",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0B0F19"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.withbaz.aurea",
+      "infoPlist": {
+        "UIBackgroundModes": ["fetch"]
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "scheme": "aurea"
+  }
+}
