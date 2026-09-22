@@ -9,6 +9,11 @@ def test_extraer_montos_nlp():
     assert NLPSmartExpenseParser._extraer_monto("Almuerzo 25k") == 25000.0
     assert NLPSmartExpenseParser._extraer_monto("Compré $45.000 en el D1") == 45000.0
     assert NLPSmartExpenseParser._extraer_monto("Café 8500") == 8500.0
+    assert NLPSmartExpenseParser._extraer_monto("Almuerzo 10 mil pesos") == 10000.0
+    assert NLPSmartExpenseParser._extraer_monto("Almuerzo diez mil") == 10000.0
+    assert NLPSmartExpenseParser._extraer_monto("Taxi 10 000") == 10000.0
+    assert NLPSmartExpenseParser._extraer_monto("Comida 10 lucas") == 10000.0
+    assert NLPSmartExpenseParser._extraer_monto("Almuerzo 10") == 10000.0
 
 
 def test_interpretar_gasto_con_cuenta_efectivo():

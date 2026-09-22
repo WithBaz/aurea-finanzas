@@ -195,11 +195,11 @@ async def registrar_gasto_ia_rapida(
         medio=MedioCaptura.MANUAL,
         fecha=datetime.now(timezone.utc),
         comercio=comercio,
-        descripcion=f"Registrado con Apple Intelligence: '{texto}'",
+        descripcion=f"Registrado con Apple Intelligence: '{texto_final}'",
         cuenta_origen_id=cuenta.id,
         categoria_id=interpretacion["categoria_id"],
         es_gasto_hormiga=es_hormiga,
-        raw_payload=texto
+        raw_payload=texto_final
     )
     db.add(tx)
     db.commit()

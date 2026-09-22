@@ -226,9 +226,9 @@ def mobile_dashboard_preview():
                 <i class="fa-solid fa-plus"></i>
             </button>
 
-            <button onclick="recargarDatos()" class="flex flex-col items-center text-slate-400 hover:text-white">
-                <i class="fa-solid fa-arrows-rotate text-lg"></i>
-                <span class="text-[10px] font-bold mt-1">Refrescar</span>
+            <button onclick="abrirModalAtajos()" class="flex flex-col items-center text-slate-400 hover:text-white">
+                <i class="fa-solid fa-bolt text-lg"></i>
+                <span class="text-[10px] font-bold mt-1">Siri / Atajos</span>
             </button>
         </div>
 
@@ -909,7 +909,17 @@ def mobile_dashboard_preview():
                 cargarTransacciones();
             }
 
+            // Carga inicial
             recargarDatos();
+
+            // Auto-recarga periódica cada 4 segundos desatendida
+            setInterval(recargarDatos, 4000);
+
+            // Auto-recarga automática cuando el usuario regresa a la app desde Siri o bloqueo
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) recargarDatos();
+            });
+            window.addEventListener('focus', recargarDatos);
         </script>
     </body>
     </html>
