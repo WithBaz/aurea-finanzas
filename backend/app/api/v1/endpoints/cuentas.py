@@ -72,3 +72,28 @@ def eliminar_cuenta(cuenta_id: int, db: Session = Depends(get_db)):
     db.delete(cuenta)
     db.commit()
     return None
+
+
+@router.post("/sincronizar", response_model=List[CuentaResponse])
+def sincronizar_cuentas(cuentas_in: List[CuentaCreate], db: Session = Depends(get_db)):
+    """
+    Sincroniza y rehidrata cuentas desde la caché local del cliente cuando
+    un contenedor efímero se reinicia o se conecta por primera vez.
+    """
+    resultados = []
+    for c_data in cuentas_in:
+        existente = db.query(Cuenta).filter(Cuenta.nombre == c_data.nombre, Cuenta.activa == True).first()
+        if existente:
+            existente.saldo_actual = c_data.saldo_actual
+            existente.tipo = c_data.tipo
+            existente.tasa_ea = c_data.tasa_ea
+            existente.cupo_total = c_data.cupo_total
+            resultados.append(existente)
+        else:
+            nueva = Cuenta(**c_data.model_dump())
+            db.add(nueva)
+            resultados.append(nueva)
+    db.commit()
+    for r in resultados:
+        db.refresh(r)
+    return resultados

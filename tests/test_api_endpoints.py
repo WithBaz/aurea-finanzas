@@ -79,3 +79,29 @@ def test_obtener_metricas_semaforo(client):
     assert data["color"] in ["VERDE", "AMARILLO", "ROJO"]
     assert "dias_restantes" in data
     assert "limite_gasto_diario_sugerido" in data
+
+
+def test_obtener_resumen_dashboard(client):
+    response = client.get("/api/v1/metricas/dashboard")
+    assert response.status_code == 200
+    data = response.json()
+    assert "semaforo" in data
+    assert "rendimientos" in data
+    assert "cuentas" in data
+    assert "transacciones" in data
+    assert "total_saldo" in data
+    assert len(data["cuentas"]) >= 3
+
+
+def test_sincronizar_cuentas(client):
+    payload = [
+        {"nombre": "Nequi Ahorro", "tipo": "DEBITO", "saldo_actual": 350000.0},
+        {"nombre": "Efectivo Bolsillo", "tipo": "EFECTIVO", "saldo_actual": 80000.0}
+    ]
+    response = client.post("/api/v1/cuentas/sincronizar", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    nombres = [c["nombre"] for c in data]
+    assert "Nequi Ahorro" in nombres
+    assert "Efectivo Bolsillo" in nombres

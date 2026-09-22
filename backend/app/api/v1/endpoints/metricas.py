@@ -88,3 +88,51 @@ def reiniciar_todo_desde_cero(db: Session = Depends(get_db)):
     db.commit()
     return {"status": "exitoso", "mensaje": "Base de datos reiniciada a cero. Tu aplicación está 100% limpia para registrar tus cuentas reales."}
 
+
+@router.get("/dashboard")
+def obtener_resumen_dashboard(db: Session = Depends(get_db)):
+    """
+    Consolida todo el estado del dashboard (cuentas, semáforo, rendimientos y transacciones)
+    en una sola petición HTTP ultra-rápida para minimizar latencia en móviles y Apple Shortcuts.
+    """
+    from backend.app.models import TipoCuenta
+    semaforo = FinancialEngine.calcular_semaforo_mensual(db)
+    rendimientos = FinancialEngine.calcular_rendimientos_diarios(db)
+    cuentas = db.query(Cuenta).filter(Cuenta.activa == True).all()
+    transacciones = db.query(Transaccion).order_by(Transaccion.fecha.desc()).limit(30).all()
+
+    total_saldo = sum(c.saldo_actual for c in cuentas if c.tipo != TipoCuenta.CREDITO)
+
+    return {
+        "semaforo": semaforo,
+        "rendimientos": rendimientos,
+        "cuentas": [
+            {
+                "id": c.id,
+                "nombre": c.nombre,
+                "tipo": c.tipo.value if hasattr(c.tipo, "value") else str(c.tipo),
+                "saldo_actual": c.saldo_actual,
+                "cupo_total": c.cupo_total,
+                "tasa_ea": c.tasa_ea,
+                "dia_corte": c.dia_corte,
+                "dia_limite_pago": c.dia_limite_pago,
+                "activa": c.activa,
+            }
+            for c in cuentas
+        ],
+        "total_saldo": total_saldo,
+        "transacciones": [
+            {
+                "id": t.id,
+                "monto": t.monto,
+                "tipo": t.tipo.value if hasattr(t.tipo, "value") else str(t.tipo),
+                "comercio": t.comercio,
+                "fecha": t.fecha.isoformat() if t.fecha else None,
+                "medio": t.medio.value if hasattr(t.medio, "value") else str(t.medio),
+                "es_gasto_hormiga": t.es_gasto_hormiga,
+                "cuenta_nombre": t.cuenta_origen.nombre if t.cuenta_origen else "General",
+            }
+            for t in transacciones
+        ]
+    }
+

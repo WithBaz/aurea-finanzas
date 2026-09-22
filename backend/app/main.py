@@ -490,148 +490,128 @@ def mobile_dashboard_preview():
                 return '$ ' + Math.round(monto).toLocaleString('es-CO') + ' COP';
             }
 
-            async function cargarSemaforo() {
-                try {
-                    const res = await fetch('/api/v1/metricas/semaforo');
-                    const data = await res.json();
-                    document.getElementById('disponible-hoy').innerText = formatearCOP(data.disponible_hoy_restante);
-                    document.getElementById('mensaje-guia').innerText = data.mensaje_guia;
-                    document.getElementById('dias-restantes').innerText = data.dias_restantes + ' días';
-                    document.getElementById('limite-diario').innerText = formatearCOP(data.limite_gasto_diario_sugerido);
-                    
+            // Renderizado unificado y ultra-rápido del Dashboard
+            function aplicarDatosDashboard(data) {
+                if(!data) return;
+
+                // 1. Semáforo
+                if(data.semaforo) {
+                    const s = data.semaforo;
+                    document.getElementById('disponible-hoy').innerText = formatearCOP(s.disponible_hoy_restante);
+                    document.getElementById('mensaje-guia').innerText = s.mensaje_guia || '';
+                    document.getElementById('dias-restantes').innerText = (s.dias_restantes || 0) + ' días';
+                    document.getElementById('limite-diario').innerText = formatearCOP(s.limite_gasto_diario_sugerido || 0);
+
                     const badge = document.getElementById('badge-color');
-                    badge.innerText = data.color;
+                    badge.innerText = s.color || 'VERDE';
                     const card = document.getElementById('semaforo-card');
-                    if(data.color === 'VERDE') {
+                    if(s.color === 'VERDE') {
                         badge.className = 'px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
                         card.className = 'ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-emerald-500/30';
-                    } else if(data.color === 'AMARILLO') {
+                    } else if(s.color === 'AMARILLO') {
                         badge.className = 'px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40';
                         card.className = 'ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-amber-500/30';
                     } else {
                         badge.className = 'px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40';
                         card.className = 'ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-rose-500/30';
                     }
-                } catch (e) {
-                    console.error("Error semáforo", e);
                 }
-            }
 
-            async function cargarRendimientos() {
-                try {
-                    const res = await fetch('/api/v1/metricas/rendimientos');
-                    const data = await res.json();
-                    const card = document.getElementById('card-rendimientos');
-                    if(data.length > 0) {
-                        card.style.display = 'flex';
-                        const total = data.reduce((acc, curr) => acc + curr.rendimiento_diario_estimado, 0);
-                        document.getElementById('rendimiento-diario').innerText = '+ ' + formatearCOP(total) + ' hoy';
-                    } else {
-                        card.style.display = 'none';
-                    }
-                } catch(e) {
-                    console.error("Error rendimientos", e);
+                // 2. Rendimientos
+                const cardRend = document.getElementById('card-rendimientos');
+                if(data.rendimientos && data.rendimientos.length > 0) {
+                    cardRend.style.display = 'flex';
+                    const total = data.rendimientos.reduce((acc, curr) => acc + (curr.rendimiento_diario_estimado || 0), 0);
+                    document.getElementById('rendimiento-diario').innerText = '+ ' + formatearCOP(total) + ' hoy';
+                } else {
+                    cardRend.style.display = 'none';
                 }
-            }
 
-            async function cargarCuentas() {
-                try {
-                    const res = await fetch('/api/v1/cuentas');
-                    cuentasData = await res.json();
-                    
-                    let totalCuentas = 0;
-                    let totalDeuda = 0;
+                // 3. Cuentas
+                cuentasData = data.cuentas || [];
+                let totalCuentas = 0;
+                let totalDeuda = 0;
+                const containerCuentas = document.getElementById('cuentas-list');
+                const selectCuenta = document.getElementById('select-cuenta');
+                containerCuentas.innerHTML = '';
+                selectCuenta.innerHTML = '';
 
-                    const container = document.getElementById('cuentas-list');
-                    const select = document.getElementById('select-cuenta');
-                    container.innerHTML = '';
-                    if(cuentasData.length === 0) {
-                        container.innerHTML = `
-                            <div class="ios-card p-6 rounded-3xl text-center border border-amber-500/20 bg-gradient-to-b from-slate-900 to-amber-950/10">
-                                <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-3 text-lg">
-                                    <i class="fa-solid fa-wallet"></i>
+                if(cuentasData.length === 0) {
+                    containerCuentas.innerHTML = `
+                        <div class="ios-card p-6 rounded-3xl text-center border border-amber-500/20 bg-gradient-to-b from-slate-900 to-amber-950/10">
+                            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-3 text-lg">
+                                <i class="fa-solid fa-wallet"></i>
+                            </div>
+                            <h4 class="text-sm font-black text-white mb-1">¡Todo listo para empezar de cero!</h4>
+                            <p class="text-xs text-slate-400 mb-4 leading-relaxed">No tienes cuentas configuradas aún. Registra tu cuenta bancaria, billetera o efectivo con tu saldo real.</p>
+                            <button onclick="abrirModalNuevaCuenta()" class="w-full py-3 px-4 rounded-xl bg-amber-500 active:scale-95 text-slate-950 font-black text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-amber-500/20">
+                                <i class="fa-solid fa-plus text-sm"></i>
+                                <span>Agregar Mi Primera Cuenta</span>
+                            </button>
+                        </div>
+                    `;
+                    const opt = document.createElement('option');
+                    opt.value = "";
+                    opt.innerText = "Primero crea una cuenta";
+                    selectCuenta.appendChild(opt);
+                } else {
+                    cuentasData.forEach(c => {
+                        if(c.tipo === 'CREDITO') {
+                            totalDeuda += c.saldo_actual;
+                        } else {
+                            totalCuentas += c.saldo_actual;
+                        }
+
+                        let icon = 'fa-credit-card';
+                        let iconColor = 'text-blue-400';
+                        if(c.tipo === 'ALTO_RENDIMIENTO') { icon = 'fa-piggy-bank'; iconColor = 'text-purple-400'; }
+                        if(c.tipo === 'EFECTIVO') { icon = 'fa-money-bill-wave'; iconColor = 'text-emerald-400'; }
+                        if(c.tipo === 'CREDITO') { icon = 'fa-regular fa-credit-card'; iconColor = 'text-amber-400'; }
+
+                        const item = document.createElement('div');
+                        item.className = 'ios-card p-3.5 rounded-2xl flex items-center justify-between';
+                        item.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center ${iconColor} text-sm">
+                                    <i class="fa-solid ${icon}"></i>
                                 </div>
-                                <h4 class="text-sm font-black text-white mb-1">¡Todo listo para empezar de cero!</h4>
-                                <p class="text-xs text-slate-400 mb-4 leading-relaxed">No tienes cuentas configuradas aún. Registra tu cuenta bancaria, billetera o efectivo con tu saldo real.</p>
-                                <button onclick="abrirModalNuevaCuenta()" class="w-full py-3 px-4 rounded-xl bg-amber-500 active:scale-95 text-slate-950 font-black text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-amber-500/20">
-                                    <i class="fa-solid fa-plus text-sm"></i>
-                                    <span>Agregar Mi Primera Cuenta</span>
+                                <div>
+                                    <span class="text-sm font-bold text-white block leading-tight">${c.nombre}</span>
+                                    <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">${c.tipo}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-sm font-black ${c.tipo === 'CREDITO' ? 'text-amber-400' : 'text-emerald-400'}">
+                                    ${formatearCOP(c.saldo_actual)}
+                                </span>
+                                <button onclick="abrirModalEditarCuenta(${c.id}, '${c.nombre}', '${c.tipo}', ${c.saldo_actual})" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-xs transition" title="Editar Saldo Real">
+                                    <i class="fa-solid fa-pen"></i>
                                 </button>
                             </div>
                         `;
+                        containerCuentas.appendChild(item);
+
                         const opt = document.createElement('option');
-                        opt.value = "";
-                        opt.innerText = "Primero crea una cuenta";
-                        select.appendChild(opt);
-                    } else {
-                        cuentasData.forEach(c => {
-                            if(c.tipo === 'CREDITO') {
-                                totalDeuda += c.saldo_actual;
-                            } else {
-                                totalCuentas += c.saldo_actual;
-                            }
-
-                            let icon = 'fa-credit-card';
-                            let iconColor = 'text-blue-400';
-                            if(c.tipo === 'ALTO_RENDIMIENTO') { icon = 'fa-piggy-bank'; iconColor = 'text-purple-400'; }
-                            if(c.tipo === 'EFECTIVO') { icon = 'fa-money-bill-wave'; iconColor = 'text-emerald-400'; }
-                            if(c.tipo === 'CREDITO') { icon = 'fa-regular fa-credit-card'; iconColor = 'text-amber-400'; }
-
-                            const item = document.createElement('div');
-                            item.className = 'ios-card p-3.5 rounded-2xl flex items-center justify-between';
-                            item.innerHTML = `
-                                <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center ${iconColor} text-sm">
-                                        <i class="fa-solid ${icon}"></i>
-                                    </div>
-                                    <div>
-                                        <span class="text-sm font-bold text-white block leading-tight">${c.nombre}</span>
-                                        <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">${c.tipo}</span>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2.5">
-                                    <span class="text-sm font-black ${c.tipo === 'CREDITO' ? 'text-amber-400' : 'text-emerald-400'}">
-                                        ${formatearCOP(c.saldo_actual)}
-                                    </span>
-                                    <button onclick="abrirModalEditarCuenta(${c.id}, '${c.nombre}', '${c.tipo}', ${c.saldo_actual})" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-xs transition" title="Editar Saldo Real">
-                                        <i class="fa-solid fa-pen"></i>
-                                    </button>
-                                </div>
-                            `;
-                            container.appendChild(item);
-
-                            // Llenar select modal
-                            const opt = document.createElement('option');
-                            opt.value = c.id;
-                            opt.innerText = c.nombre;
-                            select.appendChild(opt);
-                        });
-                    }
-
-                    // Totales
-                    document.getElementById('subtotal-cuentas').innerText = formatearCOP(totalCuentas);
-                    document.getElementById('subtotal-deuda').innerText = formatearCOP(totalDeuda);
-                    const balanceNeto = totalCuentas - totalDeuda;
-                    document.getElementById('balance-neto-total').innerText = formatearCOP(balanceNeto);
-
-                } catch(e) {
-                    console.error("Error cuentas", e);
+                        opt.value = c.id;
+                        opt.innerText = c.nombre;
+                        selectCuenta.appendChild(opt);
+                    });
                 }
-            }
 
-            async function cargarTransacciones() {
-                try {
-                    const res = await fetch('/api/v1/transacciones?limit=20');
-                    const txs = await res.json();
-                    const container = document.getElementById('transacciones-list');
-                    document.getElementById('conteo-tx').innerText = txs.length + ' movimientos';
-                    container.innerHTML = '';
+                document.getElementById('subtotal-cuentas').innerText = formatearCOP(totalCuentas);
+                document.getElementById('subtotal-deuda').innerText = formatearCOP(totalDeuda);
+                const balanceNeto = totalCuentas - totalDeuda;
+                document.getElementById('balance-neto-total').innerText = formatearCOP(balanceNeto);
 
-                    if(txs.length === 0) {
-                        container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs font-semibold">No hay movimientos registrados. ¡Toca (+) o usa Apple Intelligence para registrar tu primer gasto!</div>';
-                        return;
-                    }
+                // 4. Transacciones
+                const containerTx = document.getElementById('transacciones-list');
+                const txs = data.transacciones || [];
+                document.getElementById('conteo-tx').innerText = txs.length + ' movimientos';
+                containerTx.innerHTML = '';
 
+                if(txs.length === 0) {
+                    containerTx.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs font-semibold">No hay movimientos registrados. ¡Toca (+) o usa Apple Intelligence para registrar tu primer gasto!</div>';
+                } else {
                     txs.forEach(t => {
                         const item = document.createElement('div');
                         item.className = 'ios-card p-3 rounded-2xl flex items-center justify-between';
@@ -647,11 +627,60 @@ def mobile_dashboard_preview():
                                 ${t.tipo === 'INGRESO' ? '+' : '-'} ${formatearCOP(t.monto)}
                             </span>
                         `;
-                        container.appendChild(item);
+                        containerTx.appendChild(item);
                     });
-                } catch(e) {
-                    console.error("Error txs", e);
                 }
+            }
+
+            // Sincronización automática cliente-servidor (rehidratación de contenedores efímeros)
+            async function sincronizarCuentasConServidor(cuentasGuardadas) {
+                try {
+                    const payload = cuentasGuardadas.map(c => ({
+                        nombre: c.nombre,
+                        tipo: c.tipo,
+                        saldo_actual: c.saldo_actual,
+                        cupo_total: c.cupo_total || 0,
+                        tasa_ea: c.tasa_ea || 0
+                    }));
+                    await fetch('/api/v1/cuentas/sincronizar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    await fetchDashboard(false);
+                } catch(e) {
+                    console.error("Error al rehidratar cuentas", e);
+                }
+            }
+
+            async function fetchDashboard(intentarRehidratar = true) {
+                try {
+                    const res = await fetch('/api/v1/metricas/dashboard');
+                    if(!res.ok) return;
+                    const data = await res.json();
+
+                    // Si el servidor reinició y tiene 0 cuentas pero el cliente tiene cuentas guardadas:
+                    const cacheRaw = localStorage.getItem('aurea_dashboard_cache');
+                    if(intentarRehidratar && data.cuentas.length === 0 && cacheRaw) {
+                        try {
+                            const cached = JSON.parse(cacheRaw);
+                            if(cached.cuentas && cached.cuentas.length > 0) {
+                                console.log("Servidor reiniciado. Rehidratando cuentas desde la memoria local...");
+                                await sincronizarCuentasConServidor(cached.cuentas);
+                                return;
+                            }
+                        } catch(e) {}
+                    }
+
+                    aplicarDatosDashboard(data);
+                    localStorage.setItem('aurea_dashboard_cache', JSON.stringify(data));
+                } catch(e) {
+                    console.warn("Conexión con servidor lenta o en espera, conservando caché local", e);
+                }
+            }
+
+            function recargarDatos() {
+                fetchDashboard();
             }
 
             // Apple Intelligence por Voz / Texto
@@ -787,6 +816,20 @@ def mobile_dashboard_preview():
                 const nuevoNombre = document.getElementById('edit-nombre-input').value.trim();
                 if(isNaN(nuevoSaldo)) return;
 
+                // Actualizar optimísticamente en memoria local
+                const c = cuentasData.find(x => x.id == id);
+                if(c) {
+                    c.saldo_actual = nuevoSaldo;
+                    if(nuevoNombre) c.nombre = nuevoNombre;
+                    const cacheRaw = localStorage.getItem('aurea_dashboard_cache');
+                    if(cacheRaw) {
+                        let cache = JSON.parse(cacheRaw);
+                        cache.cuentas = cuentasData;
+                        localStorage.setItem('aurea_dashboard_cache', JSON.stringify(cache));
+                    }
+                    aplicarDatosDashboard({ cuentas: cuentasData });
+                }
+
                 await fetch('/api/v1/cuentas/' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -796,15 +839,23 @@ def mobile_dashboard_preview():
                     })
                 });
                 cerrarModalEditarCuenta();
-                recargarDatos();
+                fetchDashboard();
             }
 
             async function eliminarCuentaActual() {
                 const id = document.getElementById('edit-cuenta-id').value;
                 if(!confirm('¿Seguro que deseas eliminar esta cuenta?')) return;
+                cuentasData = cuentasData.filter(x => x.id != id);
+                const cacheRaw = localStorage.getItem('aurea_dashboard_cache');
+                if(cacheRaw) {
+                    let cache = JSON.parse(cacheRaw);
+                    cache.cuentas = cuentasData;
+                    localStorage.setItem('aurea_dashboard_cache', JSON.stringify(cache));
+                }
+                aplicarDatosDashboard({ cuentas: cuentasData });
                 await fetch('/api/v1/cuentas/' + id, { method: 'DELETE' });
                 cerrarModalEditarCuenta();
-                recargarDatos();
+                fetchDashboard();
             }
 
             // Crear Nueva Cuenta
@@ -826,21 +877,34 @@ def mobile_dashboard_preview():
                     return;
                 }
 
-                await fetch('/api/v1/cuentas', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        nombre: nombre,
-                        tipo: tipo,
-                        saldo_actual: saldo,
-                        tasa_ea: tipo === 'ALTO_RENDIMIENTO' ? 12.5 : 0
-                    })
-                });
+                try {
+                    const res = await fetch('/api/v1/cuentas', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            nombre: nombre,
+                            tipo: tipo,
+                            saldo_actual: saldo,
+                            tasa_ea: tipo === 'ALTO_RENDIMIENTO' ? 12.5 : 0
+                        })
+                    });
+                    const nueva = await res.json();
+                    
+                    // Guardar de inmediato en la memoria local del dispositivo
+                    cuentasData.push(nueva);
+                    const cacheRaw = localStorage.getItem('aurea_dashboard_cache');
+                    let cache = cacheRaw ? JSON.parse(cacheRaw) : { cuentas: [] };
+                    cache.cuentas = cuentasData;
+                    localStorage.setItem('aurea_dashboard_cache', JSON.stringify(cache));
+                    aplicarDatosDashboard(cache);
+                } catch(e) {
+                    console.error("Error al guardar cuenta", e);
+                }
 
                 cerrarModalNuevaCuenta();
                 document.getElementById('nueva-cuenta-nombre').value = '';
                 document.getElementById('nueva-cuenta-saldo').value = '';
-                recargarDatos();
+                fetchDashboard();
             }
 
             // Ajustes Perfil
@@ -880,11 +944,12 @@ def mobile_dashboard_preview():
             async function reiniciarTodoDesdeCero() {
                 if(!confirm('¿Estás seguro de que deseas eliminar todas las cuentas, movimientos y empezar completamente desde cero? Esta acción no se puede deshacer.')) return;
                 try {
+                    localStorage.removeItem('aurea_dashboard_cache');
                     const res = await fetch('/api/v1/metricas/reiniciar-todo', { method: 'POST' });
                     const data = await res.json();
                     alert(data.mensaje || 'Base de datos reiniciada a cero.');
                     cerrarModalPerfil();
-                    recargarDatos();
+                    fetchDashboard();
                 } catch(e) {
                     alert('Error al reiniciar datos');
                 }
@@ -935,24 +1000,25 @@ def mobile_dashboard_preview():
                 });
             }
 
-            function recargarDatos() {
-                cargarSemaforo();
-                cargarRendimientos();
-                cargarCuentas();
-                cargarTransacciones();
+            // 1. Carga instantánea a 0 milisegundos desde la memoria del dispositivo
+            const cacheInicial = localStorage.getItem('aurea_dashboard_cache');
+            if(cacheInicial) {
+                try {
+                    aplicarDatosDashboard(JSON.parse(cacheInicial));
+                } catch(e) {}
             }
 
-            // Carga inicial
-            recargarDatos();
+            // 2. Carga y verificación en segundo plano con el servidor
+            fetchDashboard();
 
-            // Auto-recarga periódica cada 4 segundos desatendida
-            setInterval(recargarDatos, 4000);
+            // 3. Auto-recarga desatendida cada 8 segundos con 1 sola petición consolidada ultra-liviana
+            setInterval(fetchDashboard, 8000);
 
-            // Auto-recarga automática cuando el usuario regresa a la app desde Siri o bloqueo
+            // 4. Auto-recarga automática instantánea cuando el usuario regresa a la app desde Siri o desbloqueo
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) recargarDatos();
+                if (!document.hidden) fetchDashboard();
             });
-            window.addEventListener('focus', recargarDatos);
+            window.addEventListener('focus', fetchDashboard);
         </script>
     </body>
     </html>
