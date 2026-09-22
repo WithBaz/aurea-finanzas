@@ -111,6 +111,7 @@ async def registrar_gasto_ia_rapida(
     cuenta_id_final = cuenta_id
 
     if request.method == "POST":
+        # 1. Intentar JSON
         try:
             body = await request.json()
             if isinstance(body, dict):
@@ -120,6 +121,27 @@ async def registrar_gasto_ia_rapida(
                     cuenta_id_final = int(body.get("cuenta_id"))
         except Exception:
             pass
+
+        # 2. Intentar Formulario (Form en Atajos iOS)
+        if not texto_final:
+            try:
+                form = await request.form()
+                if form.get("texto"):
+                    texto_final = str(form.get("texto"))
+                if not cuenta_id_final and form.get("cuenta_id"):
+                    cuenta_id_final = int(form.get("cuenta_id"))
+            except Exception:
+                pass
+
+        # 3. Intentar Texto Plano Directo en el Body
+        if not texto_final:
+            try:
+                raw_bytes = await request.body()
+                raw_str = raw_bytes.decode("utf-8").strip()
+                if raw_str and not raw_str.startswith("{") and "=" not in raw_str:
+                    texto_final = raw_str
+            except Exception:
+                pass
 
     texto_final = str(texto_final or "").strip()
     if not texto_final:
