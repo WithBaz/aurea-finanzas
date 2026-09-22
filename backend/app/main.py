@@ -77,6 +77,13 @@ def mobile_dashboard_preview():
             .glow-primary {
                 box-shadow: 0 8px 32px -4px rgba(168, 85, 247, 0.22);
             }
+            .tab-view {
+                animation: fadeIn 0.15s ease-in-out;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(4px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
             ::-webkit-scrollbar { display: none; }
         </style>
     </head>
@@ -84,7 +91,7 @@ def mobile_dashboard_preview():
         
         <div class="w-full max-w-lg mx-auto px-4 sm:px-6 pt-2">
 
-            <!-- Top Header Nativo iOS -->
+            <!-- Top Header Nativo iOS con Título Dinámico -->
             <div class="flex justify-between items-center py-3 mb-2">
                 <div>
                     <div class="flex items-center gap-1.5">
@@ -92,144 +99,270 @@ def mobile_dashboard_preview():
                         <span class="text-[11px] font-bold tracking-widest text-purple-300 uppercase">AUREA</span>
                         <span id="badge-db" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-950/60 text-purple-300 border border-purple-800/50">...</span>
                     </div>
-                    <h1 class="text-2xl font-black text-white tracking-tight">Mi Billetera</h1>
+                    <h1 class="text-2xl font-black text-white tracking-tight" id="header-titulo">Mi Billetera</h1>
                 </div>
             </div>
 
-            <!-- Apartado 1: Saldo Disponible para Gastar y Saldo Total -->
-            <div class="ios-card rounded-3xl p-5 mb-4 glow-primary border-purple-500/25">
-                <!-- Saldo disponible para gastar -->
-                <div>
-                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Saldo disponible para gastar</span>
-                    <div class="flex items-center gap-2.5 mt-1">
-                        <div class="text-3xl font-black text-emerald-400 tracking-tight" id="disponible-hoy">$ 0</div>
-                        <!-- Modo Privacidad 👁️ al lado del saldo principal -->
-                        <button onclick="toggleModoPrivacidad()" id="btn-privacidad" class="w-7 h-7 rounded-lg bg-purple-950/40 hover:bg-purple-900/50 flex items-center justify-center text-purple-300 hover:text-white active:scale-90 transition border border-purple-500/25" title="Ocultar o ver saldo">
-                            <i class="fa-solid fa-eye text-xs" id="icono-ojo"></i>
+            <!-- VISTA 1: BILLETERA (Panel Principal) -->
+            <div id="view-billetera" class="tab-view pb-24">
+                <!-- Apartado 1: Saldo Disponible para Gastar con Saldo Total Integrado -->
+                <div class="ios-card rounded-3xl p-5 mb-4 glow-primary border border-purple-500/25 bg-gradient-to-b from-[#160F2E] to-[#0E0A1A]">
+                    <!-- Saldo disponible para gastar -->
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Saldo disponible para gastar</span>
+                            <div class="flex items-center gap-2.5 mt-1">
+                                <div class="text-3xl font-black text-emerald-400 tracking-tight" id="disponible-hoy">$ 0</div>
+                                <!-- Modo Privacidad 👁️ al lado del saldo principal -->
+                                <button onclick="toggleModoPrivacidad()" id="btn-privacidad" class="w-7 h-7 rounded-lg bg-purple-950/40 hover:bg-purple-900/50 flex items-center justify-center text-purple-300 hover:text-white active:scale-90 transition border border-purple-500/25" title="Ocultar o ver saldo">
+                                    <i class="fa-solid fa-eye text-xs" id="icono-ojo"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <span id="badge-disponible" class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                            LIBRE PARA GASTAR
+                        </span>
+                    </div>
+
+                    <!-- Apartado integrado: Saldo Total y Gastos Fijos -->
+                    <div class="mt-4 pt-3.5 border-t border-purple-900/40 grid grid-cols-2 gap-3">
+                        <div class="p-3 rounded-2xl bg-[#0B0816]/80 border border-purple-900/30 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Saldo Total</span>
+                                <div class="text-lg font-black text-white mt-0.5" id="balance-neto-total">$ 0</div>
+                            </div>
+                            <button onclick="cambiarTab('cuentas')" class="text-[10px] text-purple-300 font-bold hover:text-white flex items-center gap-1 mt-2 transition">
+                                <span>Ver Cuentas</span>
+                                <i class="fa-solid fa-chevron-right text-[8px]"></i>
+                            </button>
+                        </div>
+                        <div class="p-3 rounded-2xl bg-[#0B0816]/80 border border-purple-900/30 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">Gastos Fijos</span>
+                                <div class="text-lg font-black text-purple-200 mt-0.5" id="subtotal-apartado-fijos">$ 0</div>
+                            </div>
+                            <span class="text-[9px] text-purple-400/80 font-semibold block mt-2" id="estado-fijos-apartados">
+                                Apartado de nómina
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Apartado 2: Gastos Fijos del Mes -->
+                <div class="ios-card rounded-3xl p-5 mb-4 border border-purple-500/25 bg-gradient-to-b from-[#140E24] to-[#0E0A1A]">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Gastos Fijos del Mes</span>
+                            <div class="text-2xl font-black text-purple-200 mt-0.5" id="total-gastos-fijos">$ 0</div>
+                        </div>
+                        <span id="badge-estado-gastos-fijos" class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-950/80 text-purple-300 border border-purple-600/40">
+                            🔒 APARTADOS DE NÓMINA
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-purple-300/70 leading-relaxed mb-3">
+                        Descontados automáticamente de tu saldo disponible para proteger tus pagos fijos.
+                    </p>
+
+                    <div class="flex justify-between items-center mb-2.5 pt-2 border-t border-purple-900/30">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Compromisos Fijos</span>
+                        <button onclick="abrirModalNuevoGastoFijo()" class="px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-[11px] font-bold border border-purple-500/35 flex items-center gap-1 active:scale-95 transition">
+                            <i class="fa-solid fa-plus text-[9px]"></i>
+                            <span>Agregar Gasto Fijo</span>
+                        </button>
+                    </div>
+
+                    <div id="gastos-fijos-list" class="space-y-2">
+                        <!-- Dinámico -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA 2: MOVIMIENTOS (Panel Independiente) -->
+            <div id="view-movimientos" class="tab-view hidden pb-24">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <span class="text-[11px] font-bold text-purple-400 uppercase tracking-wider">Historial Financiero</span>
+                        <div class="text-xs text-purple-300/70" id="conteo-tx">0 movimientos</div>
+                    </div>
+                    <button onclick="abrirModalGasto()" class="px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-bold border border-purple-500/35 flex items-center gap-1.5 active:scale-95 transition">
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                        <span>Registrar</span>
+                    </button>
+                </div>
+
+                <div id="transacciones-list" class="space-y-2.5">
+                    <!-- Dinámico -->
+                </div>
+            </div>
+
+            <!-- VISTA 3: CUENTAS E INSTRUMENTOS (Panel Independiente) -->
+            <div id="view-cuentas" class="tab-view hidden pb-24">
+                <div class="flex justify-between items-center mb-3">
+                    <div>
+                        <span class="text-[11px] font-bold text-purple-400 uppercase tracking-wider">Tus Instrumentos</span>
+                        <p class="text-[11px] text-purple-300/70">Toca el lápiz para actualizar tu saldo real</p>
+                    </div>
+                    <button onclick="abrirModalNuevaCuenta()" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black shadow-md shadow-purple-900/30 flex items-center gap-1.5 active:scale-95 transition">
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                        <span>Nueva Cuenta</span>
+                    </button>
+                </div>
+
+                <!-- Resumen de Saldos -->
+                <div class="ios-card p-4 rounded-3xl mb-4 border border-purple-500/20 bg-gradient-to-r from-purple-950/40 via-[#130E26] to-[#0E0A1A]">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Total en Cuentas</span>
+                            <span id="subtotal-cuentas" class="font-black text-emerald-400 text-lg">$ 0</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Deuda en Tarjetas</span>
+                            <span id="subtotal-deuda" class="font-black text-rose-400 text-lg">$ 0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rendimientos Nu (Cuenta de Alto Rendimiento) -->
+                <div id="card-rendimientos" class="ios-card p-3.5 rounded-2xl mb-4 flex items-center justify-between border border-fuchsia-500/25 bg-fuchsia-950/20" style="display: none;">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-xl bg-fuchsia-500/20 text-fuchsia-300 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-piggy-bank"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs font-bold text-white block">Rendimientos Nu (Cajita)</span>
+                            <span class="text-[10px] text-fuchsia-300/80">12.5% E.A. estimado</span>
+                        </div>
+                    </div>
+                    <span id="rendimiento-diario" class="text-xs font-black text-fuchsia-300">+ $ 0 hoy</span>
+                </div>
+
+                <!-- Lista de Cuentas -->
+                <div id="cuentas-list" class="space-y-2.5 mb-4">
+                    <!-- Dinámico -->
+                </div>
+            </div>
+
+            <!-- VISTA 4: AJUSTES Y NÓMINA (Panel Independiente) -->
+            <div id="view-ajustes" class="tab-view hidden pb-24">
+                <div class="mb-4">
+                    <span class="text-[11px] font-bold text-purple-400 uppercase tracking-wider">Configuración Personal</span>
+                    <p class="text-[11px] text-purple-300/70">Personaliza tu ciclo de nómina mensual y atajos de Siri</p>
+                </div>
+
+                <!-- Card: Mi Nómina -->
+                <div class="ios-card rounded-3xl p-5 mb-4 border border-purple-500/25 bg-gradient-to-b from-[#140E24] to-[#0E0A1A]">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-7 h-7 rounded-lg bg-purple-900/50 text-purple-300 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-money-check-dollar"></i>
+                        </div>
+                        <h3 class="text-sm font-extrabold text-white">Mi Nómina y Finanzas</h3>
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Ingreso Mensual Estimado (Sueldo $)</label>
+                            <input type="number" id="perfil-ingreso" placeholder="Ej: 4500000" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Día de Cobro Mensual (Día de nómina 1-31)</label>
+                            <input type="number" id="perfil-dia" min="1" max="31" placeholder="Ej: 1" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Meta de Ahorro Mensual (%)</label>
+                            <input type="number" id="perfil-ahorro" min="0" max="100" placeholder="15" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
+                        </div>
+                        <button onclick="guardarPerfilReal()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black shadow-md shadow-purple-900/30 active:scale-95 transition">
+                            Guardar Ajustes de Nómina
                         </button>
                     </div>
                 </div>
 
-                <!-- Divisor y Saldo Total -->
-                <div class="mt-4 pt-3.5 border-t border-purple-900/30 flex justify-between items-center">
-                    <div>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Saldo Total</span>
-                        <div class="text-xl font-black text-white mt-0.5" id="balance-neto-total">$ 0</div>
+                <!-- Card: Atajos de iOS & Siri -->
+                <div class="ios-card rounded-3xl p-5 mb-4 border border-purple-500/25 bg-gradient-to-b from-[#140E24] to-[#0E0A1A]">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-bolt"></i>
+                        </div>
+                        <h3 class="text-sm font-extrabold text-white">Atajos de iOS & Siri</h3>
                     </div>
-                    <button onclick="abrirModalCuentas()" class="px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/70 text-purple-300 text-xs font-bold border border-purple-500/25 flex items-center gap-1.5 transition active:scale-95">
-                        <i class="fa-solid fa-wallet text-[10px]"></i>
-                        <span>Mis Cuentas</span>
-                    </button>
-                </div>
-            </div>
+                    
+                    <div class="space-y-3 text-xs">
+                        <!-- Guía 1: Siri Registrar Gasto -->
+                        <div class="p-3 rounded-2xl bg-[#0B0816] border border-amber-500/25">
+                            <span class="text-amber-400 font-bold text-xs block mb-1">1. Atajo Siri: "Registrar Gasto"</span>
+                            <p class="text-[11px] text-slate-300 mb-2">Di <em>"Oye Siri, registrar gasto"</em> y dicta (ej. <em>"15 mil de taxi"</em>).</p>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="url-ia-endpoint" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-amber-300 font-mono select-all">
+                                <button onclick="copiarUrlIA()" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] shrink-0 active:scale-95 transition">
+                                    Copiar
+                                </button>
+                            </div>
+                        </div>
 
-            <!-- Apartado 2: Gastos Fijos del Mes -->
-            <div class="ios-card rounded-3xl p-5 mb-24 border border-purple-500/25 bg-gradient-to-b from-[#140E24] to-[#0E0A1A]">
-                <div class="flex justify-between items-start mb-2">
-                    <div>
-                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Gastos Fijos del Mes</span>
-                        <div class="text-2xl font-black text-purple-200 mt-0.5" id="total-gastos-fijos">$ 0</div>
+                        <!-- Guía 2: Siri Registrar Ingreso -->
+                        <div class="p-3 rounded-2xl bg-[#0B0816] border border-emerald-500/25">
+                            <span class="text-emerald-400 font-bold text-xs block mb-1">2. Atajo Siri: "Registrar Ingreso"</span>
+                            <p class="text-[11px] text-slate-300 mb-2">Di <em>"Oye Siri, registrar ingreso"</em> y dicta (ej. <em>"500 mil sueldo"</em>).</p>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="url-ia-ingreso-endpoint" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-emerald-300 font-mono select-all">
+                                <button onclick="copiarUrlIAIngreso()" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10px] shrink-0 active:scale-95 transition">
+                                    Copiar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Guía 3: Apple Pay Automático -->
+                        <div class="p-3 rounded-2xl bg-[#0B0816] border border-blue-500/25">
+                            <span class="text-blue-400 font-bold text-xs block mb-1">3. Apple Pay Automático (Wallet)</span>
+                            <p class="text-[11px] text-slate-300 mb-2">En Atajos -> Automatización -> "Transacción de Wallet".</p>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="url-webhook-endpoint" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-blue-300 font-mono select-all">
+                                <button onclick="copiarUrlWebhook()" class="px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-400 text-white font-bold text-[10px] shrink-0 active:scale-95 transition">
+                                    Copiar
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <span id="badge-estado-gastos-fijos" class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-950/80 text-purple-300 border border-purple-600/40">
-                        🔒 APARTADOS DE NÓMINA
-                    </span>
                 </div>
-                <p class="text-[11px] text-purple-300/70 leading-relaxed mb-3">
-                    Descontados automáticamente de tu saldo disponible para proteger tus pagos fijos.
-                </p>
 
-                <div class="flex justify-between items-center mb-2.5 pt-2 border-t border-purple-900/30">
-                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Compromisos Fijos</span>
-                    <button onclick="abrirModalNuevoGastoFijo()" class="px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-[11px] font-bold border border-purple-500/35 flex items-center gap-1 active:scale-95 transition">
-                        <i class="fa-solid fa-plus text-[9px]"></i>
-                        <span>Agregar Gasto Fijo</span>
+                <!-- Card: Zona de Peligro -->
+                <div class="ios-card rounded-3xl p-5 mb-6 border border-rose-500/20 bg-rose-950/10 text-center">
+                    <span class="text-[10px] font-bold text-rose-400 uppercase tracking-wider block mb-2">Reinicio Completo</span>
+                    <button onclick="reiniciarTodoDesdeCero()" class="w-full py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold transition flex items-center justify-center gap-2 active:scale-95">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span>Borrar todo y empezar desde cero</span>
                     </button>
-                </div>
-
-                <div id="gastos-fijos-list" class="space-y-2">
-                    <!-- Dinámico -->
                 </div>
             </div>
 
         </div>
 
-        <!-- Barra de Navegación Inferior Flotante con Botón Central (+) -->
-        <div class="fixed bottom-0 left-0 right-0 z-40 bg-[#0E0A1D]/90 backdrop-blur-xl border-t border-purple-500/20 px-5 py-2.5 flex justify-between items-center max-w-lg mx-auto">
-            <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex flex-col items-center text-purple-400">
+        <!-- Barra de Navegación Inferior Flotante con Pestañas Independientes -->
+        <nav class="fixed bottom-0 left-0 right-0 z-40 bg-[#0E0A1D]/95 backdrop-blur-xl border-t border-purple-500/20 px-5 py-2 flex justify-between items-center max-w-lg mx-auto">
+            <button onclick="cambiarTab('billetera')" id="tab-btn-billetera" class="flex flex-col items-center text-purple-400 py-1 transition-colors">
                 <i class="fa-solid fa-wallet text-base"></i>
                 <span class="text-[10px] font-bold mt-1">Billetera</span>
             </button>
 
-            <button onclick="abrirModalMovimientos()" class="flex flex-col items-center text-slate-400 hover:text-purple-300">
+            <button onclick="cambiarTab('movimientos')" id="tab-btn-movimientos" class="flex flex-col items-center text-slate-400 hover:text-purple-300 py-1 transition-colors">
                 <i class="fa-solid fa-clock-rotate-left text-base"></i>
                 <span class="text-[10px] font-bold mt-1">Movimientos</span>
             </button>
 
-            <!-- Botón Central Destacado (+) para Registrar Gasto / Ingreso -->
-            <button onclick="abrirModalGasto()" class="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-600 via-purple-500 to-fuchsia-500 -mt-6 shadow-lg shadow-purple-600/40 flex items-center justify-center text-white text-xl font-black active:scale-90 transition border-4 border-[#0B0813]">
+            <!-- Botón Central Destacado (+) para Registrar Gasto / Ingreso Rápido -->
+            <button onclick="abrirModalGasto()" class="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-600 via-purple-500 to-fuchsia-500 -mt-6 shadow-lg shadow-purple-600/40 flex items-center justify-center text-white text-xl font-black active:scale-90 transition border-4 border-[#0B0813]" title="Registrar Movimiento">
                 <i class="fa-solid fa-plus"></i>
             </button>
 
-            <button onclick="abrirModalCuentas()" class="flex flex-col items-center text-slate-400 hover:text-purple-300">
+            <button onclick="cambiarTab('cuentas')" id="tab-btn-cuentas" class="flex flex-col items-center text-slate-400 hover:text-purple-300 py-1 transition-colors">
                 <i class="fa-solid fa-credit-card text-base"></i>
                 <span class="text-[10px] font-bold mt-1">Cuentas</span>
             </button>
 
-            <button onclick="abrirModalPerfil()" class="flex flex-col items-center text-slate-400 hover:text-purple-300">
+            <button onclick="cambiarTab('ajustes')" id="tab-btn-ajustes" class="flex flex-col items-center text-slate-400 hover:text-purple-300 py-1 transition-colors">
                 <i class="fa-solid fa-gear text-base"></i>
                 <span class="text-[10px] font-bold mt-1">Ajustes</span>
             </button>
-        </div>
-
-        <!-- Modal: Mis Cuentas e Instrumentos -->
-        <div id="modal-cuentas" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#130E26] border border-purple-500/25 max-h-[85vh] overflow-y-auto">
-                <div class="flex justify-between items-center mb-4">
-                    <div>
-                        <h3 class="text-base font-extrabold text-white">Mis Cuentas e Instrumentos</h3>
-                        <span class="text-[11px] text-purple-300/70">Toca el lápiz para registrar tu saldo actual</span>
-                    </div>
-                    <button onclick="cerrarModalCuentas()" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-                
-                <div class="flex items-center gap-4 mb-4 p-3 rounded-2xl bg-[#0B0816] border border-purple-900/30 text-xs">
-                    <div>
-                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Total en Cuentas</span>
-                        <span id="subtotal-cuentas" class="font-bold text-emerald-400 text-sm">$ 0</span>
-                    </div>
-                    <div class="w-px h-6 bg-purple-900/40"></div>
-                    <div>
-                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Deuda en Tarjetas</span>
-                        <span id="subtotal-deuda" class="font-bold text-rose-400 text-sm">$ 0</span>
-                    </div>
-                </div>
-
-                <div id="cuentas-list" class="space-y-2.5 mb-4">
-                    <!-- Dinámico -->
-                </div>
-
-                <button onclick="abrirModalNuevaCuenta()" class="w-full py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-bold border border-purple-500/35 flex items-center justify-center gap-1.5 active:scale-95 transition">
-                    <i class="fa-solid fa-plus text-[10px]"></i>
-                    <span>Agregar Nueva Cuenta</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Modal: Movimientos Registrados -->
-        <div id="modal-movimientos" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#130E26] border border-purple-500/25 max-h-[85vh] overflow-y-auto">
-                <div class="flex justify-between items-center mb-4">
-                    <div>
-                        <h3 class="text-base font-extrabold text-white">Movimientos Registrados</h3>
-                        <span class="text-[11px] text-purple-300/70" id="conteo-tx">0 movimientos</span>
-                    </div>
-                    <button onclick="cerrarModalMovimientos()" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-                <div id="transacciones-list" class="space-y-2">
-                    <!-- Dinámico -->
-                </div>
-            </div>
-        </div>
+        </nav>
 
         <!-- Modal 1: ¿De qué cuenta fue la compra? (Detección y Confirmación Inteligente) -->
         <div id="modal-preguntar-cuenta" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
@@ -346,46 +479,7 @@ def mobile_dashboard_preview():
             </div>
         </div>
 
-        <!-- Modal 5: Configuración de Nómina Real ⚙️ -->
-        <div id="modal-perfil" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#130E26] border border-purple-500/25 max-h-[90vh] overflow-y-auto">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-extrabold text-white">Mi Nómina y Finanzas Reales</h3>
-                    <button onclick="cerrarModalPerfil()" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Ingreso Mensual Estimado (Sueldo $)</label>
-                        <input type="number" id="perfil-ingreso" placeholder="Ej: 4500000" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Compromisos Fijos Mensuales ($)</label>
-                        <input type="number" id="perfil-fijos" placeholder="Ej: 1800000" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Día de Cobro Mensual (Día de nómina)</label>
-                        <input type="number" id="perfil-dia" min="1" max="31" placeholder="Ej: 1" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Meta de Ahorro Mensual (%)</label>
-                        <input type="number" id="perfil-ahorro" min="0" max="100" placeholder="15" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
-                    </div>
-                    <div class="pt-3 flex gap-2">
-                        <button onclick="cerrarModalPerfil()" class="w-1/2 py-2.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/50 text-purple-200 border border-purple-900/30 text-xs font-bold">Cancelar</button>
-                        <button onclick="guardarPerfilReal()" class="w-1/2 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black shadow-md shadow-purple-900/30">Guardar Ajustes</button>
-                    </div>
-
-                    <div class="pt-4 mt-2 border-t border-purple-900/30 text-center">
-                        <button onclick="reiniciarTodoDesdeCero()" class="w-full py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-trash-can"></i>
-                            <span>Borrar todo y empezar desde cero</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal 6: Agregar Nuevo Gasto Fijo 📌 -->
+        <!-- Modal: Agregar Nuevo Gasto Fijo 📌 -->
         <div id="modal-nuevo-gasto-fijo" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
             <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#130E26] border border-purple-500/25">
                 <div class="flex justify-between items-center mb-3">
@@ -409,88 +503,6 @@ def mobile_dashboard_preview():
                         <button onclick="cerrarModalNuevoGastoFijo()" class="w-1/2 py-2.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/50 text-purple-200 border border-purple-900/30 text-xs font-bold">Cancelar</button>
                         <button onclick="guardarNuevoGastoFijo()" class="w-1/2 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black shadow-md shadow-purple-900/30">Crear Gasto Fijo</button>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal 6: Guía y Configuración de Atajos de iOS (Siri & Apple Intelligence) ⚡ -->
-        <div id="modal-atajos" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-slate-900 border border-slate-700 max-h-[90vh] overflow-y-auto">
-                <div class="flex justify-between items-center mb-4">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
-                            <i class="fa-solid fa-bolt"></i>
-                        </div>
-                        <h3 class="text-base font-extrabold text-white">Atajos de iOS & Siri</h3>
-                    </div>
-                    <button onclick="cerrarModalAtajos()" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-
-                <div class="space-y-4 text-xs">
-                    <!-- Guía 1: Siri Registrar Gasto -->
-                    <div class="p-3.5 rounded-2xl bg-slate-950 border border-amber-500/30">
-                        <div class="flex items-center gap-2 text-amber-400 font-black text-xs mb-1">
-                            <i class="fa-solid fa-arrow-trend-down"></i>
-                            <span>1. Atajo: "Registrar Gasto" (Voz o Siri)</span>
-                        </div>
-                        <p class="text-slate-300 leading-relaxed text-[11px] mb-2">
-                            Di: <em>"Oye Siri, registrar gasto"</em>. Ejemplo: <em>"15 mil de taxi en efectivo"</em> o <em>"almuerzo 20 mil"</em>.
-                        </p>
-                        <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800 space-y-1 text-[11px] text-slate-300 mb-2">
-                            <div>• Acción 1: <strong>Solicitar [Texto]</strong> con <em>"¿Qué gastaste?"</em></div>
-                            <div>• Acción 2: <strong>Obtener contenido de URL</strong> (POST JSON con campo <code>texto</code>)</div>
-                            <div>• Acción 3: <strong>Mostrar notificación</strong> con la respuesta</div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="text" id="url-ia-endpoint" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-amber-300 font-mono select-all">
-                            <button onclick="copiarUrlIA()" class="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-black text-[10px] shrink-0 active:scale-95 transition">
-                                Copiar
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Guía 2: Siri Registrar Ingreso -->
-                    <div class="p-3.5 rounded-2xl bg-slate-950 border border-emerald-500/30">
-                        <div class="flex items-center gap-2 text-emerald-400 font-black text-xs mb-1">
-                            <i class="fa-solid fa-arrow-trend-up"></i>
-                            <span>2. Atajo: "Registrar Ingreso" (Voz o Siri)</span>
-                        </div>
-                        <p class="text-slate-300 leading-relaxed text-[11px] mb-2">
-                            Di: <em>"Oye Siri, registrar ingreso"</em>. Ejemplo: <em>"500 mil en Bancolombia"</em> o <em>"500"</em>.
-                        </p>
-                        <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800 space-y-1 text-[11px] text-slate-300 mb-2">
-                            <div>• Acción 1: <strong>Solicitar [Texto]</strong> con <em>"¿Cuánto ingresó?"</em></div>
-                            <div>• Acción 2: <strong>Obtener contenido de URL</strong> con la URL de ingreso</div>
-                            <div>• Acción 3: <strong>Mostrar notificación</strong> con la respuesta</div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="text" id="url-ia-ingreso-endpoint" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-emerald-300 font-mono select-all">
-                            <button onclick="copiarUrlIAIngreso()" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-black text-[10px] shrink-0 active:scale-95 transition">
-                                Copiar
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Guía 3: Apple Pay Automático -->
-                    <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
-                        <div class="flex items-center gap-2 text-blue-400 font-black text-xs mb-1">
-                            <i class="fa-brands fa-apple"></i>
-                            <span>3. Apple Pay Automático</span>
-                        </div>
-                        <p class="text-slate-300 leading-relaxed text-[11px] mb-2">
-                            En la app <strong>Atajos</strong> -> <strong>Automatización</strong> -> <strong>"Transacción de Wallet"</strong>. Envía el webhook al pagar.
-                        </p>
-                        <div class="flex items-center gap-2">
-                            <input type="text" id="url-webhook-endpoint" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-blue-300 font-mono select-all">
-                            <button onclick="copiarUrlWebhook()" class="px-3 py-1.5 rounded-lg bg-blue-500 text-white font-bold text-[10px] shrink-0 active:scale-95 transition">
-                                Copiar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-4 pt-3 border-t border-slate-800 text-center">
-                    <button onclick="cerrarModalAtajos()" class="w-full py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">Entendido</button>
                 </div>
             </div>
         </div>
@@ -535,37 +547,108 @@ def mobile_dashboard_preview():
                     }
                 }
 
-                // 1. Saldo Disponible para Gastar (Card 1 Principal)
-                if(data.semaforo) {
-                    const s = data.semaforo;
-                    const elDispHoy = document.getElementById('disponible-hoy');
-                    if(elDispHoy) elDispHoy.innerText = formatearCOP(s.disponible_hoy_restante);
+                // 1. Cuentas e Instrumentos
+                cuentasData = data.cuentas || [];
+                let totalCuentas = 0;
+                let totalDeuda = 0;
+                const containerCuentas = document.getElementById('cuentas-list');
+                const selectCuenta = document.getElementById('select-cuenta');
+                if(containerCuentas) containerCuentas.innerHTML = '';
+                if(selectCuenta) selectCuenta.innerHTML = '';
 
-                    const elGuia = document.getElementById('mensaje-guia');
-                    if(elGuia) elGuia.innerText = s.mensaje_guia || '';
+                if(cuentasData.length === 0) {
+                    if(containerCuentas) {
+                        containerCuentas.innerHTML = `
+                            <div class="ios-card p-6 rounded-3xl text-center border border-purple-500/25 bg-gradient-to-b from-[#130E26] to-purple-950/20">
+                                <div class="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center mx-auto mb-3 text-lg">
+                                    <i class="fa-solid fa-wallet"></i>
+                                </div>
+                                <h4 class="text-sm font-black text-white mb-1">¡Todo listo para empezar!</h4>
+                                <p class="text-xs text-slate-400 mb-4 leading-relaxed">No tienes cuentas configuradas aún. Registra tu cuenta bancaria o efectivo con tu saldo real.</p>
+                                <button onclick="abrirModalNuevaCuenta()" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 active:scale-95 text-white font-black text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-purple-900/40">
+                                    <i class="fa-solid fa-plus text-sm"></i>
+                                    <span>Agregar Mi Primera Cuenta</span>
+                                </button>
+                            </div>
+                        `;
+                    }
+                    if(selectCuenta) {
+                        const opt = document.createElement('option');
+                        opt.value = "";
+                        opt.innerText = "Primero crea una cuenta";
+                        selectCuenta.appendChild(opt);
+                    }
+                } else {
+                    cuentasData.forEach(c => {
+                        if(c.tipo === 'CREDITO') {
+                            totalDeuda += c.saldo_actual;
+                        } else {
+                            totalCuentas += c.saldo_actual;
+                        }
 
-                    const elDias = document.getElementById('dias-restantes');
-                    if(elDias) elDias.innerText = (s.dias_restantes || 0) + ' días';
+                        let icon = 'fa-credit-card';
+                        let iconColor = 'text-indigo-400';
+                        if(c.tipo === 'ALTO_RENDIMIENTO') { icon = 'fa-piggy-bank'; iconColor = 'text-fuchsia-400'; }
+                        if(c.tipo === 'EFECTIVO') { icon = 'fa-money-bill-wave'; iconColor = 'text-emerald-400'; }
+                        if(c.tipo === 'CREDITO') { icon = 'fa-regular fa-credit-card'; iconColor = 'text-rose-400'; }
 
-                    const elLim = document.getElementById('limite-diario');
-                    if(elLim) elLim.innerText = formatearCOP(s.limite_gasto_diario_sugerido || 0);
+                        if(containerCuentas) {
+                            const item = document.createElement('div');
+                            item.className = 'ios-card p-3.5 rounded-2xl flex items-center justify-between border border-purple-500/15';
+                            item.innerHTML = `
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-purple-950/50 flex items-center justify-center ${iconColor} text-sm">
+                                        <i class="fa-solid ${icon}"></i>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm font-bold text-white block leading-tight">${c.nombre}</span>
+                                        <span class="text-[10px] text-purple-300/70 uppercase tracking-wider font-semibold">${c.tipo}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2.5">
+                                    <span class="text-sm font-black ${c.tipo === 'CREDITO' ? 'text-rose-400' : 'text-emerald-400'}">
+                                        ${formatearCOP(c.saldo_actual)}
+                                    </span>
+                                    <button onclick="abrirModalEditarCuenta(${c.id}, '${c.nombre}', '${c.tipo}', ${c.saldo_actual})" class="w-7 h-7 rounded-lg bg-purple-950/40 hover:bg-purple-900/50 text-purple-300 hover:text-white flex items-center justify-center text-xs transition border border-purple-500/20" title="Editar Saldo Real">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+                                </div>
+                            `;
+                            containerCuentas.appendChild(item);
+                        }
 
-                    const pMes = document.getElementById('presupuesto-mes');
-                    if(pMes) pMes.innerText = formatearCOP(s.presupuesto_disponible_total || 0);
-
-                    const badge = document.getElementById('badge-color');
-                    if(badge) badge.innerText = s.color || 'VERDE';
+                        if(selectCuenta) {
+                            const opt = document.createElement('option');
+                            opt.value = c.id;
+                            opt.innerText = c.nombre;
+                            selectCuenta.appendChild(opt);
+                        }
+                    });
                 }
+
+                const elSubCuentas = document.getElementById('subtotal-cuentas');
+                if(elSubCuentas) elSubCuentas.innerText = formatearCOP(totalCuentas);
+
+                const elSubDeuda = document.getElementById('subtotal-deuda');
+                if(elSubDeuda) elSubDeuda.innerText = formatearCOP(totalDeuda);
+
+                const balanceNeto = totalCuentas - totalDeuda;
+                const elBalTotal = document.getElementById('balance-neto-total');
+                if(elBalTotal) elBalTotal.innerText = formatearCOP(balanceNeto);
 
                 // 2. Gastos Fijos (Apartados de Nómina)
                 const gfData = data.gastos_fijos;
+                let totalFijos = 0;
+                let nominaRecibida = false;
                 if(gfData) {
+                    totalFijos = gfData.total_fijos || 0;
+                    nominaRecibida = !!gfData.nomina_recibida;
                     const totalGfEl = document.getElementById('total-gastos-fijos');
-                    if(totalGfEl) totalGfEl.innerText = formatearCOP(gfData.total_fijos || 0);
+                    if(totalGfEl) totalGfEl.innerText = formatearCOP(totalFijos);
 
                     const badgeGf = document.getElementById('badge-estado-gastos-fijos');
                     if(badgeGf) {
-                        if(gfData.nomina_recibida) {
+                        if(nominaRecibida) {
                             badgeGf.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-950/80 text-purple-300 border border-purple-600/40';
                             badgeGf.innerText = '🔒 APARTADOS DE NÓMINA';
                         } else {
@@ -582,7 +665,7 @@ def mobile_dashboard_preview():
                             containerGf.innerHTML = `
                                 <div class="text-center py-4 px-3 rounded-2xl bg-purple-950/30 border border-purple-900/40">
                                     <p class="text-xs text-purple-300/80 font-bold mb-1">Sin compromisos fijos aún</p>
-                                    <p class="text-[11px] text-slate-400 mb-2">Registra arriendo, servicios o cuotas para que se aparten de tu saldo disponible.</p>
+                                    <p class="text-[11px] text-slate-400 mb-2">Registra arriendo, servicios o cuotas para apartarlos de tu saldo disponible.</p>
                                     <button onclick="abrirModalNuevoGastoFijo()" class="text-xs text-purple-300 font-extrabold underline hover:text-white">Agregar Mi Primer Gasto Fijo</button>
                                 </div>
                             `;
@@ -623,7 +706,34 @@ def mobile_dashboard_preview():
                     }
                 }
 
-                // 3. Rendimientos Nu
+                // Actualizar subtotal apartado de gastos fijos en la Card 1
+                const elSubApartadoFijos = document.getElementById('subtotal-apartado-fijos');
+                if(elSubApartadoFijos) elSubApartadoFijos.innerText = formatearCOP(totalFijos);
+
+                // 3. Saldo Disponible para Gastar (Card 1 Principal)
+                // Se descuentan los gastos fijos del mes del saldo total disponible
+                const fijosADescontar = (nominaRecibida || totalFijos > 0) ? totalFijos : 0;
+                const saldoDisponibleReal = Math.max(0, balanceNeto - fijosADescontar);
+                const elDispHoy = document.getElementById('disponible-hoy');
+                if(elDispHoy) {
+                    elDispHoy.innerText = formatearCOP(totalFijos > 0 ? saldoDisponibleReal : balanceNeto);
+                }
+
+                const badgeDisp = document.getElementById('badge-disponible');
+                if(badgeDisp) {
+                    if(balanceNeto <= 0) {
+                        badgeDisp.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30';
+                        badgeDisp.innerText = 'SIN SALDO';
+                    } else if(totalFijos > 0) {
+                        badgeDisp.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+                        badgeDisp.innerText = 'LIBRE PARA GASTAR';
+                    } else {
+                        badgeDisp.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30';
+                        badgeDisp.innerText = 'TOTAL DISPONIBLE';
+                    }
+                }
+
+                // 4. Rendimientos Nu
                 const cardRend = document.getElementById('card-rendimientos');
                 if(cardRend) {
                     if(data.rendimientos && data.rendimientos.length > 0) {
@@ -636,108 +746,34 @@ def mobile_dashboard_preview():
                     }
                 }
 
-                // 4. Cuentas
-                cuentasData = data.cuentas || [];
-                let totalCuentas = 0;
-                let totalDeuda = 0;
-                const containerCuentas = document.getElementById('cuentas-list');
-                const selectCuenta = document.getElementById('select-cuenta');
-                containerCuentas.innerHTML = '';
-                selectCuenta.innerHTML = '';
-
-                if(cuentasData.length === 0) {
-                    containerCuentas.innerHTML = `
-                        <div class="ios-card p-6 rounded-3xl text-center border border-purple-500/25 bg-gradient-to-b from-[#130E26] to-purple-950/20">
-                            <div class="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center mx-auto mb-3 text-lg">
-                                <i class="fa-solid fa-wallet"></i>
-                            </div>
-                            <h4 class="text-sm font-black text-white mb-1">¡Todo listo para empezar de cero!</h4>
-                            <p class="text-xs text-slate-400 mb-4 leading-relaxed">No tienes cuentas configuradas aún. Registra tu cuenta bancaria, billetera o efectivo con tu saldo real.</p>
-                            <button onclick="abrirModalNuevaCuenta()" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 active:scale-95 text-white font-black text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-purple-900/40">
-                                <i class="fa-solid fa-plus text-sm"></i>
-                                <span>Agregar Mi Primera Cuenta</span>
-                            </button>
-                        </div>
-                    `;
-                    const opt = document.createElement('option');
-                    opt.value = "";
-                    opt.innerText = "Primero crea una cuenta";
-                    selectCuenta.appendChild(opt);
-                } else {
-                    cuentasData.forEach(c => {
-                        if(c.tipo === 'CREDITO') {
-                            totalDeuda += c.saldo_actual;
-                        } else {
-                            totalCuentas += c.saldo_actual;
-                        }
-
-                        let icon = 'fa-credit-card';
-                        let iconColor = 'text-indigo-400';
-                        if(c.tipo === 'ALTO_RENDIMIENTO') { icon = 'fa-piggy-bank'; iconColor = 'text-fuchsia-400'; }
-                        if(c.tipo === 'EFECTIVO') { icon = 'fa-money-bill-wave'; iconColor = 'text-emerald-400'; }
-                        if(c.tipo === 'CREDITO') { icon = 'fa-regular fa-credit-card'; iconColor = 'text-rose-400'; }
-
-                        const item = document.createElement('div');
-                        item.className = 'ios-card p-3.5 rounded-2xl flex items-center justify-between border border-purple-500/15';
-                        item.innerHTML = `
-                            <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-xl bg-purple-950/50 flex items-center justify-center ${iconColor} text-sm">
-                                    <i class="fa-solid ${icon}"></i>
-                                </div>
-                                <div>
-                                    <span class="text-sm font-bold text-white block leading-tight">${c.nombre}</span>
-                                    <span class="text-[10px] text-purple-300/70 uppercase tracking-wider font-semibold">${c.tipo}</span>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2.5">
-                                <span class="text-sm font-black ${c.tipo === 'CREDITO' ? 'text-rose-400' : 'text-emerald-400'}">
-                                    ${formatearCOP(c.saldo_actual)}
-                                </span>
-                                <button onclick="abrirModalEditarCuenta(${c.id}, '${c.nombre}', '${c.tipo}', ${c.saldo_actual})" class="w-7 h-7 rounded-lg bg-purple-950/40 hover:bg-purple-900/50 text-purple-300 hover:text-white flex items-center justify-center text-xs transition border border-purple-500/20" title="Editar Saldo Real">
-                                    <i class="fa-solid fa-pen"></i>
-                                </button>
-                            </div>
-                        `;
-                        containerCuentas.appendChild(item);
-
-                        const opt = document.createElement('option');
-                        opt.value = c.id;
-                        opt.innerText = c.nombre;
-                        selectCuenta.appendChild(opt);
-                    });
-                }
-
-                document.getElementById('subtotal-cuentas').innerText = formatearCOP(totalCuentas);
-                document.getElementById('subtotal-deuda').innerText = formatearCOP(totalDeuda);
-                const balanceNeto = totalCuentas - totalDeuda;
-                document.getElementById('balance-neto-total').innerText = formatearCOP(balanceNeto);
-
-                // 4. Transacciones
+                // 5. Transacciones
                 const containerTx = document.getElementById('transacciones-list');
                 const txs = data.transacciones || [];
-                document.getElementById('conteo-tx').innerText = txs.length + ' movimientos';
-                containerTx.innerHTML = '';
-
-                if(txs.length === 0) {
-                    containerTx.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs font-semibold">No hay movimientos registrados. ¡Toca (+) para registrar tu primer movimiento!</div>';
-                } else {
-                    txs.forEach(t => {
-                        const item = document.createElement('div');
-                        item.className = 'ios-card p-3 rounded-2xl flex items-center justify-between border border-purple-500/15';
-                        item.innerHTML = `
-                            <div>
-                                <span class="text-xs font-bold text-white block">${t.comercio}</span>
-                                <div class="flex items-center gap-1.5 mt-0.5">
-                                    <span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-900/40">${t.medio}</span>
-                                    ${t.es_gasto_hormiga ? '<span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-700/40">Hormiga</span>' : ''}
+                const elConteoTx = document.getElementById('conteo-tx');
+                if(elConteoTx) elConteoTx.innerText = txs.length + ' movimientos registrados';
+                if(containerTx) {
+                    containerTx.innerHTML = '';
+                    if(txs.length === 0) {
+                        containerTx.innerHTML = '<div class="text-center py-8 text-slate-500 text-xs font-semibold">No hay movimientos registrados aún. ¡Toca (+) para registrar tu primer movimiento!</div>';
+                    } else {
+                        txs.forEach(t => {
+                            const item = document.createElement('div');
+                            item.className = 'ios-card p-3 rounded-2xl flex items-center justify-between border border-purple-500/15';
+                            item.innerHTML = `
+                                <div>
+                                    <span class="text-xs font-bold text-white block">${t.comercio}</span>
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-900/40">${t.medio}</span>
+                                        ${t.es_gasto_hormiga ? '<span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-700/40">Hormiga</span>' : ''}
+                                    </div>
                                 </div>
-                            </div>
-                            <span class="text-xs font-black ${t.tipo === 'INGRESO' ? 'text-emerald-400' : t.tipo === 'EGRESO' ? 'text-rose-400' : 'text-blue-400'}">
-                                ${t.tipo === 'INGRESO' ? '+' : '-'} ${formatearCOP(t.monto)}
-                            </span>
-                        `;
-                        containerTx.appendChild(item);
-                    });
+                                <span class="text-xs font-black ${t.tipo === 'INGRESO' ? 'text-emerald-400' : t.tipo === 'EGRESO' ? 'text-rose-400' : 'text-blue-400'}">
+                                    ${t.tipo === 'INGRESO' ? '+' : '-'} ${formatearCOP(t.monto)}
+                                </span>
+                            `;
+                            containerTx.appendChild(item);
+                        });
+                    }
                 }
             }
 
@@ -1026,48 +1062,105 @@ def mobile_dashboard_preview():
                 fetchDashboard();
             }
 
-            // Ajustes Perfil
-            async function abrirModalPerfil() {
-                const res = await fetch('/api/v1/metricas/perfil');
-                const perfil = await res.json();
-                document.getElementById('perfil-ingreso').value = perfil.ingreso_mensual_estimado;
-                document.getElementById('perfil-fijos').value = perfil.compromisos_fijos_mensual;
-                document.getElementById('perfil-dia').value = perfil.dia_pago_mensual;
-                document.getElementById('perfil-ahorro').value = perfil.porcentaje_ahorro_meta;
-                document.getElementById('modal-perfil').classList.remove('hidden');
+            // Navegación entre vistas independientes (Tabs)
+            let tabActual = 'billetera';
+
+            function cambiarTab(tab) {
+                tabActual = tab;
+                const tabs = ['billetera', 'movimientos', 'cuentas', 'ajustes'];
+                const titulos = {
+                    'billetera': 'Mi Billetera',
+                    'movimientos': 'Movimientos',
+                    'cuentas': 'Mis Cuentas',
+                    'ajustes': 'Ajustes y Nómina'
+                };
+                const elTitulo = document.getElementById('header-titulo');
+                if (elTitulo && titulos[tab]) {
+                    elTitulo.innerText = titulos[tab];
+                }
+
+                tabs.forEach(t => {
+                    const viewEl = document.getElementById('view-' + t);
+                    const btnEl = document.getElementById('tab-btn-' + t);
+                    if (t === tab) {
+                        if (viewEl) viewEl.classList.remove('hidden');
+                        if (btnEl) {
+                            btnEl.className = 'flex flex-col items-center text-purple-400 py-1 transition-colors';
+                        }
+                    } else {
+                        if (viewEl) viewEl.classList.add('hidden');
+                        if (btnEl) {
+                            btnEl.className = 'flex flex-col items-center text-slate-400 hover:text-purple-300 py-1 transition-colors';
+                        }
+                    }
+                });
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                if (tab === 'ajustes') {
+                    cargarDatosPerfilAjustes();
+                }
             }
-            function cerrarModalPerfil() {
-                document.getElementById('modal-perfil').classList.add('hidden');
+
+            // Cargar y configurar datos del perfil y atajos en Ajustes
+            async function cargarDatosPerfilAjustes() {
+                try {
+                    const res = await fetch('/api/v1/metricas/perfil');
+                    if (res.ok) {
+                        const perfil = await res.json();
+                        const elIngreso = document.getElementById('perfil-ingreso');
+                        const elDia = document.getElementById('perfil-dia');
+                        const elAhorro = document.getElementById('perfil-ahorro');
+                        if(elIngreso && perfil.ingreso_mensual_estimado) elIngreso.value = perfil.ingreso_mensual_estimado;
+                        if(elDia && perfil.dia_pago_mensual) elDia.value = perfil.dia_pago_mensual;
+                        if(elAhorro && perfil.porcentaje_ahorro_meta) elAhorro.value = perfil.porcentaje_ahorro_meta;
+                    }
+                    const origin = window.location.origin;
+                    const elIa = document.getElementById('url-ia-endpoint');
+                    const elIaIngreso = document.getElementById('url-ia-ingreso-endpoint');
+                    const elWebhook = document.getElementById('url-webhook-endpoint');
+                    if(elIa) elIa.value = origin + '/api/v1/transacciones/ia-rapida';
+                    if(elIaIngreso) elIaIngreso.value = origin + '/api/v1/transacciones/ia-rapida?tipo=INGRESO';
+                    if(elWebhook) elWebhook.value = origin + '/api/v1/webhooks/ios-shortcut';
+                } catch(e) {
+                    console.error("Error al cargar ajustes de perfil:", e);
+                }
             }
 
             async function guardarPerfilReal() {
                 const ingreso = parseFloat(document.getElementById('perfil-ingreso').value);
-                const fijos = parseFloat(document.getElementById('perfil-fijos').value);
                 const dia = parseInt(document.getElementById('perfil-dia').value);
                 const ahorro = parseFloat(document.getElementById('perfil-ahorro').value);
 
-                await fetch('/api/v1/metricas/perfil', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ingreso_mensual_estimado: ingreso,
-                        compromisos_fijos_mensual: fijos,
-                        dia_pago_mensual: dia,
-                        porcentaje_ahorro_meta: ahorro
-                    })
-                });
-                cerrarModalPerfil();
-                recargarDatos();
+                try {
+                    const res = await fetch('/api/v1/metricas/perfil', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            ingreso_mensual_estimado: isNaN(ingreso) ? undefined : ingreso,
+                            dia_pago_mensual: isNaN(dia) ? undefined : dia,
+                            porcentaje_ahorro_meta: isNaN(ahorro) ? undefined : ahorro
+                        })
+                    });
+                    if (res.ok) {
+                        alert('¡Ajustes de nómina guardados correctamente!');
+                        recargarDatos();
+                    } else {
+                        alert('No se pudieron guardar los ajustes.');
+                    }
+                } catch(e) {
+                    alert('Error de conexión al guardar ajustes.');
+                }
             }
 
             async function reiniciarTodoDesdeCero() {
-                if(!confirm('¿Estás seguro de que deseas eliminar todas las cuentas, movimientos y empezar completamente desde cero? Esta acción no se puede deshacer.')) return;
+                if(!confirm('¿Estás seguro de que deseas eliminar todas las cuentas, movimientos y compromisos para empezar completamente desde cero? Esta acción no se puede deshacer.')) return;
                 try {
                     localStorage.removeItem('aurea_dashboard_cache');
                     const res = await fetch('/api/v1/metricas/reiniciar-todo', { method: 'POST' });
                     const data = await res.json();
                     alert(data.mensaje || 'Base de datos reiniciada a cero.');
-                    cerrarModalPerfil();
+                    cambiarTab('billetera');
                     fetchDashboard();
                 } catch(e) {
                     alert('Error al reiniciar datos');
@@ -1129,31 +1222,15 @@ def mobile_dashboard_preview():
                 }
             }
 
-            // Modales de Cuentas y Movimientos
-            function abrirModalCuentas() {
-                document.getElementById('modal-cuentas').classList.remove('hidden');
-            }
-            function cerrarModalCuentas() {
-                document.getElementById('modal-cuentas').classList.add('hidden');
-            }
-            function abrirModalMovimientos() {
-                document.getElementById('modal-movimientos').classList.remove('hidden');
-            }
-            function cerrarModalMovimientos() {
-                document.getElementById('modal-movimientos').classList.add('hidden');
-            }
-
-            // Modal Atajos de iOS
-            function abrirModalAtajos() {
-                const origin = window.location.origin;
-                document.getElementById('url-ia-endpoint').value = origin + '/api/v1/transacciones/ia-rapida';
-                document.getElementById('url-ia-ingreso-endpoint').value = origin + '/api/v1/transacciones/ia-rapida?tipo=INGRESO';
-                document.getElementById('url-webhook-endpoint').value = origin + '/api/v1/webhooks/ios-shortcut';
-                document.getElementById('modal-atajos').classList.remove('hidden');
-            }
-            function cerrarModalAtajos() {
-                document.getElementById('modal-atajos').classList.add('hidden');
-            }
+            // Redirecciones de compatibilidad hacia las nuevas vistas
+            function abrirModalCuentas() { cambiarTab('cuentas'); }
+            function cerrarModalCuentas() {}
+            function abrirModalMovimientos() { cambiarTab('movimientos'); }
+            function cerrarModalMovimientos() {}
+            function abrirModalPerfil() { cambiarTab('ajustes'); }
+            function cerrarModalPerfil() {}
+            function abrirModalAtajos() { cambiarTab('ajustes'); }
+            function cerrarModalAtajos() {}
 
             function copiarUrlIA() {
                 const input = document.getElementById('url-ia-endpoint');
@@ -1198,6 +1275,7 @@ def mobile_dashboard_preview():
 
             // 2. Carga y verificación en segundo plano con el servidor
             fetchDashboard();
+            cargarDatosPerfilAjustes();
 
             // 3. Auto-recarga desatendida cada 8 segundos con 1 sola petición consolidada ultra-liviana
             setInterval(fetchDashboard, 8000);
