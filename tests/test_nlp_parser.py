@@ -42,6 +42,16 @@ def test_api_ia_rapida_con_cuenta_detectada(client):
     assert data["saldo_cuenta_actual"] == 35000.0  # 50.000 - 15.000
 
 
+def test_api_ia_rapida_get_query_param(client):
+    res = client.get("/api/v1/transacciones/ia-rapida?texto=Almuerzo 25k con Bancolombia")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "registrado"
+    assert data["monto"] == 25000.0
+    assert data["cuenta"] == "Bancolombia Principal"
+    assert data["saldo_cuenta_actual"] == 975000.0  # 1.000.000 - 25.000
+
+
 def test_api_ia_rapida_sin_cuenta_solicita_seleccion(client):
     res = client.post("/api/v1/transacciones/ia-rapida", json={"texto": "Compré mercado 45.000"})
     assert res.status_code == 200

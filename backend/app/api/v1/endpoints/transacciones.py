@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import Cuenta, Transaccion, TipoCuenta, TipoTransaccion, MedioCaptura
@@ -94,38 +94,55 @@ def crear_transaccion_manual(
     return tx
 
 
-@router.post("/ia-rapida")
-def registrar_gasto_ia_rapida(
-    payload: dict,
+@router.api_route("/ia-rapida", methods=["GET", "POST"])
+async def registrar_gasto_ia_rapida(
+    request: Request,
+    texto: Optional[str] = Query(None),
+    cuenta_id: Optional[int] = Query(None),
     db: Session = Depends(get_db)
 ):
     """
     Interpreta un comando por voz o texto con Apple Intelligence / NLP
     (ej: 'Pagué 15 mil de taxi en efectivo', 'Almuerzo 22000 con Bancolombia')
     y registra el movimiento o solicita confirmar cuenta si es ambiguo.
+    Soporta POST JSON y GET con query parameter en la URL (?texto=...).
     """
-    texto = str(payload.get("texto", "")).strip()
-    if not texto:
+    texto_final = texto
+    cuenta_id_final = cuenta_id
+
+    if request.method == "POST":
+        try:
+            body = await request.json()
+            if isinstance(body, dict):
+                if not texto_final:
+                    texto_final = body.get("texto")
+                if not cuenta_id_final and body.get("cuenta_id"):
+                    cuenta_id_final = int(body.get("cuenta_id"))
+        except Exception:
+            pass
+
+    texto_final = str(texto_final or "").strip()
+    if not texto_final:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo 'texto' es requerido")
 
-    interpretacion = NLPSmartExpenseParser.interpretar_texto_gasto(texto, db)
+    interpretacion = NLPSmartExpenseParser.interpretar_texto_gasto(texto_final, db)
     monto = interpretacion["monto"]
     comercio = interpretacion["comercio"]
     tipo = interpretacion["tipo"]
-    cuenta_id = interpretacion["cuenta_id"]
+    cuenta_detectada_id = cuenta_id_final or interpretacion["cuenta_id"]
 
     if monto <= 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se detectó un monto válido en el mensaje")
 
-    # Si se especificó cuenta explícita en el payload para forzar
-    if payload.get("cuenta_id"):
-        cuenta_id = int(payload.get("cuenta_id"))
-        cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
+    if cuenta_detectada_id:
+        cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_detectada_id).first()
         if cuenta:
             interpretacion["cuenta_nombre"] = cuenta.nombre
+    else:
+        cuenta = None
 
     # Si no se detectó cuenta, preguntar al usuario
-    if not cuenta_id:
+    if not cuenta_detectada_id:
         return {
             "status": "requiere_cuenta",
             "mensaje": f"Se detectó un gasto de ${monto:,.0f} COP en '{comercio}'. ¿De qué cuenta lo pagaste?",
@@ -136,8 +153,7 @@ def registrar_gasto_ia_rapida(
             "categoria_nombre": interpretacion["categoria_nombre"]
         }
 
-    # Descontar saldo o registrar deuda
-    cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
+    cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_detectada_id).first()
     if not cuenta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
 
