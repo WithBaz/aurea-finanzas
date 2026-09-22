@@ -10,6 +10,7 @@ from backend.app.seed import seed_data
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import backend.app.models
     Base.metadata.create_all(bind=engine)
     seed_data()
     yield
