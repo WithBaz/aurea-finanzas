@@ -75,12 +75,13 @@ def actualizar_perfil(
 @router.post("/limpiar-demo")
 def reiniciar_todo_desde_cero(db: Session = Depends(get_db)):
     """
-    Elimina todas las transacciones, metas y cuentas, y resetea el perfil a 0 para empezar desde cero absoluto.
+    Elimina todas las transacciones, metas, gastos fijos y cuentas, y resetea el perfil a 0 para empezar desde cero absoluto.
     """
-    from backend.app.models import MetaAhorro
+    from backend.app.models import MetaAhorro, GastoFijo
     db.query(Transaccion).delete()
     db.query(MetaAhorro).delete()
     db.query(Cuenta).delete()
+    db.query(GastoFijo).delete()
     perfil = db.query(PerfilFinanciero).first()
     if perfil:
         perfil.ingreso_mensual_estimado = 0.0
@@ -92,12 +93,13 @@ def reiniciar_todo_desde_cero(db: Session = Depends(get_db)):
 @router.get("/dashboard")
 def obtener_resumen_dashboard(db: Session = Depends(get_db)):
     """
-    Consolida todo el estado del dashboard (cuentas, semáforo, rendimientos y transacciones)
+    Consolida todo el estado del dashboard (cuentas, semáforo, rendimientos, gastos fijos y transacciones)
     en una sola petición HTTP ultra-rápida para minimizar latencia en móviles y Apple Shortcuts.
     """
     from backend.app.models import TipoCuenta
     semaforo = FinancialEngine.calcular_semaforo_mensual(db)
     rendimientos = FinancialEngine.calcular_rendimientos_diarios(db)
+    gastos_fijos = FinancialEngine.obtener_resumen_gastos_fijos(db)
     cuentas = db.query(Cuenta).filter(Cuenta.activa == True).all()
     transacciones = db.query(Transaccion).order_by(Transaccion.fecha.desc()).limit(30).all()
 
@@ -108,6 +110,7 @@ def obtener_resumen_dashboard(db: Session = Depends(get_db)):
         "es_postgresql": db.bind.dialect.name == "postgresql",
         "semaforo": semaforo,
         "rendimientos": rendimientos,
+        "gastos_fijos": gastos_fijos,
         "cuentas": [
             {
                 "id": c.id,

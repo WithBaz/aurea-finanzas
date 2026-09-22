@@ -5,6 +5,7 @@ from backend.app.api.v1.endpoints import (
     transacciones,
     metricas,
     metas,
+    gastos_fijos,
 )
 
 api_router = APIRouter()
@@ -13,3 +14,4 @@ api_router.include_router(cuentas.router, prefix="/cuentas", tags=["Cuentas e In
 api_router.include_router(transacciones.router, prefix="/transacciones", tags=["Transacciones"])
 api_router.include_router(metricas.router, prefix="/metricas", tags=["Métricas y Semáforo"])
 api_router.include_router(metas.router, prefix="/metas", tags=["Metas de Ahorro"])
+api_router.include_router(gastos_fijos.router, prefix="/gastos-fijos", tags=["Gastos Fijos"])

@@ -108,8 +108,21 @@ class PerfilFinanciero(Base):
     __tablename__ = "perfil_financiero"
 
     id = Column(Integer, primary_key=True, index=True)
-    dia_pago_mensual = Column(Integer, default=30, nullable=False)
+    dia_pago_mensual = Column(Integer, default=1, nullable=False)
     ingreso_mensual_estimado = Column(Float, default=4000000.0, nullable=False)
     compromisos_fijos_mensual = Column(Float, default=1800000.0, nullable=False) # Arriendo, servicios
     porcentaje_ahorro_meta = Column(Float, default=15.0, nullable=False)
-    umbral_gasto_hormiga = Column(Float, default=25000.0, nullable=False)       # Gastos menores a este valor en COP
+    umbral_gasto_hormiga = Column(Float, default=25000.0, nullable=False)       # Gastos menores a este valor
+
+
+class GastoFijo(Base):
+    __tablename__ = "gastos_fijos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(100), nullable=False)
+    monto = Column(Float, nullable=False)
+    dia_pago = Column(Integer, default=5, nullable=False)  # Día habitual de pago en el mes (ej: 5)
+    categoria = Column(String(50), default="Hogar y Servicios", nullable=True)
+    activo = Column(Boolean, default=True, nullable=False)
+    pagado_este_mes = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

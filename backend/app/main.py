@@ -89,31 +89,88 @@ def mobile_dashboard_preview():
                 <div>
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-purple-400"></span>
-                        <span class="text-[11px] font-bold tracking-widest text-purple-300 uppercase">AUREA • COP</span>
+                        <span class="text-[11px] font-bold tracking-widest text-purple-300 uppercase">AUREA</span>
                         <span id="badge-db" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-950/60 text-purple-300 border border-purple-800/50">...</span>
                     </div>
                     <h1 class="text-2xl font-black text-white tracking-tight">Mi Billetera</h1>
                 </div>
             </div>
 
-            <!-- Card 1: Patrimonio Líquido / Balance Neto Real -->
-            <div class="ios-card rounded-3xl p-5 mb-4 glow-primary border-purple-500/25">
-                <div class="flex justify-between items-start">
+            <!-- Card 1 (Primero): Saldo Disponible (Semáforo Dinámico Diario) -->
+            <div id="semaforo-card" class="ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-emerald-500/30 glow-primary">
+                <div class="flex justify-between items-start mb-2">
                     <div>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Patrimonio Líquido Real</span>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Disponible para gastar hoy</span>
                         <div class="flex items-center gap-2.5 mt-1">
-                            <div class="text-3xl font-black text-white tracking-tight" id="balance-neto-total">$ 0 COP</div>
-                            <!-- Modo Privacidad 👁️ al lado del saldo -->
+                            <div class="text-3xl font-black text-emerald-400 tracking-tight" id="disponible-hoy">$ 0</div>
+                            <!-- Modo Privacidad 👁️ al lado del saldo principal -->
                             <button onclick="toggleModoPrivacidad()" id="btn-privacidad" class="w-7 h-7 rounded-lg bg-purple-950/40 hover:bg-purple-900/50 flex items-center justify-center text-purple-300 hover:text-white active:scale-90 transition border border-purple-500/25" title="Ocultar o ver saldo">
                                 <i class="fa-solid fa-eye text-xs" id="icono-ojo"></i>
                             </button>
                         </div>
                     </div>
-                    <span class="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-purple-950/60 text-purple-300 border border-purple-800/40">
-                        Nómina Mensual
+                    <span id="badge-color" class="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                        VERDE
                     </span>
                 </div>
-                <div class="flex items-center gap-4 mt-4 pt-3 border-t border-purple-900/30 text-xs">
+                <p id="mensaje-guia" class="text-xs text-slate-300 leading-relaxed mt-1">Calculando presupuesto diario según tu nómina...</p>
+                
+                <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-purple-900/30 text-xs">
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Límite diario</span>
+                        <span id="limite-diario" class="font-bold text-purple-300 text-sm">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Libre del mes</span>
+                        <span id="presupuesto-mes" class="font-bold text-white text-sm">-</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Días restantes</span>
+                        <span id="dias-restantes" class="font-bold text-white text-sm">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2 (Segundo): Gastos Fijos (Apartados de Nómina) -->
+            <div class="ios-card rounded-3xl p-5 mb-4 border border-purple-500/25 bg-gradient-to-b from-[#140E24] to-[#0E0A1A]">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gastos Fijos del Mes</span>
+                        <div class="text-2xl font-black text-purple-200 mt-0.5" id="total-gastos-fijos">$ 0</div>
+                    </div>
+                    <span id="badge-estado-gastos-fijos" class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-950/80 text-purple-300 border border-purple-600/40">
+                        🔒 APARTADOS DE NÓMINA
+                    </span>
+                </div>
+                <p class="text-[11px] text-purple-300/70 leading-relaxed mb-3">
+                    Descontados de tu saldo disponible al recibir sueldo para proteger arriendo, servicios y pagos fijos.
+                </p>
+
+                <div class="flex justify-between items-center mb-2.5 pt-2 border-t border-purple-900/30">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Compromisos Fijos</span>
+                    <button onclick="abrirModalNuevoGastoFijo()" class="px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-[11px] font-bold border border-purple-500/35 flex items-center gap-1 active:scale-95 transition">
+                        <i class="fa-solid fa-plus text-[9px]"></i>
+                        <span>Agregar Gasto Fijo</span>
+                    </button>
+                </div>
+
+                <div id="gastos-fijos-list" class="space-y-2">
+                    <!-- Dinámico -->
+                </div>
+            </div>
+
+            <!-- Card 3: Patrimonio Líquido / Balance Neto Real -->
+            <div class="ios-card rounded-3xl p-5 mb-4 border border-purple-500/20">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Patrimonio Líquido Real</span>
+                        <div class="text-2xl font-black text-white tracking-tight mt-1" id="balance-neto-total">$ 0</div>
+                    </div>
+                    <span class="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-purple-950/60 text-purple-300 border border-purple-800/40">
+                        Cuentas vs Deuda
+                    </span>
+                </div>
+                <div class="flex items-center gap-4 mt-3 pt-3 border-t border-purple-900/30 text-xs">
                     <div>
                         <span class="text-slate-400 block text-[10px] uppercase font-semibold">Total en Cuentas</span>
                         <span id="subtotal-cuentas" class="font-bold text-emerald-400 text-sm">$ 0</span>
@@ -126,40 +183,15 @@ def mobile_dashboard_preview():
                 </div>
             </div>
 
-            <!-- Card 2: Semáforo Dinámico Mensual -->
-            <div id="semaforo-card" class="ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-emerald-500/30">
-                <div class="flex justify-between items-start mb-2">
-                    <div>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Disponible para gastar hoy</span>
-                        <div class="text-2xl font-black text-emerald-400 mt-0.5" id="disponible-hoy">$ 0 COP</div>
-                    </div>
-                    <span id="badge-color" class="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                        VERDE
-                    </span>
-                </div>
-                <p id="mensaje-guia" class="text-xs text-slate-300 leading-relaxed mt-1">Calculando presupuesto diario según tu nómina...</p>
-                
-                <div class="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-purple-900/30 text-xs">
-                    <div>
-                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Días restantes del mes</span>
-                        <span id="dias-restantes" class="font-bold text-white text-sm">-</span>
-                    </div>
-                    <div>
-                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Límite diario sugerido</span>
-                        <span id="limite-diario" class="font-bold text-purple-300 text-sm">-</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card 3: Rendimientos Cuentas de Alto Rendimiento (Nu / Lulo) -->
-            <div id="card-rendimientos" class="ios-card rounded-2xl p-4 mb-4 border border-violet-500/30 bg-violet-950/20 flex items-center justify-between">
+            <!-- Card Rendimientos Cuentas de Alto Rendimiento (Nu / Lulo) -->
+            <div id="card-rendimientos" class="ios-card rounded-2xl p-4 mb-4 border border-violet-500/30 bg-violet-950/20 flex items-center justify-between" style="display: none;">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-violet-600/30 flex items-center justify-center text-violet-400 text-base">
                         <i class="fa-solid fa-arrow-trend-up"></i>
                     </div>
                     <div>
                         <span class="text-[10px] font-bold uppercase tracking-wider text-violet-300">Rendimientos Diarios Nu</span>
-                        <div class="text-sm font-black text-white" id="rendimiento-diario">+ $ 0 COP hoy</div>
+                        <div class="text-sm font-black text-white" id="rendimiento-diario">+ $ 0 hoy</div>
                     </div>
                 </div>
                 <span class="text-[10px] text-violet-300 font-bold bg-violet-900/60 px-2.5 py-1 rounded-lg">Automático</span>
@@ -246,7 +278,7 @@ def mobile_dashboard_preview():
                         </div>
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Monto en COP</label>
+                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Monto ($)</label>
                         <input type="number" id="input-monto" placeholder="Ej: 35000" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2.5 text-white font-bold text-base focus:border-purple-400 outline-none">
                     </div>
                     <div>
@@ -284,7 +316,7 @@ def mobile_dashboard_preview():
                         <input type="text" id="edit-nombre-input" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Saldo Actual Real en COP</label>
+                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Saldo Actual Real ($)</label>
                         <input type="number" id="edit-saldo" placeholder="0" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2.5 text-white font-bold text-lg focus:border-purple-400 outline-none">
                     </div>
                     <div class="pt-2 flex gap-2">
@@ -317,7 +349,7 @@ def mobile_dashboard_preview():
                         </select>
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Saldo Inicial en COP</label>
+                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Saldo Inicial ($)</label>
                         <input type="number" id="nueva-cuenta-saldo" placeholder="0" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
                     </div>
                     <div class="pt-2 flex gap-2">
@@ -337,16 +369,16 @@ def mobile_dashboard_preview():
                 </div>
                 <div class="space-y-3">
                     <div>
-                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Ingreso Mensual Estimado (Sueldo COP)</label>
+                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Ingreso Mensual Estimado (Sueldo $)</label>
                         <input type="number" id="perfil-ingreso" placeholder="Ej: 4500000" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Compromisos Fijos Mensuales (Arriendo, Servicios)</label>
+                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Compromisos Fijos Mensuales ($)</label>
                         <input type="number" id="perfil-fijos" placeholder="Ej: 1800000" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Día de Cobro Mensual (Día de nómina)</label>
-                        <input type="number" id="perfil-dia" min="1" max="31" placeholder="Ej: 30" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
+                        <input type="number" id="perfil-dia" min="1" max="31" placeholder="Ej: 1" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Meta de Ahorro Mensual (%)</label>
@@ -362,6 +394,34 @@ def mobile_dashboard_preview():
                             <i class="fa-solid fa-trash-can"></i>
                             <span>Borrar todo y empezar desde cero</span>
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal 6: Agregar Nuevo Gasto Fijo 📌 -->
+        <div id="modal-nuevo-gasto-fijo" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#130E26] border border-purple-500/25">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-base font-extrabold text-white">Agregar Gasto Fijo Mensual</h3>
+                    <button onclick="cerrarModalNuevoGastoFijo()" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Concepto / Nombre</label>
+                        <input type="text" id="nuevo-fijo-nombre" placeholder="Ej: Arriendo, Internet, Servicios Públicos, Seguro" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white text-sm focus:border-purple-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Monto Mensual ($)</label>
+                        <input type="number" id="nuevo-fijo-monto" placeholder="Ej: 1200000" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Día Habitual de Pago (1 - 31)</label>
+                        <input type="number" id="nuevo-fijo-dia" min="1" max="31" placeholder="Ej: 5" value="5" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
+                    </div>
+                    <div class="pt-2 flex gap-2">
+                        <button onclick="cerrarModalNuevoGastoFijo()" class="w-1/2 py-2.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/50 text-purple-200 border border-purple-900/30 text-xs font-bold">Cancelar</button>
+                        <button onclick="guardarNuevoGastoFijo()" class="w-1/2 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black shadow-md shadow-purple-900/30">Crear Gasto Fijo</button>
                     </div>
                 </div>
             </div>
@@ -467,8 +527,8 @@ def mobile_dashboard_preview():
             }
 
             function formatearCOP(monto) {
-                if(modoPrivacidad) return '$ •••••• COP';
-                return '$ ' + Math.round(monto).toLocaleString('es-CO') + ' COP';
+                if(modoPrivacidad) return '$ ••••••';
+                return '$ ' + Math.round(monto).toLocaleString('es-CO');
             }
 
             // Renderizado unificado y ultra-rápido del Dashboard
@@ -489,30 +549,98 @@ def mobile_dashboard_preview():
                     }
                 }
 
-                // 1. Semáforo
+                // 1. Semáforo & Disponible para Gastar Hoy (Card 1 Principal)
                 if(data.semaforo) {
                     const s = data.semaforo;
                     document.getElementById('disponible-hoy').innerText = formatearCOP(s.disponible_hoy_restante);
                     document.getElementById('mensaje-guia').innerText = s.mensaje_guia || '';
                     document.getElementById('dias-restantes').innerText = (s.dias_restantes || 0) + ' días';
                     document.getElementById('limite-diario').innerText = formatearCOP(s.limite_gasto_diario_sugerido || 0);
+                    const pMes = document.getElementById('presupuesto-mes');
+                    if(pMes) pMes.innerText = formatearCOP(s.presupuesto_disponible_total || 0);
 
                     const badge = document.getElementById('badge-color');
                     badge.innerText = s.color || 'VERDE';
                     const card = document.getElementById('semaforo-card');
                     if(s.color === 'VERDE') {
                         badge.className = 'px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
-                        card.className = 'ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-emerald-500/30';
+                        card.className = 'ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-emerald-500/30 glow-primary';
                     } else if(s.color === 'AMARILLO') {
                         badge.className = 'px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40';
-                        card.className = 'ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-amber-500/30';
+                        card.className = 'ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-amber-500/30 glow-primary';
                     } else {
                         badge.className = 'px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40';
-                        card.className = 'ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-rose-500/30';
+                        card.className = 'ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-rose-500/30 glow-primary';
                     }
                 }
 
-                // 2. Rendimientos
+                // 2. Gastos Fijos (Apartados de Nómina)
+                const gfData = data.gastos_fijos;
+                if(gfData) {
+                    const totalGfEl = document.getElementById('total-gastos-fijos');
+                    if(totalGfEl) totalGfEl.innerText = formatearCOP(gfData.total_fijos || 0);
+
+                    const badgeGf = document.getElementById('badge-estado-gastos-fijos');
+                    if(badgeGf) {
+                        if(gfData.nomina_recibida) {
+                            badgeGf.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-950/80 text-purple-300 border border-purple-600/40';
+                            badgeGf.innerText = '🔒 APARTADOS DE NÓMINA';
+                        } else {
+                            badgeGf.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40';
+                            badgeGf.innerText = '⏳ PENDIENTE POR APARTAR';
+                        }
+                    }
+
+                    const containerGf = document.getElementById('gastos-fijos-list');
+                    if(containerGf) {
+                        containerGf.innerHTML = '';
+                        const items = gfData.items || [];
+                        if(items.length === 0) {
+                            containerGf.innerHTML = `
+                                <div class="text-center py-4 px-3 rounded-2xl bg-purple-950/30 border border-purple-900/40">
+                                    <p class="text-xs text-purple-300/80 font-bold mb-1">Sin compromisos fijos aún</p>
+                                    <p class="text-[11px] text-slate-400 mb-2">Registra arriendo, servicios o cuotas para que se aparten de tu saldo disponible.</p>
+                                    <button onclick="abrirModalNuevoGastoFijo()" class="text-xs text-purple-300 font-extrabold underline hover:text-white">Agregar Mi Primer Gasto Fijo</button>
+                                </div>
+                            `;
+                        } else {
+                            items.forEach(item => {
+                                let icon = 'fa-house';
+                                const nom = (item.nombre || '').toLowerCase();
+                                if(nom.includes('servicio') || nom.includes('luz') || nom.includes('agua') || nom.includes('gas') || nom.includes('enel') || nom.includes('epm')) icon = 'fa-bolt';
+                                else if(nom.includes('internet') || nom.includes('wifi') || nom.includes('celular') || nom.includes('plan') || nom.includes('claro') || nom.includes('tigo') || nom.includes('movistar')) icon = 'fa-wifi';
+                                else if(nom.includes('gym') || nom.includes('gimnasio') || nom.includes('smart fit')) icon = 'fa-dumbbell';
+                                else if(nom.includes('netflix') || nom.includes('spotify') || nom.includes('sub') || nom.includes('youtube') || nom.includes('apple')) icon = 'fa-star';
+
+                                const el = document.createElement('div');
+                                el.className = 'p-3 rounded-2xl bg-purple-950/40 border border-purple-500/15 flex items-center justify-between';
+                                el.innerHTML = `
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-xl bg-purple-900/50 flex items-center justify-center text-purple-300 text-xs">
+                                            <i class="fa-solid ${icon}"></i>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs font-bold text-white block leading-tight">${item.nombre}</span>
+                                            <span class="text-[10px] text-purple-300/70">Día habitual: ${item.dia_pago}</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-black text-purple-200">${formatearCOP(item.monto)}</span>
+                                        <button onclick="togglePagadoGastoFijo(${item.id})" class="px-2 py-1 rounded-lg text-[10px] font-bold transition ${item.pagado_este_mes ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-purple-900/40 text-purple-300 border border-purple-700/40'}" title="Marcar como pagado o pendiente">
+                                            ${item.pagado_este_mes ? '✓ Cubierto' : 'Apartado'}
+                                        </button>
+                                        <button onclick="eliminarGastoFijo(${item.id})" class="w-6 h-6 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 flex items-center justify-center text-[10px] transition" title="Eliminar compromiso">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </div>
+                                `;
+                                containerGf.appendChild(el);
+                            });
+                        }
+                    }
+                }
+
+                // 3. Rendimientos Nu
                 const cardRend = document.getElementById('card-rendimientos');
                 if(data.rendimientos && data.rendimientos.length > 0) {
                     cardRend.style.display = 'flex';
@@ -522,7 +650,7 @@ def mobile_dashboard_preview():
                     cardRend.style.display = 'none';
                 }
 
-                // 3. Cuentas
+                // 4. Cuentas
                 cuentasData = data.cuentas || [];
                 let totalCuentas = 0;
                 let totalDeuda = 0;
@@ -957,6 +1085,61 @@ def mobile_dashboard_preview():
                     fetchDashboard();
                 } catch(e) {
                     alert('Error al reiniciar datos');
+                }
+            }
+
+            // Gestión de Gastos Fijos
+            function abrirModalNuevoGastoFijo() {
+                document.getElementById('modal-nuevo-gasto-fijo').classList.remove('hidden');
+                document.getElementById('nuevo-fijo-nombre').focus();
+            }
+            function cerrarModalNuevoGastoFijo() {
+                document.getElementById('modal-nuevo-gasto-fijo').classList.add('hidden');
+                document.getElementById('nuevo-fijo-nombre').value = '';
+                document.getElementById('nuevo-fijo-monto').value = '';
+            }
+            async function guardarNuevoGastoFijo() {
+                const nombre = document.getElementById('nuevo-fijo-nombre').value.trim();
+                const monto = parseFloat(document.getElementById('nuevo-fijo-monto').value);
+                const diaPago = parseInt(document.getElementById('nuevo-fijo-dia').value) || 5;
+
+                if(!nombre || !monto || isNaN(monto)) {
+                    alert('Por favor ingresa un concepto y un monto válido.');
+                    return;
+                }
+
+                try {
+                    const res = await fetch('/api/v1/gastos-fijos', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nombre: nombre, monto: monto, dia_pago: diaPago })
+                    });
+                    if(res.ok) {
+                        cerrarModalNuevoGastoFijo();
+                        fetchDashboard();
+                    } else {
+                        const err = await res.json();
+                        alert(err.detail || 'Error al guardar gasto fijo');
+                    }
+                } catch(e) {
+                    alert('Error de conexión al guardar gasto fijo');
+                }
+            }
+            async function togglePagadoGastoFijo(id) {
+                try {
+                    await fetch('/api/v1/gastos-fijos/' + id + '/toggle-pagado', { method: 'PATCH' });
+                    fetchDashboard();
+                } catch(e) {
+                    console.error(e);
+                }
+            }
+            async function eliminarGastoFijo(id) {
+                if(!confirm('¿Deseas eliminar este gasto fijo?')) return;
+                try {
+                    await fetch('/api/v1/gastos-fijos/' + id, { method: 'DELETE' });
+                    fetchDashboard();
+                } catch(e) {
+                    console.error(e);
                 }
             }
 

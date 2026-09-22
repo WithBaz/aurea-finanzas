@@ -173,3 +173,44 @@ class PerfilFinancieroResponse(PerfilFinancieroBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
 
+
+# --- Gastos Fijos ---
+class GastoFijoBase(BaseModel):
+    nombre: str = Field(...)
+    monto: float = Field(..., gt=0)
+    dia_pago: int = Field(5, ge=1, le=31)
+    categoria: Optional[str] = "Hogar y Servicios"
+    activo: bool = True
+    pagado_este_mes: bool = False
+
+
+class GastoFijoCreate(BaseModel):
+    nombre: str = Field(...)
+    monto: float = Field(..., gt=0)
+    dia_pago: Optional[int] = Field(5, ge=1, le=31)
+    categoria: Optional[str] = "Hogar y Servicios"
+
+
+class GastoFijoUpdate(BaseModel):
+    nombre: Optional[str] = None
+    monto: Optional[float] = Field(None, gt=0)
+    dia_pago: Optional[int] = Field(None, ge=1, le=31)
+    categoria: Optional[str] = None
+    activo: Optional[bool] = None
+    pagado_este_mes: Optional[bool] = None
+
+
+class GastoFijoResponse(GastoFijoBase):
+    id: int
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GastosFijosResumen(BaseModel):
+    total_fijos: float
+    total_apartado_nomina: float
+    total_pendiente: float
+    cantidad_compromisos: int
+    nomina_recibida: bool
+    items: List[GastoFijoResponse]
+

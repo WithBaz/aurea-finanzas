@@ -9,12 +9,13 @@ from backend.app.models import (
     TipoCuenta,
     TipoTransaccion,
     PerfilFinanciero,
+    GastoFijo,
 )
 
 
 class FinancialEngine:
     """
-    Motor de cálculo financiero para ciclo salarial mensual colombiano en COP.
+    Motor de cálculo financiero para ciclo salarial mensual colombiano.
     """
 
     @classmethod
@@ -27,7 +28,7 @@ class FinancialEngine:
         perfil = db.query(PerfilFinanciero).first()
         if not perfil:
             perfil = PerfilFinanciero(
-                dia_pago_mensual=30,
+                dia_pago_mensual=1,
                 ingreso_mensual_estimado=4000000.0,
                 compromisos_fijos_mensual=1800000.0,
                 porcentaje_ahorro_meta=15.0,
@@ -72,10 +73,27 @@ class FinancialEngine:
         ).scalar()
         gastos_hormiga_acumulados = float(gastos_hormiga_query or 0.0)
 
-        # 4. Cálculo de presupuesto disponible
-        # Presupuesto libre = Ingreso estimado - Compromisos Fijos - Meta Ahorro
+        # 4. Sincronización y cálculo de Gastos Fijos
+        gastos_fijos_activos = db.query(GastoFijo).filter(GastoFijo.activo == True).all()
+        if gastos_fijos_activos:
+            total_fijos = sum(g.monto for g in gastos_fijos_activos)
+            if perfil.compromisos_fijos_mensual != total_fijos:
+                perfil.compromisos_fijos_mensual = total_fijos
+                db.commit()
+        else:
+            total_fijos = perfil.compromisos_fijos_mensual
+
+        # Detección de cobro de nómina (inicio de mes o ingreso recibido)
+        ingresos_mes_query = db.query(func.sum(Transaccion.monto)).filter(
+            Transaccion.tipo == TipoTransaccion.INGRESO,
+            Transaccion.fecha >= inicio_mes,
+            Transaccion.fecha <= fin_mes
+        ).scalar()
+        nomina_recibida = (dia_actual >= perfil.dia_pago_mensual) or (float(ingresos_mes_query or 0.0) > 0)
+
+        # 5. Cálculo de presupuesto disponible (los gastos fijos se apartan de inmediato)
         ahorro_planeado = perfil.ingreso_mensual_estimado * (perfil.porcentaje_ahorro_meta / 100.0)
-        presupuesto_operativo_total = max(0.0, perfil.ingreso_mensual_estimado - perfil.compromisos_fijos_mensual - ahorro_planeado)
+        presupuesto_operativo_total = max(0.0, perfil.ingreso_mensual_estimado - total_fijos - ahorro_planeado)
         
         # Presupuesto disponible para lo que resta del mes
         presupuesto_disponible_restante = max(0.0, presupuesto_operativo_total - gasto_acumulado_mes)
@@ -84,20 +102,20 @@ class FinancialEngine:
         limite_diario_sugerido = round(presupuesto_disponible_restante / dias_restantes, 2)
         disponible_hoy_restante = max(0.0, limite_diario_sugerido - gasto_hoy)
 
-        # 5. Determinación del Semáforo
+        # 6. Determinación del Semáforo
         if limite_diario_sugerido <= 0:
             color = "ROJO"
             mensaje = "Presupuesto mensual agotado. Limita todos los gastos al mínimo esencial."
         elif gasto_hoy <= (limite_diario_sugerido * 0.85):
             color = "VERDE"
-            mensaje = f"Excelente ritmo financiero. Tienes ${disponible_hoy_restante:,.0f} COP disponibles para hoy."
+            mensaje = f"Excelente ritmo financiero. Tienes ${disponible_hoy_restante:,.0f} disponibles para hoy."
         elif gasto_hoy <= limite_diario_sugerido:
             color = "AMARILLO"
-            mensaje = f"Atención: te quedan ${disponible_hoy_restante:,.0f} COP de tu presupuesto diario sugerido."
+            mensaje = f"Atención: te quedan ${disponible_hoy_restante:,.0f} de tu presupuesto diario sugerido."
         else:
             color = "ROJO"
             exceso = gasto_hoy - limite_diario_sugerido
-            mensaje = f"Superaste tu meta diaria por ${exceso:,.0f} COP. El límite de los días restantes se recalculará automáticamente."
+            mensaje = f"Superaste tu meta diaria por ${exceso:,.0f}. El límite de los días restantes se recalculará automáticamente."
 
         return {
             "color": color,
@@ -110,7 +128,53 @@ class FinancialEngine:
             "disponible_hoy_restante": round(disponible_hoy_restante, 2),
             "gasto_acumulado_mes": gasto_acumulado_mes,
             "gastos_hormiga_acumulados": gastos_hormiga_acumulados,
+            "total_gastos_fijos": total_fijos,
+            "nomina_recibida": nomina_recibida,
+            "gastos_fijos_apartados": total_fijos if nomina_recibida else 0.0,
             "mensaje_guia": mensaje,
+        }
+
+    @classmethod
+    def obtener_resumen_gastos_fijos(cls, db: Session, fecha_referencia: Optional[datetime] = None) -> Dict[str, Any]:
+        ahora = fecha_referencia or datetime.now(timezone.utc)
+        _, total_dias_mes = calendar.monthrange(ahora.year, ahora.month)
+        inicio_mes = datetime(ahora.year, ahora.month, 1, 0, 0, 0)
+        fin_mes = datetime(ahora.year, ahora.month, total_dias_mes, 23, 59, 59)
+
+        perfil = db.query(PerfilFinanciero).first()
+        dia_pago = perfil.dia_pago_mensual if perfil else 1
+
+        ingresos_mes = db.query(func.sum(Transaccion.monto)).filter(
+            Transaccion.tipo == TipoTransaccion.INGRESO,
+            Transaccion.fecha >= inicio_mes,
+            Transaccion.fecha <= fin_mes
+        ).scalar()
+        nomina_recibida = (ahora.day >= dia_pago) or (float(ingresos_mes or 0.0) > 0)
+
+        items = db.query(GastoFijo).filter(GastoFijo.activo == True).order_by(GastoFijo.dia_pago.asc()).all()
+        total_fijos = sum(i.monto for i in items) if items else (perfil.compromisos_fijos_mensual if perfil else 0.0)
+        total_apartado = total_fijos if nomina_recibida else sum(i.monto for i in items if i.pagado_este_mes)
+        total_pendiente = max(0.0, total_fijos - total_apartado)
+
+        return {
+            "total_fijos": total_fijos,
+            "total_apartado_nomina": total_apartado,
+            "total_pendiente": total_pendiente,
+            "cantidad_compromisos": len(items),
+            "nomina_recibida": nomina_recibida,
+            "items": [
+                {
+                    "id": i.id,
+                    "nombre": i.nombre,
+                    "monto": i.monto,
+                    "dia_pago": i.dia_pago,
+                    "categoria": i.categoria,
+                    "activo": i.activo,
+                    "pagado_este_mes": i.pagado_este_mes or nomina_recibida,
+                    "created_at": i.created_at.isoformat() if i.created_at else None,
+                }
+                for i in items
+            ],
         }
 
     @classmethod
