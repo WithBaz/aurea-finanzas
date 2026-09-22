@@ -96,46 +96,38 @@ def mobile_dashboard_preview():
                 </div>
             </div>
 
-            <!-- Card 1 (Primero): Saldo Disponible (Semáforo Dinámico Diario) -->
-            <div id="semaforo-card" class="ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-emerald-500/30 glow-primary">
-                <div class="flex justify-between items-start mb-2">
-                    <div>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Disponible para gastar hoy</span>
-                        <div class="flex items-center gap-2.5 mt-1">
-                            <div class="text-3xl font-black text-emerald-400 tracking-tight" id="disponible-hoy">$ 0</div>
-                            <!-- Modo Privacidad 👁️ al lado del saldo principal -->
-                            <button onclick="toggleModoPrivacidad()" id="btn-privacidad" class="w-7 h-7 rounded-lg bg-purple-950/40 hover:bg-purple-900/50 flex items-center justify-center text-purple-300 hover:text-white active:scale-90 transition border border-purple-500/25" title="Ocultar o ver saldo">
-                                <i class="fa-solid fa-eye text-xs" id="icono-ojo"></i>
-                            </button>
-                        </div>
+            <!-- Apartado 1: Saldo Disponible para Gastar y Saldo Total -->
+            <div class="ios-card rounded-3xl p-5 mb-4 glow-primary border-purple-500/25">
+                <!-- Saldo disponible para gastar -->
+                <div>
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Saldo disponible para gastar</span>
+                    <div class="flex items-center gap-2.5 mt-1">
+                        <div class="text-3xl font-black text-emerald-400 tracking-tight" id="disponible-hoy">$ 0</div>
+                        <!-- Modo Privacidad 👁️ al lado del saldo principal -->
+                        <button onclick="toggleModoPrivacidad()" id="btn-privacidad" class="w-7 h-7 rounded-lg bg-purple-950/40 hover:bg-purple-900/50 flex items-center justify-center text-purple-300 hover:text-white active:scale-90 transition border border-purple-500/25" title="Ocultar o ver saldo">
+                            <i class="fa-solid fa-eye text-xs" id="icono-ojo"></i>
+                        </button>
                     </div>
-                    <span id="badge-color" class="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                        VERDE
-                    </span>
                 </div>
-                <p id="mensaje-guia" class="text-xs text-slate-300 leading-relaxed mt-1">Calculando presupuesto diario según tu nómina...</p>
-                
-                <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-purple-900/30 text-xs">
+
+                <!-- Divisor y Saldo Total -->
+                <div class="mt-4 pt-3.5 border-t border-purple-900/30 flex justify-between items-center">
                     <div>
-                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Límite diario</span>
-                        <span id="limite-diario" class="font-bold text-purple-300 text-sm">-</span>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Saldo Total</span>
+                        <div class="text-xl font-black text-white mt-0.5" id="balance-neto-total">$ 0</div>
                     </div>
-                    <div>
-                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Libre del mes</span>
-                        <span id="presupuesto-mes" class="font-bold text-white text-sm">-</span>
-                    </div>
-                    <div>
-                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Días restantes</span>
-                        <span id="dias-restantes" class="font-bold text-white text-sm">-</span>
-                    </div>
+                    <button onclick="abrirModalCuentas()" class="px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/70 text-purple-300 text-xs font-bold border border-purple-500/25 flex items-center gap-1.5 transition active:scale-95">
+                        <i class="fa-solid fa-wallet text-[10px]"></i>
+                        <span>Mis Cuentas</span>
+                    </button>
                 </div>
             </div>
 
-            <!-- Card 2 (Segundo): Gastos Fijos (Apartados de Nómina) -->
-            <div class="ios-card rounded-3xl p-5 mb-4 border border-purple-500/25 bg-gradient-to-b from-[#140E24] to-[#0E0A1A]">
+            <!-- Apartado 2: Gastos Fijos del Mes -->
+            <div class="ios-card rounded-3xl p-5 mb-24 border border-purple-500/25 bg-gradient-to-b from-[#140E24] to-[#0E0A1A]">
                 <div class="flex justify-between items-start mb-2">
                     <div>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gastos Fijos del Mes</span>
+                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Gastos Fijos del Mes</span>
                         <div class="text-2xl font-black text-purple-200 mt-0.5" id="total-gastos-fijos">$ 0</div>
                     </div>
                     <span id="badge-estado-gastos-fijos" class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-950/80 text-purple-300 border border-purple-600/40">
@@ -143,7 +135,7 @@ def mobile_dashboard_preview():
                     </span>
                 </div>
                 <p class="text-[11px] text-purple-300/70 leading-relaxed mb-3">
-                    Descontados de tu saldo disponible al recibir sueldo para proteger arriendo, servicios y pagos fijos.
+                    Descontados automáticamente de tu saldo disponible para proteger tus pagos fijos.
                 </p>
 
                 <div class="flex justify-between items-center mb-2.5 pt-2 border-t border-purple-900/30">
@@ -159,18 +151,48 @@ def mobile_dashboard_preview():
                 </div>
             </div>
 
-            <!-- Card 3: Patrimonio Líquido / Balance Neto Real -->
-            <div class="ios-card rounded-3xl p-5 mb-4 border border-purple-500/20">
-                <div class="flex justify-between items-start">
+        </div>
+
+        <!-- Barra de Navegación Inferior Flotante con Botón Central (+) -->
+        <div class="fixed bottom-0 left-0 right-0 z-40 bg-[#0E0A1D]/90 backdrop-blur-xl border-t border-purple-500/20 px-5 py-2.5 flex justify-between items-center max-w-lg mx-auto">
+            <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex flex-col items-center text-purple-400">
+                <i class="fa-solid fa-wallet text-base"></i>
+                <span class="text-[10px] font-bold mt-1">Billetera</span>
+            </button>
+
+            <button onclick="abrirModalMovimientos()" class="flex flex-col items-center text-slate-400 hover:text-purple-300">
+                <i class="fa-solid fa-clock-rotate-left text-base"></i>
+                <span class="text-[10px] font-bold mt-1">Movimientos</span>
+            </button>
+
+            <!-- Botón Central Destacado (+) para Registrar Gasto / Ingreso -->
+            <button onclick="abrirModalGasto()" class="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-600 via-purple-500 to-fuchsia-500 -mt-6 shadow-lg shadow-purple-600/40 flex items-center justify-center text-white text-xl font-black active:scale-90 transition border-4 border-[#0B0813]">
+                <i class="fa-solid fa-plus"></i>
+            </button>
+
+            <button onclick="abrirModalCuentas()" class="flex flex-col items-center text-slate-400 hover:text-purple-300">
+                <i class="fa-solid fa-credit-card text-base"></i>
+                <span class="text-[10px] font-bold mt-1">Cuentas</span>
+            </button>
+
+            <button onclick="abrirModalPerfil()" class="flex flex-col items-center text-slate-400 hover:text-purple-300">
+                <i class="fa-solid fa-gear text-base"></i>
+                <span class="text-[10px] font-bold mt-1">Ajustes</span>
+            </button>
+        </div>
+
+        <!-- Modal: Mis Cuentas e Instrumentos -->
+        <div id="modal-cuentas" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#130E26] border border-purple-500/25 max-h-[85vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
                     <div>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Patrimonio Líquido Real</span>
-                        <div class="text-2xl font-black text-white tracking-tight mt-1" id="balance-neto-total">$ 0</div>
+                        <h3 class="text-base font-extrabold text-white">Mis Cuentas e Instrumentos</h3>
+                        <span class="text-[11px] text-purple-300/70">Toca el lápiz para registrar tu saldo actual</span>
                     </div>
-                    <span class="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-purple-950/60 text-purple-300 border border-purple-800/40">
-                        Cuentas vs Deuda
-                    </span>
+                    <button onclick="cerrarModalCuentas()" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
                 </div>
-                <div class="flex items-center gap-4 mt-3 pt-3 border-t border-purple-900/30 text-xs">
+                
+                <div class="flex items-center gap-4 mb-4 p-3 rounded-2xl bg-[#0B0816] border border-purple-900/30 text-xs">
                     <div>
                         <span class="text-slate-400 block text-[10px] uppercase font-semibold">Total en Cuentas</span>
                         <span id="subtotal-cuentas" class="font-bold text-emerald-400 text-sm">$ 0</span>
@@ -181,68 +203,32 @@ def mobile_dashboard_preview():
                         <span id="subtotal-deuda" class="font-bold text-rose-400 text-sm">$ 0</span>
                     </div>
                 </div>
-            </div>
 
-            <!-- Card Rendimientos Cuentas de Alto Rendimiento (Nu / Lulo) -->
-            <div id="card-rendimientos" class="ios-card rounded-2xl p-4 mb-4 border border-violet-500/30 bg-violet-950/20 flex items-center justify-between" style="display: none;">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-violet-600/30 flex items-center justify-center text-violet-400 text-base">
-                        <i class="fa-solid fa-arrow-trend-up"></i>
-                    </div>
-                    <div>
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-violet-300">Rendimientos Diarios Nu</span>
-                        <div class="text-sm font-black text-white" id="rendimiento-diario">+ $ 0 hoy</div>
-                    </div>
-                </div>
-                <span class="text-[10px] text-violet-300 font-bold bg-violet-900/60 px-2.5 py-1 rounded-lg">Automático</span>
-            </div>
-
-            <!-- Card 4: Todas Mis Cuentas (Con saldo editable y botón de agregar) -->
-            <div class="mb-5">
-                <div class="flex justify-between items-center mb-3 px-1">
-                    <div>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Mis Cuentas e Instrumentos</span>
-                        <span class="text-[10px] text-slate-500 block">Toca el lápiz para registrar tu saldo actual</span>
-                    </div>
-                    <button onclick="abrirModalNuevaCuenta()" class="px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-bold border border-purple-500/35 flex items-center gap-1.5 active:scale-95 transition">
-                        <i class="fa-solid fa-plus text-[10px]"></i>
-                        <span>Agregar Cuenta</span>
-                    </button>
-                </div>
-                <div id="cuentas-list" class="space-y-2.5">
+                <div id="cuentas-list" class="space-y-2.5 mb-4">
                     <!-- Dinámico -->
                 </div>
-            </div>
 
-            <!-- Card 5: Movimientos Recientes -->
-            <div class="mb-6">
-                <div class="flex justify-between items-center mb-3 px-1">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Movimientos Registrados</span>
-                    <span class="text-[11px] text-slate-500" id="conteo-tx">0 movimientos</span>
+                <button onclick="abrirModalNuevaCuenta()" class="w-full py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-bold border border-purple-500/35 flex items-center justify-center gap-1.5 active:scale-95 transition">
+                    <i class="fa-solid fa-plus text-[10px]"></i>
+                    <span>Agregar Nueva Cuenta</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal: Movimientos Registrados -->
+        <div id="modal-movimientos" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#130E26] border border-purple-500/25 max-h-[85vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="text-base font-extrabold text-white">Movimientos Registrados</h3>
+                        <span class="text-[11px] text-purple-300/70" id="conteo-tx">0 movimientos</span>
+                    </div>
+                    <button onclick="cerrarModalMovimientos()" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="transacciones-list" class="space-y-2">
                     <!-- Dinámico -->
                 </div>
             </div>
-
-        </div>
-
-        <!-- Barra de Navegación Inferior Flotante con Botón Central (+) -->
-        <div class="fixed bottom-0 left-0 right-0 z-40 bg-[#0E0A1D]/90 backdrop-blur-xl border-t border-purple-500/20 px-8 py-2.5 flex justify-between items-center max-w-lg mx-auto">
-            <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex flex-col items-center text-purple-400">
-                <i class="fa-solid fa-wallet text-lg"></i>
-                <span class="text-[10px] font-bold mt-1">Billetera</span>
-            </button>
-
-            <!-- Botón Central Destacado (+) para Registrar Gasto Rápido -->
-            <button onclick="abrirModalGasto()" class="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-600 via-purple-500 to-fuchsia-500 -mt-6 shadow-lg shadow-purple-600/40 flex items-center justify-center text-white text-xl font-black active:scale-90 transition border-4 border-[#0B0813]">
-                <i class="fa-solid fa-plus"></i>
-            </button>
-
-            <button onclick="abrirModalPerfil()" class="flex flex-col items-center text-slate-400 hover:text-purple-300">
-                <i class="fa-solid fa-gear text-lg"></i>
-                <span class="text-[10px] font-bold mt-1">Ajustes</span>
-            </button>
         </div>
 
         <!-- Modal 1: ¿De qué cuenta fue la compra? (Detección y Confirmación Inteligente) -->
@@ -549,29 +535,26 @@ def mobile_dashboard_preview():
                     }
                 }
 
-                // 1. Semáforo & Disponible para Gastar Hoy (Card 1 Principal)
+                // 1. Saldo Disponible para Gastar (Card 1 Principal)
                 if(data.semaforo) {
                     const s = data.semaforo;
-                    document.getElementById('disponible-hoy').innerText = formatearCOP(s.disponible_hoy_restante);
-                    document.getElementById('mensaje-guia').innerText = s.mensaje_guia || '';
-                    document.getElementById('dias-restantes').innerText = (s.dias_restantes || 0) + ' días';
-                    document.getElementById('limite-diario').innerText = formatearCOP(s.limite_gasto_diario_sugerido || 0);
+                    const elDispHoy = document.getElementById('disponible-hoy');
+                    if(elDispHoy) elDispHoy.innerText = formatearCOP(s.disponible_hoy_restante);
+
+                    const elGuia = document.getElementById('mensaje-guia');
+                    if(elGuia) elGuia.innerText = s.mensaje_guia || '';
+
+                    const elDias = document.getElementById('dias-restantes');
+                    if(elDias) elDias.innerText = (s.dias_restantes || 0) + ' días';
+
+                    const elLim = document.getElementById('limite-diario');
+                    if(elLim) elLim.innerText = formatearCOP(s.limite_gasto_diario_sugerido || 0);
+
                     const pMes = document.getElementById('presupuesto-mes');
                     if(pMes) pMes.innerText = formatearCOP(s.presupuesto_disponible_total || 0);
 
                     const badge = document.getElementById('badge-color');
-                    badge.innerText = s.color || 'VERDE';
-                    const card = document.getElementById('semaforo-card');
-                    if(s.color === 'VERDE') {
-                        badge.className = 'px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
-                        card.className = 'ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-emerald-500/30 glow-primary';
-                    } else if(s.color === 'AMARILLO') {
-                        badge.className = 'px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40';
-                        card.className = 'ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-amber-500/30 glow-primary';
-                    } else {
-                        badge.className = 'px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40';
-                        card.className = 'ios-card rounded-3xl p-5 mb-4 relative overflow-hidden transition-all border-rose-500/30 glow-primary';
-                    }
+                    if(badge) badge.innerText = s.color || 'VERDE';
                 }
 
                 // 2. Gastos Fijos (Apartados de Nómina)
@@ -642,12 +625,15 @@ def mobile_dashboard_preview():
 
                 // 3. Rendimientos Nu
                 const cardRend = document.getElementById('card-rendimientos');
-                if(data.rendimientos && data.rendimientos.length > 0) {
-                    cardRend.style.display = 'flex';
-                    const total = data.rendimientos.reduce((acc, curr) => acc + (curr.rendimiento_diario_estimado || 0), 0);
-                    document.getElementById('rendimiento-diario').innerText = '+ ' + formatearCOP(total) + ' hoy';
-                } else {
-                    cardRend.style.display = 'none';
+                if(cardRend) {
+                    if(data.rendimientos && data.rendimientos.length > 0) {
+                        cardRend.style.display = 'flex';
+                        const total = data.rendimientos.reduce((acc, curr) => acc + (curr.rendimiento_diario_estimado || 0), 0);
+                        const elRend = document.getElementById('rendimiento-diario');
+                        if(elRend) elRend.innerText = '+ ' + formatearCOP(total) + ' hoy';
+                    } else {
+                        cardRend.style.display = 'none';
+                    }
                 }
 
                 // 4. Cuentas
@@ -1141,6 +1127,20 @@ def mobile_dashboard_preview():
                 } catch(e) {
                     console.error(e);
                 }
+            }
+
+            // Modales de Cuentas y Movimientos
+            function abrirModalCuentas() {
+                document.getElementById('modal-cuentas').classList.remove('hidden');
+            }
+            function cerrarModalCuentas() {
+                document.getElementById('modal-cuentas').classList.add('hidden');
+            }
+            function abrirModalMovimientos() {
+                document.getElementById('modal-movimientos').classList.remove('hidden');
+            }
+            function cerrarModalMovimientos() {
+                document.getElementById('modal-movimientos').classList.add('hidden');
             }
 
             // Modal Atajos de iOS
