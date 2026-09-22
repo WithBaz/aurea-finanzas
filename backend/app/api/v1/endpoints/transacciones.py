@@ -166,6 +166,10 @@ async def registrar_gasto_ia_rapida(
     else:
         tipo = interpretacion["tipo"]
 
+    # En Colombia ningún ingreso es menor a $1.000 COP (< 1000 COP siempre son miles, ej. 500 -> 500.000 COP)
+    if tipo == "INGRESO" and 0 < monto < 1000:
+        monto *= 1000.0
+
     cuenta_detectada_id = cuenta_id_final or interpretacion["cuenta_id"]
 
     if monto <= 0:

@@ -39,6 +39,11 @@ class NLPSmartExpenseParser:
         es_ingreso = any(palabra in t for palabra in palabras_ingreso)
         tipo = "INGRESO" if es_ingreso else "EGRESO"
 
+        # En Colombia ningún ingreso (nómina, sueldo, transferencia, honorarios) es menor a $1.000 COP ($0.25 USD).
+        # Si se detectó ingreso y el monto es menor a 1.000, auto-escalar a miles (ej. 500 -> 500.000 COP).
+        if es_ingreso and 0 < monto < 1000:
+            monto *= 1000.0
+
         # 4. Extraer Comercio / Concepto
         comercio = cls._extraer_concepto(t, es_ingreso=es_ingreso)
 
@@ -86,46 +91,46 @@ class NLPSmartExpenseParser:
             val = palabras_numeros.get(match_millon_palabra.group(1), 1)
             return float(val * 1_000_000)
 
-        # Números en palabras + mil (ej. "diez mil", "quince mil", "diez lucas")
+        # Números en palabras + mil (ej. "diez mil", "quince mil", "diez lucas", "quinientos mil")
         patron_palabras = "|".join(palabras_numeros.keys())
         match_palabra_mil = re.search(rf"\b({patron_palabras})\s*(?:mil|k|lucas|barras)\b", t)
         if match_palabra_mil:
             palabra = match_palabra_mil.group(1)
             return float(palabras_numeros[palabra] * 1000)
 
-        # 2. Unir espacios de miles comunes en iOS (ej. "10 000" -> "10000", "100 000" -> "100000")
-        t_unido = re.sub(r"(\d+)\s+(\d{3})\b", r"\1\2", t)
+        # 2. Limpieza de puntuaciones intermedias de dictado Siri (ej. "500. mil", "500, mil", "500 - mil" -> "500 mil")
+        t_unido = re.sub(r"(\d+)\s*[.,\-/]\s*(mil|k|lucas|barras|palos|millones?)\b", r"\1 \2", t)
 
-        # 3. Millones con dígitos (ej. "1.5 millones", "2 millones")
+        # 3. Unir espacios de miles comunes en iOS (ej. "10 000" -> "10000", "500 000" -> "500000")
+        t_unido = re.sub(r"(\d+)\s+(\d{3})\b", r"\1\2", t_unido)
+
+        # 4. Millones con dígitos (ej. "1.5 millones", "2 millones")
         match_millon = re.search(r"(\d+(?:[.,]\d+)?)\s*millones?\b", t_unido)
         if match_millon:
             num = float(match_millon.group(1).replace(",", "."))
             return num * 1_000_000.0
 
-        # 4. Miles con dígitos y sufijo (ej. '15 mil', '15mil', '25 k', '25k', '10 lucas', '10 barras')
+        # 5. Miles con dígitos y sufijo (ej. '15 mil', '15mil', '25 k', '25k', '10 lucas', '10 barras', '500 mil')
         match_mil = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:mil|k|lucas|barras|palos)\b", t_unido)
         if match_mil:
             num = float(match_mil.group(1).replace(",", "."))
             return num * 1000.0
 
-        # 5. Formatos numéricos con puntos o directos (ej. '$45.000', '45.000', '10000')
+        # 6. Formatos numéricos con puntos o directos de 4 a 9 dígitos (ej. '$45.000', '45.000', '10000', '500000')
         match_num = re.search(r"(?:\$|\b)\s*(\d{1,3}(?:\.\d{3})+|\d{4,9})\b", t_unido)
         if match_num:
             raw = match_num.group(1).replace(".", "").replace(",", "")
             return float(raw)
 
-        # 6. Número de 2 dígitos en contexto colombiano (ej. "almuerzo 10" -> 10.000)
-        match_dos_digitos = re.search(r"\b([1-9]\d)\b", t_unido)
-        if match_dos_digitos:
-            val = float(match_dos_digitos.group(1))
-            if "pesos" not in t_unido and "cop" not in t_unido:
-                return val * 1000.0
-            return val
-
-        # 7. Números de 3 dígitos (ej. 500)
-        match_chico = re.search(r"\b(\d{2,3})\b", t_unido)
+        # 7. Números de 1 a 3 dígitos en contexto colombiano (ej. "almuerzo 10" -> 10.000, "500" -> 500.000, "mercado 250" -> 250.000)
+        # En la cotidianidad colombiana, montos de 1 a 999 sin la palabra explícita 'pesos'/'cop' corresponden a miles (k).
+        match_chico = re.search(r"\b(\d{1,3})\b", t_unido)
         if match_chico:
-            return float(match_chico.group(1))
+            val = float(match_chico.group(1))
+            if "pesos" not in t_unido and "cop" not in t_unido:
+                if val >= 1:
+                    return val * 1000.0
+            return val
 
         return 0.0
 

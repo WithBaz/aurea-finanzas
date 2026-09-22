@@ -400,20 +400,19 @@ def mobile_dashboard_preview():
                 </div>
 
                 <div class="space-y-4 text-xs">
-                    <!-- Guía 1: Siri & Apple Intelligence (Sin abrir la app) -->
+                    <!-- Guía 1: Siri Registrar Gasto -->
                     <div class="p-3.5 rounded-2xl bg-slate-950 border border-amber-500/30">
                         <div class="flex items-center gap-2 text-amber-400 font-black text-xs mb-1">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i>
-                            <span>1. Por Voz con Siri (Sin abrir la app)</span>
+                            <i class="fa-solid fa-arrow-trend-down"></i>
+                            <span>1. Atajo: "Registrar Gasto" (Voz o Siri)</span>
                         </div>
                         <p class="text-slate-300 leading-relaxed text-[11px] mb-2">
-                            Di: <em>"Oye Siri, registrar gasto"</em> desde tus AirPods, CarPlay o con la pantalla bloqueada.
+                            Di: <em>"Oye Siri, registrar gasto"</em>. Ejemplo: <em>"15 mil de taxi en efectivo"</em> o <em>"almuerzo 20 mil"</em>.
                         </p>
                         <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800 space-y-1 text-[11px] text-slate-300 mb-2">
-                            <div>• Crea un atajo en iOS llamado <strong>"Registrar Gasto"</strong></div>
-                            <div>• Acción 1: <strong>Solicitar entrada</strong> (Texto: <em>"¿Qué gastaste?"</em>)</div>
+                            <div>• Acción 1: <strong>Solicitar [Texto]</strong> con <em>"¿Qué gastaste?"</em></div>
                             <div>• Acción 2: <strong>Obtener contenido de URL</strong> (POST JSON con campo <code>texto</code>)</div>
-                            <div>• Acción 3: <strong>Mostrar notificación</strong> con la respuesta de Siri</div>
+                            <div>• Acción 3: <strong>Mostrar notificación</strong> con la respuesta</div>
                         </div>
                         <div class="flex items-center gap-2">
                             <input type="text" id="url-ia-endpoint" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-amber-300 font-mono select-all">
@@ -423,11 +422,33 @@ def mobile_dashboard_preview():
                         </div>
                     </div>
 
-                    <!-- Guía 2: Apple Pay Automático -->
+                    <!-- Guía 2: Siri Registrar Ingreso -->
+                    <div class="p-3.5 rounded-2xl bg-slate-950 border border-emerald-500/30">
+                        <div class="flex items-center gap-2 text-emerald-400 font-black text-xs mb-1">
+                            <i class="fa-solid fa-arrow-trend-up"></i>
+                            <span>2. Atajo: "Registrar Ingreso" (Voz o Siri)</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed text-[11px] mb-2">
+                            Di: <em>"Oye Siri, registrar ingreso"</em>. Ejemplo: <em>"500 mil en Bancolombia"</em> o <em>"500"</em>.
+                        </p>
+                        <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800 space-y-1 text-[11px] text-slate-300 mb-2">
+                            <div>• Acción 1: <strong>Solicitar [Texto]</strong> con <em>"¿Cuánto ingresó?"</em></div>
+                            <div>• Acción 2: <strong>Obtener contenido de URL</strong> con la URL de ingreso</div>
+                            <div>• Acción 3: <strong>Mostrar notificación</strong> con la respuesta</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="url-ia-ingreso-endpoint" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-emerald-300 font-mono select-all">
+                            <button onclick="copiarUrlIAIngreso()" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-black text-[10px] shrink-0 active:scale-95 transition">
+                                Copiar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Guía 3: Apple Pay Automático -->
                     <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
                         <div class="flex items-center gap-2 text-blue-400 font-black text-xs mb-1">
                             <i class="fa-brands fa-apple"></i>
-                            <span>2. Apple Pay Automático</span>
+                            <span>3. Apple Pay Automático</span>
                         </div>
                         <p class="text-slate-300 leading-relaxed text-[11px] mb-2">
                             En la app <strong>Atajos</strong> -> <strong>Automatización</strong> -> <strong>"Transacción de Wallet"</strong>. Envía el webhook al pagar.
@@ -873,6 +894,7 @@ def mobile_dashboard_preview():
             function abrirModalAtajos() {
                 const origin = window.location.origin;
                 document.getElementById('url-ia-endpoint').value = origin + '/api/v1/transacciones/ia-rapida';
+                document.getElementById('url-ia-ingreso-endpoint').value = origin + '/api/v1/transacciones/ia-rapida?tipo=INGRESO';
                 document.getElementById('url-webhook-endpoint').value = origin + '/api/v1/webhooks/ios-shortcut';
                 document.getElementById('modal-atajos').classList.remove('hidden');
             }
@@ -883,11 +905,22 @@ def mobile_dashboard_preview():
             function copiarUrlIA() {
                 const input = document.getElementById('url-ia-endpoint');
                 navigator.clipboard.writeText(input.value).then(() => {
-                    alert('¡URL del Webhook de Siri copiada al portapapeles!');
+                    alert('¡URL del Atajo de Gasto copiada al portapapeles!');
                 }).catch(() => {
                     input.select();
                     document.execCommand('copy');
-                    alert('¡URL copiada!');
+                    alert('¡URL de Gasto copiada!');
+                });
+            }
+
+            function copiarUrlIAIngreso() {
+                const input = document.getElementById('url-ia-ingreso-endpoint');
+                navigator.clipboard.writeText(input.value).then(() => {
+                    alert('¡URL del Atajo de Ingreso copiada al portapapeles!');
+                }).catch(() => {
+                    input.select();
+                    document.execCommand('copy');
+                    alert('¡URL de Ingreso copiada!');
                 });
             }
 

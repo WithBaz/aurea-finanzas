@@ -14,6 +14,12 @@ def test_extraer_montos_nlp():
     assert NLPSmartExpenseParser._extraer_monto("Taxi 10 000") == 10000.0
     assert NLPSmartExpenseParser._extraer_monto("Comida 10 lucas") == 10000.0
     assert NLPSmartExpenseParser._extraer_monto("Almuerzo 10") == 10000.0
+    assert NLPSmartExpenseParser._extraer_monto("500") == 500000.0
+    assert NLPSmartExpenseParser._extraer_monto("500 mil") == 500000.0
+    assert NLPSmartExpenseParser._extraer_monto("500. mil") == 500000.0
+    assert NLPSmartExpenseParser._extraer_monto("500, mil") == 500000.0
+    assert NLPSmartExpenseParser._extraer_monto("quinientos mil") == 500000.0
+    assert NLPSmartExpenseParser._extraer_monto("fotocopia 500 pesos") == 500.0
 
 
 def test_interpretar_gasto_con_cuenta_efectivo():
@@ -74,6 +80,16 @@ def test_api_ia_rapida_ingreso(client):
     assert data["monto"] == 100000.0
     assert data["cuenta"] == "Bancolombia Principal"
     assert data["saldo_cuenta_actual"] == 1100000.0  # 1.000.000 + 100.000
+
+
+def test_api_ia_rapida_ingreso_override_500(client):
+    # Simula el atajo de iOS Registrar Ingreso llamando ?tipo=INGRESO y texto "500 con Bancolombia"
+    res = client.post("/api/v1/transacciones/ia-rapida?tipo=INGRESO", json={"texto": "500 con Bancolombia"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "registrado"
+    assert data["monto"] == 500000.0
+    assert data["cuenta"] == "Bancolombia Principal"
 
 
 def test_api_ia_rapida_sin_cuenta_solicita_seleccion(client):
