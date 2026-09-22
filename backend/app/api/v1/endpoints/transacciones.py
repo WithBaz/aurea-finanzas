@@ -99,6 +99,7 @@ async def registrar_gasto_ia_rapida(
     request: Request,
     texto: Optional[str] = Query(None),
     cuenta_id: Optional[int] = Query(None),
+    tipo: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -106,9 +107,11 @@ async def registrar_gasto_ia_rapida(
     (ej: 'Pagué 15 mil de taxi en efectivo', 'Almuerzo 22000 con Bancolombia')
     y registra el movimiento o solicita confirmar cuenta si es ambiguo.
     Soporta POST JSON y GET con query parameter en la URL (?texto=...).
+    Permite forzar tipo='INGRESO' o 'EGRESO' desde atajos dedicados.
     """
     texto_final = texto
     cuenta_id_final = cuenta_id
+    tipo_final = tipo
 
     if request.method == "POST":
         # 1. Intentar JSON
@@ -119,6 +122,8 @@ async def registrar_gasto_ia_rapida(
                     texto_final = body.get("texto")
                 if not cuenta_id_final and body.get("cuenta_id"):
                     cuenta_id_final = int(body.get("cuenta_id"))
+                if not tipo_final and body.get("tipo"):
+                    tipo_final = str(body.get("tipo"))
         except Exception:
             pass
 
@@ -130,6 +135,8 @@ async def registrar_gasto_ia_rapida(
                     texto_final = str(form.get("texto"))
                 if not cuenta_id_final and form.get("cuenta_id"):
                     cuenta_id_final = int(form.get("cuenta_id"))
+                if not tipo_final and form.get("tipo"):
+                    tipo_final = str(form.get("tipo"))
             except Exception:
                 pass
 
@@ -150,7 +157,15 @@ async def registrar_gasto_ia_rapida(
     interpretacion = NLPSmartExpenseParser.interpretar_texto_gasto(texto_final, db)
     monto = interpretacion["monto"]
     comercio = interpretacion["comercio"]
-    tipo = interpretacion["tipo"]
+    
+    # Si el atajo forzó tipo explícito (ej. atajo de Registrar Ingreso)
+    if tipo_final and tipo_final.upper() in ["INGRESO", "EGRESO"]:
+        tipo = tipo_final.upper()
+        if tipo == "INGRESO" and comercio == "Gasto General":
+            comercio = "Ingreso General"
+    else:
+        tipo = interpretacion["tipo"]
+
     cuenta_detectada_id = cuenta_id_final or interpretacion["cuenta_id"]
 
     if monto <= 0:
