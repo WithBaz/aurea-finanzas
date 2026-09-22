@@ -94,12 +94,6 @@ def mobile_dashboard_preview():
                     </div>
                     <h1 class="text-2xl font-black text-white tracking-tight">Mi Billetera</h1>
                 </div>
-                <div class="flex items-center gap-2">
-                    <!-- Ajustes de Nómina Real ⚙️ -->
-                    <button onclick="abrirModalPerfil()" class="w-10 h-10 rounded-2xl ios-card flex items-center justify-center text-slate-300 hover:text-white active:scale-95 transition" title="Configurar nómina real">
-                        <i class="fa-solid fa-gear text-sm"></i>
-                    </button>
-                </div>
             </div>
 
             <!-- Apple Intelligence: Entrada Inteligente por Voz o Texto Rápido -->

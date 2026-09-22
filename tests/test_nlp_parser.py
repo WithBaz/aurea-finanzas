@@ -37,6 +37,18 @@ def test_extraer_montos_nlp():
     assert NLPSmartExpenseParser._extraer_monto("2 palos") == 2000000.0
     assert NLPSmartExpenseParser._extraer_monto("un palo y medio") == 1500000.0
     assert NLPSmartExpenseParser._extraer_monto("1 palo 200") == 1200000.0
+    assert NLPSmartExpenseParser._extraer_monto("mil") == 1000.0
+    assert NLPSmartExpenseParser._extraer_monto("mil pesos") == 1000.0
+    assert NLPSmartExpenseParser._extraer_monto("mil pesos en efectivo") == 1000.0
+    assert NLPSmartExpenseParser._extraer_monto("dos mil pesos") == 2000.0
+    assert NLPSmartExpenseParser._extraer_monto("10,000 pesos en efectivo") == 10000.0
+    assert NLPSmartExpenseParser._extraer_monto("10.000 pesos en efectivo") == 10000.0
+    assert NLPSmartExpenseParser._extraer_monto("20,000 pesos en efectivo") == 20000.0
+    assert NLPSmartExpenseParser._extraer_monto("100,000 pesos en efectivo") == 100000.0
+    assert NLPSmartExpenseParser._extraer_monto("100.000 pesos en efectivo") == 100000.0
+    assert NLPSmartExpenseParser._extraer_monto("100 mil") == 100000.0
+    assert NLPSmartExpenseParser._extraer_monto("100 mil pesos") == 100000.0
+    assert NLPSmartExpenseParser._extraer_monto("1,000,000 pesos en efectivo") == 1000000.0
 
 
 def test_interpretar_gasto_con_cuenta_efectivo():

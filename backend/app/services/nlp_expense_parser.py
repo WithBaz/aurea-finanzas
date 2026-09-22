@@ -72,7 +72,13 @@ class NLPSmartExpenseParser:
     def _extraer_monto(cls, texto: str) -> float:
         t = texto.lower().replace("\xa0", " ").replace("\u202f", " ")
 
-        # 1. Palabras de números en español (ej. "diez mil", "quince mil")
+        # 1. Limpieza inicial de puntuaciones intermedias de dictado Siri (ej. "500. mil", "1. millón", "2, millones" -> "500 mil", "1 millón")
+        t = re.sub(r"(\d+)\s*[.,\-/]\s*(mil|k|lucas|barras|palos?|mill[oó]n(?:es)?)\b", r"\1 \2", t)
+
+        # 2. Unir espacios de miles comunes en iOS (ej. "10 000" -> "10000", "500 000" -> "500000")
+        t = re.sub(r"(\d+)\s+(\d{3})\b", r"\1\2", t)
+
+        # 3. Palabras de números en español (ej. "diez mil", "quince mil")
         palabras_numeros = {
             "un": 1, "uno": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5,
             "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10, "once": 11,
@@ -115,11 +121,15 @@ class NLPSmartExpenseParser:
             palabra = match_palabra_mil.group(1)
             return float(palabras_numeros[palabra] * 1000)
 
-        # 2. Limpieza de puntuaciones intermedias de dictado Siri (ej. "500. mil", "1. millón", "2, millones" -> "500 mil", "1 millón")
-        t_unido = re.sub(r"(\d+)\s*[.,\-/]\s*(mil|k|lucas|barras|palos?|mill[oó]n(?:es)?)\b", r"\1 \2", t)
+        # 'mil' o 'mil pesos' solo (ej. 'mil pesos', 'mil de pan', 'un mil')
+        match_mil_solo = re.search(r"\b(?:un\s+)?mil(?:\s+pesos|\s+cop)?\b", t)
+        if match_mil_solo:
+            idx = match_mil_solo.start()
+            prev = t[:idx].rstrip(" .,-/:")
+            if not re.search(r"(\d+|" + patron_palabras + r")$", prev):
+                return 1000.0
 
-        # 3. Unir espacios de miles comunes en iOS (ej. "10 000" -> "10000", "500 000" -> "500000")
-        t_unido = re.sub(r"(\d+)\s+(\d{3})\b", r"\1\2", t_unido)
+        t_unido = t
 
         # 4. Millones con dígitos (ej. "1.5 millones", "2 millones", "1 millón", "1 millon", "2 palos")
         match_millon = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:mill[oó]n(?:es)?|palos?)\b", t_unido)
@@ -133,11 +143,15 @@ class NLPSmartExpenseParser:
             num = float(match_mil.group(1).replace(",", "."))
             return num * 1000.0
 
-        # 6. Formatos numéricos con puntos o directos de 4 a 9 dígitos (ej. '$45.000', '45.000', '10000', '500000')
-        match_num = re.search(r"(?:\$|\b)\s*(\d{1,3}(?:\.\d{3})+|\d{4,9})\b", t_unido)
+        # 6. Formatos numéricos con puntos o comas como separador de miles, o directos de 4 a 9 dígitos
+        # Soporta: '10,000', '10.000', '20,000', '100,000', '100.000', '$45.000', '10000', '500000', '1,000,000'
+        match_num = re.search(r"(?:\$|\b)\s*(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d{4,9}(?:[.,]\d{2})?)\b", t_unido)
         if match_num:
-            raw = match_num.group(1).replace(".", "").replace(",", "")
-            return float(raw)
+            raw = match_num.group(1)
+            if re.search(r"[.,]\d{2}$", raw):
+                raw = re.sub(r"[.,]\d{2}$", "", raw)
+            clean = raw.replace(".", "").replace(",", "")
+            return float(clean)
 
         # 7. Números de 1 a 3 dígitos en contexto colombiano (ej. "almuerzo 10" -> 10.000, "500" -> 500.000, "mercado 250" -> 250.000)
         # En la cotidianidad colombiana, montos de 1 a 999 sin la palabra explícita 'pesos'/'cop' corresponden a miles (k).
@@ -179,6 +193,9 @@ class NLPSmartExpenseParser:
             for c in cuentas:
                 if c.nombre.lower() in texto:
                     return c.id, c.nombre
+            # Si solo existe una cuenta activa configurada, asumirla por defecto
+            if len(cuentas) == 1:
+                return cuentas[0].id, cuentas[0].nombre
 
         return None, None
 
