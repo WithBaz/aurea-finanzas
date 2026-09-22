@@ -2,7 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
-from backend.app.models import Cuenta
+from backend.app.models import Cuenta, Transaccion
 from backend.app.schemas import CuentaCreate, CuentaUpdate, CuentaResponse
 
 router = APIRouter()
@@ -64,11 +64,17 @@ def actualizar_cuenta(
 @router.delete("/{cuenta_id}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_cuenta(cuenta_id: int, db: Session = Depends(get_db)):
     """
-    Elimina o desactiva una cuenta.
+    Elimina una cuenta y sus transacciones asociadas.
     """
     cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
     if not cuenta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
+    
+    # Eliminar en cascada las transacciones asociadas a la cuenta
+    db.query(Transaccion).filter(
+        (Transaccion.cuenta_origen_id == cuenta_id) | (Transaccion.cuenta_destino_id == cuenta_id)
+    ).delete(synchronize_session=False)
+
     db.delete(cuenta)
     db.commit()
     return None

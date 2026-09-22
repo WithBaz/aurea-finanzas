@@ -85,8 +85,25 @@ class NLPSmartExpenseParser:
             "trescientos": 300, "cuatrocientos": 400, "quinientos": 500
         }
 
-        # Millones en palabras (ej. "un millón", "dos millones")
-        match_millon_palabra = re.search(r"\b(un|uno|dos|tres|cuatro|cinco)\s+millones?\b", t)
+        # Millones + y medio (ej. "un millón y medio", "1 millon y medio", "dos millones y medio", "un palo y medio", "2 palos y medio")
+        match_medio = re.search(r"\b(?:(un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+))\s+(?:mill[oó]n(?:es)?|palos?)\s+y\s+medio\b", t)
+        if match_medio:
+            cant_str = match_medio.group(1)
+            val = float(palabras_numeros.get(cant_str, cant_str))
+            return val * 1_000_000.0 + 500_000.0
+
+        # Millones compuestos (ej. "1 millón 200", "1 millón 200 mil", "un millón 500 mil", "2 millones trescientos")
+        match_compuesto = re.search(r"\b(?:(un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+))\s+(?:mill[oó]n(?:es)?|palos?)\s*(?:con\s+)?(?:(\d{1,3})|(" + "|".join(palabras_numeros.keys()) + r"))(?:\s*mil)?\b", t)
+        if match_compuesto:
+            cant_m = match_compuesto.group(1)
+            val_m = float(palabras_numeros.get(cant_m, cant_m))
+            cant_k_str = match_compuesto.group(2) or match_compuesto.group(3)
+            val_k = float(palabras_numeros.get(cant_k_str, cant_k_str))
+            return val_m * 1_000_000.0 + val_k * 1000.0
+
+        # Millones en palabras (ej. "un millón", "un millon", "dos millones", "tres millones", "un palo", "dos palos")
+        patron_palabras_millon = "un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez"
+        match_millon_palabra = re.search(rf"\b({patron_palabras_millon})\s+(?:mill[oó]n(?:es)?|palos?)\b", t)
         if match_millon_palabra:
             val = palabras_numeros.get(match_millon_palabra.group(1), 1)
             return float(val * 1_000_000)
@@ -98,20 +115,20 @@ class NLPSmartExpenseParser:
             palabra = match_palabra_mil.group(1)
             return float(palabras_numeros[palabra] * 1000)
 
-        # 2. Limpieza de puntuaciones intermedias de dictado Siri (ej. "500. mil", "500, mil", "500 - mil" -> "500 mil")
-        t_unido = re.sub(r"(\d+)\s*[.,\-/]\s*(mil|k|lucas|barras|palos|millones?)\b", r"\1 \2", t)
+        # 2. Limpieza de puntuaciones intermedias de dictado Siri (ej. "500. mil", "1. millón", "2, millones" -> "500 mil", "1 millón")
+        t_unido = re.sub(r"(\d+)\s*[.,\-/]\s*(mil|k|lucas|barras|palos?|mill[oó]n(?:es)?)\b", r"\1 \2", t)
 
         # 3. Unir espacios de miles comunes en iOS (ej. "10 000" -> "10000", "500 000" -> "500000")
         t_unido = re.sub(r"(\d+)\s+(\d{3})\b", r"\1\2", t_unido)
 
-        # 4. Millones con dígitos (ej. "1.5 millones", "2 millones")
-        match_millon = re.search(r"(\d+(?:[.,]\d+)?)\s*millones?\b", t_unido)
+        # 4. Millones con dígitos (ej. "1.5 millones", "2 millones", "1 millón", "1 millon", "2 palos")
+        match_millon = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:mill[oó]n(?:es)?|palos?)\b", t_unido)
         if match_millon:
             num = float(match_millon.group(1).replace(",", "."))
             return num * 1_000_000.0
 
         # 5. Miles con dígitos y sufijo (ej. '15 mil', '15mil', '25 k', '25k', '10 lucas', '10 barras', '500 mil')
-        match_mil = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:mil|k|lucas|barras|palos)\b", t_unido)
+        match_mil = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:mil|k|lucas|barras)\b", t_unido)
         if match_mil:
             num = float(match_mil.group(1).replace(",", "."))
             return num * 1000.0

@@ -95,14 +95,6 @@ def mobile_dashboard_preview():
                     <h1 class="text-2xl font-black text-white tracking-tight">Mi Billetera</h1>
                 </div>
                 <div class="flex items-center gap-2">
-                    <!-- Atajos de iOS & Siri ⚡ -->
-                    <button onclick="abrirModalAtajos()" class="w-10 h-10 rounded-2xl ios-card flex items-center justify-center text-slate-300 hover:text-white active:scale-95 transition" title="Atajos de iOS y Siri">
-                        <i class="fa-solid fa-bolt text-amber-400 text-sm"></i>
-                    </button>
-                    <!-- Modo Privacidad 👁️ -->
-                    <button onclick="toggleModoPrivacidad()" id="btn-privacidad" class="w-10 h-10 rounded-2xl ios-card flex items-center justify-center text-slate-300 hover:text-white active:scale-95 transition" title="Ocultar saldos">
-                        <i class="fa-solid fa-eye text-sm" id="icono-ojo"></i>
-                    </button>
                     <!-- Ajustes de Nómina Real ⚙️ -->
                     <button onclick="abrirModalPerfil()" class="w-10 h-10 rounded-2xl ios-card flex items-center justify-center text-slate-300 hover:text-white active:scale-95 transition" title="Configurar nómina real">
                         <i class="fa-solid fa-gear text-sm"></i>
@@ -127,7 +119,13 @@ def mobile_dashboard_preview():
                 <div class="flex justify-between items-start">
                     <div>
                         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Patrimonio Líquido Real</span>
-                        <div class="text-3xl font-black text-white mt-1 tracking-tight" id="balance-neto-total">$ 0 COP</div>
+                        <div class="flex items-center gap-2.5 mt-1">
+                            <div class="text-3xl font-black text-white tracking-tight" id="balance-neto-total">$ 0 COP</div>
+                            <!-- Modo Privacidad 👁️ al lado del saldo -->
+                            <button onclick="toggleModoPrivacidad()" id="btn-privacidad" class="w-7 h-7 rounded-lg bg-slate-800/80 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white active:scale-90 transition border border-slate-700/50" title="Ocultar o ver saldo">
+                                <i class="fa-solid fa-eye text-xs" id="icono-ojo"></i>
+                            </button>
+                        </div>
                     </div>
                     <span class="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
                         Nómina Mensual
@@ -227,9 +225,9 @@ def mobile_dashboard_preview():
                 <i class="fa-solid fa-plus"></i>
             </button>
 
-            <button onclick="abrirModalAtajos()" class="flex flex-col items-center text-slate-400 hover:text-white">
-                <i class="fa-solid fa-bolt text-lg"></i>
-                <span class="text-[10px] font-bold mt-1">Siri / Atajos</span>
+            <button onclick="abrirModalPerfil()" class="flex flex-col items-center text-slate-400 hover:text-white">
+                <i class="fa-solid fa-gear text-lg"></i>
+                <span class="text-[10px] font-bold mt-1">Ajustes</span>
             </button>
         </div>
 
@@ -860,17 +858,25 @@ def mobile_dashboard_preview():
             async function eliminarCuentaActual() {
                 const id = document.getElementById('edit-cuenta-id').value;
                 if(!confirm('¿Seguro que deseas eliminar esta cuenta?')) return;
-                cuentasData = cuentasData.filter(x => x.id != id);
-                const cacheRaw = localStorage.getItem('aurea_dashboard_cache');
-                if(cacheRaw) {
-                    let cache = JSON.parse(cacheRaw);
-                    cache.cuentas = cuentasData;
-                    localStorage.setItem('aurea_dashboard_cache', JSON.stringify(cache));
+                try {
+                    const res = await fetch('/api/v1/cuentas/' + id, { method: 'DELETE' });
+                    if(!res.ok) {
+                        alert('No se pudo eliminar la cuenta en el servidor.');
+                        return;
+                    }
+                    cuentasData = cuentasData.filter(x => x.id != id);
+                    const cacheRaw = localStorage.getItem('aurea_dashboard_cache');
+                    if(cacheRaw) {
+                        let cache = JSON.parse(cacheRaw);
+                        cache.cuentas = cuentasData;
+                        localStorage.setItem('aurea_dashboard_cache', JSON.stringify(cache));
+                    }
+                    cerrarModalEditarCuenta();
+                    await fetchDashboard(false);
+                } catch(e) {
+                    console.error('Error al eliminar cuenta:', e);
+                    alert('Error de conexión al eliminar la cuenta');
                 }
-                aplicarDatosDashboard({ cuentas: cuentasData });
-                await fetch('/api/v1/cuentas/' + id, { method: 'DELETE' });
-                cerrarModalEditarCuenta();
-                fetchDashboard();
             }
 
             // Crear Nueva Cuenta

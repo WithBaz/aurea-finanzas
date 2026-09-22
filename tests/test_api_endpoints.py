@@ -105,3 +105,32 @@ def test_sincronizar_cuentas(client):
     nombres = [c["nombre"] for c in data]
     assert "Nequi Ahorro" in nombres
     assert "Efectivo Bolsillo" in nombres
+
+
+def test_eliminar_cuenta_con_transacciones(client):
+    # 1. Crear cuenta
+    res_crear = client.post("/api/v1/cuentas", json={
+        "nombre": "Cuenta Temporal Para Borrar",
+        "tipo": "DEBITO",
+        "saldo_actual": 50000.0
+    })
+    assert res_crear.status_code == 201
+    cuenta_id = res_crear.json()["id"]
+
+    # 2. Registrar transacción sobre esta cuenta
+    res_tx = client.post("/api/v1/transacciones", json={
+        "monto": 10000.0,
+        "tipo": "EGRESO",
+        "comercio": "Tienda Test",
+        "cuenta_origen_id": cuenta_id
+    })
+    assert res_tx.status_code == 201
+
+    # 3. Eliminar la cuenta (debe eliminar la cuenta y cascada de transacciones sin error 500)
+    res_del = client.delete(f"/api/v1/cuentas/{cuenta_id}")
+    assert res_del.status_code == 204
+
+    # 4. Verificar que la cuenta ya no existe
+    res_get = client.get(f"/api/v1/cuentas/{cuenta_id}")
+    assert res_get.status_code == 404
+

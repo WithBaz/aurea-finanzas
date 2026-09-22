@@ -20,6 +20,23 @@ def test_extraer_montos_nlp():
     assert NLPSmartExpenseParser._extraer_monto("500, mil") == 500000.0
     assert NLPSmartExpenseParser._extraer_monto("quinientos mil") == 500000.0
     assert NLPSmartExpenseParser._extraer_monto("fotocopia 500 pesos") == 500.0
+    assert NLPSmartExpenseParser._extraer_monto("un millón") == 1000000.0
+    assert NLPSmartExpenseParser._extraer_monto("un millon") == 1000000.0
+    assert NLPSmartExpenseParser._extraer_monto("1 millón") == 1000000.0
+    assert NLPSmartExpenseParser._extraer_monto("1 millon") == 1000000.0
+    assert NLPSmartExpenseParser._extraer_monto("2 millones") == 2000000.0
+    assert NLPSmartExpenseParser._extraer_monto("dos millones") == 2000000.0
+    assert NLPSmartExpenseParser._extraer_monto("1.5 millones") == 1500000.0
+    assert NLPSmartExpenseParser._extraer_monto("1,5 millones") == 1500000.0
+    assert NLPSmartExpenseParser._extraer_monto("un millón y medio") == 1500000.0
+    assert NLPSmartExpenseParser._extraer_monto("1 millon y medio") == 1500000.0
+    assert NLPSmartExpenseParser._extraer_monto("1 millón 200") == 1200000.0
+    assert NLPSmartExpenseParser._extraer_monto("1 millón 200 mil") == 1200000.0
+    assert NLPSmartExpenseParser._extraer_monto("un millón 500") == 1500000.0
+    assert NLPSmartExpenseParser._extraer_monto("un palo") == 1000000.0
+    assert NLPSmartExpenseParser._extraer_monto("2 palos") == 2000000.0
+    assert NLPSmartExpenseParser._extraer_monto("un palo y medio") == 1500000.0
+    assert NLPSmartExpenseParser._extraer_monto("1 palo 200") == 1200000.0
 
 
 def test_interpretar_gasto_con_cuenta_efectivo():
