@@ -90,6 +90,7 @@ def mobile_dashboard_preview():
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-amber-400"></span>
                         <span class="text-[11px] font-bold tracking-widest text-amber-400 uppercase">AUREA • COP</span>
+                        <span id="badge-db" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">...</span>
                     </div>
                     <h1 class="text-2xl font-black text-white tracking-tight">Mi Billetera</h1>
                 </div>
@@ -493,6 +494,20 @@ def mobile_dashboard_preview():
             // Renderizado unificado y ultra-rápido del Dashboard
             function aplicarDatosDashboard(data) {
                 if(!data) return;
+
+                // Estado de la Base de Datos
+                const badgeDb = document.getElementById('badge-db');
+                if(badgeDb) {
+                    if(data.es_postgresql) {
+                        badgeDb.className = 'text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+                        badgeDb.innerText = '☁️ NUBE';
+                        badgeDb.title = 'Conectado a PostgreSQL en la nube (persistente)';
+                    } else {
+                        badgeDb.className = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30';
+                        badgeDb.innerText = '📱 LOCAL';
+                        badgeDb.title = 'Guardado local en tu iPhone con auto-rehidratación';
+                    }
+                }
 
                 // 1. Semáforo
                 if(data.semaforo) {

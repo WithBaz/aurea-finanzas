@@ -104,6 +104,8 @@ def obtener_resumen_dashboard(db: Session = Depends(get_db)):
     total_saldo = sum(c.saldo_actual for c in cuentas if c.tipo != TipoCuenta.CREDITO)
 
     return {
+        "db_motor": db.bind.dialect.name,
+        "es_postgresql": db.bind.dialect.name == "postgresql",
         "semaforo": semaforo,
         "rendimientos": rendimientos,
         "cuentas": [
@@ -134,5 +136,35 @@ def obtener_resumen_dashboard(db: Session = Depends(get_db)):
             }
             for t in transacciones
         ]
+    }
+
+
+@router.get("/estado-db")
+def obtener_estado_db(db: Session = Depends(get_db)):
+    """
+    Verifica si la base de datos está conectada a PostgreSQL en la nube o a SQLite local.
+    """
+    import os
+    dialect = db.bind.dialect.name
+    is_postgres = dialect == "postgresql"
+    db_url = (
+        os.getenv("DATABASE_URL")
+        or os.getenv("POSTGRES_URL")
+        or os.getenv("POSTGRES_PRISMA_URL")
+        or ""
+    )
+    host = ""
+    if "@" in db_url:
+        host = db_url.split("@")[1].split("/")[0].split("?")[0]
+    return {
+        "conectado": True,
+        "motor": dialect,
+        "es_postgresql": is_postgres,
+        "host": host if host else ("local" if "sqlite" in dialect else "desconocido"),
+        "mensaje": (
+            "Base de datos PostgreSQL en la nube conectada con éxito y persistente."
+            if is_postgres
+            else "Ejecutando en SQLite local/temporal."
+        )
     }
 
