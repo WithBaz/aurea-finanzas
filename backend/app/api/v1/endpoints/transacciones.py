@@ -165,9 +165,11 @@ async def registrar_gasto_ia_rapida(
 
     # Si no se detectó cuenta, preguntar al usuario
     if not cuenta_detectada_id:
+        pregunta = "¿A qué cuenta ingresó el dinero?" if tipo == "INGRESO" else "¿De qué cuenta lo pagaste?"
+        texto_tipo = "un ingreso" if tipo == "INGRESO" else "un gasto"
         return {
             "status": "requiere_cuenta",
-            "mensaje": f"Se detectó un gasto de ${monto:,.0f} COP en '{comercio}'. ¿De qué cuenta lo pagaste?",
+            "mensaje": f"Se detectó {texto_tipo} de ${monto:,.0f} COP en '{comercio}'. {pregunta}",
             "monto": monto,
             "comercio": comercio,
             "tipo": tipo,
