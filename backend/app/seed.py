@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from backend.app.database import engine, Base, SessionLocal
 from backend.app.models import (
     Cuenta,
@@ -13,111 +13,89 @@ from backend.app.models import (
 
 
 def seed_data():
+    """
+    Inicializa las categorías base del comercio colombiano y el perfil financiero inicial en limpio (0.0).
+    NO crea cuentas ficticias ni transacciones de prueba para permitir que el usuario empiece 100% desde cero.
+    """
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
     try:
-        # Verificar si ya existen datos
-        if db.query(Cuenta).count() > 0:
-            print("La base de datos ya contiene datos. Saltando seed.")
-            return
+        # 1. Perfil Financiero Inicial en Limpio
+        perfil = db.query(PerfilFinanciero).first()
+        if not perfil:
+            perfil = PerfilFinanciero(
+                dia_pago_mensual=30,
+                ingreso_mensual_estimado=0.0,
+                compromisos_fijos_mensual=0.0,
+                porcentaje_ahorro_meta=10.0,
+                umbral_gasto_hormiga=25000.0
+            )
+            db.add(perfil)
 
-        print("Poblando base de datos inicial con ecosistema colombiano en COP...")
+        # 2. Categorías del Ecosistema Colombiano (necesarias para el categorizador automático de compras)
+        if db.query(Categoria).count() == 0:
+            cat_alim = Categoria(
+                nombre="Alimentación y Supermercado",
+                icono="shopping-cart",
+                color_hex="#10B981",
+                palabras_clave="d1,tiendas d1,éxito,exito,carulla,jumbo,ara,tiendas ara,olimpica,crepes,panaderia,restaurante,rappi,comida,almuerzo,desayuno,cena,cafe,café,snack"
+            )
+            cat_trans = Categoria(
+                nombre="Transporte y Movilidad",
+                icono="navigation",
+                color_hex="#3B82F6",
+                palabras_clave="uber,didi,cabify,terpel,texaco,primax,gasolina,peaje,transmilenio,sitp,taxi"
+            )
+            cat_serv = Categoria(
+                nombre="Servicios y Hogar",
+                icono="home",
+                color_hex="#F59E0B",
+                palabras_clave="enel,codensa,epm,acueducto,vanti,claro,movistar,tigo,arriendo,administracion,servicios"
+            )
+            cat_ocio = Categoria(
+                nombre="Ocio y Suscripciones",
+                icono="film",
+                color_hex="#8B5CF6",
+                palabras_clave="netflix,spotify,apple.com/bill,prime,hbo,cine colombia,cine,gym,smart fit"
+            )
+            cat_salud = Categoria(
+                nombre="Salud y Farmacia",
+                icono="heart",
+                color_hex="#EF4444",
+                palabras_clave="farmatodo,cruz verde,drogueria,la rebaja,eps,sanitas,sura,drogas"
+            )
+            cat_nomina = Categoria(
+                nombre="Nómina y Salario",
+                icono="dollar-sign",
+                color_hex="#059669",
+                palabras_clave="nomina,salario,sueldo,honorarios,ingreso"
+            )
+            db.add_all([cat_alim, cat_trans, cat_serv, cat_ocio, cat_salud, cat_nomina])
 
-        # 1. Perfil Financiero
-        perfil = PerfilFinanciero(
-            dia_pago_mensual=30,
-            ingreso_mensual_estimado=4500000.0,
-            compromisos_fijos_mensual=1900000.0,
-            porcentaje_ahorro_meta=15.0,
-            umbral_gasto_hormiga=25000.0
-        )
-        db.add(perfil)
-
-        # 2. Cuentas e Instrumentos Financieros
-        c_debito = Cuenta(
-            nombre="Bancolombia Ahorros",
-            tipo=TipoCuenta.DEBITO,
-            saldo_actual=2450000.0
-        )
-        c_nu = Cuenta(
-            nombre="Nu Colombia (Cajita Remunerada)",
-            tipo=TipoCuenta.ALTO_RENDIMIENTO,
-            saldo_actual=5000000.0,
-            tasa_ea=12.5
-        )
-        c_credito = Cuenta(
-            nombre="Tarjeta Crédito Bancolombia Visa",
-            tipo=TipoCuenta.CREDITO,
-            saldo_actual=850000.0,  # Deuda acumulada
-            cupo_total=6000000.0,
-            dia_corte=15,
-            dia_limite_pago=5
-        )
-        c_efectivo = Cuenta(
-            nombre="Billetera Efectivo",
-            tipo=TipoCuenta.EFECTIVO,
-            saldo_actual=180000.0
-        )
-        db.add_all([c_debito, c_nu, c_credito, c_efectivo])
-        db.flush()
-
-        # 3. Categorías
-        cat_alim = Categoria(
-            nombre="Alimentación y Supermercado",
-            icono="shopping-cart",
-            color_hex="#10B981",
-            palabras_clave="d1,tiendas d1,éxito,exito,carulla,jumbo,ara,tiendas ara,olimpica,crepes,panaderia,restaurante,rappi"
-        )
-        cat_trans = Categoria(
-            nombre="Transporte y Movilidad",
-            icono="navigation",
-            color_hex="#3B82F6",
-            palabras_clave="uber,didi,cabify,terpel,texaco,primax,gasolina,peaje,transmilenio,sitp"
-        )
-        cat_serv = Categoria(
-            nombre="Servicios y Hogar",
-            icono="home",
-            color_hex="#F59E0B",
-            palabras_clave="enel,codensa,epm,acueducto,vanti,claro,movistar,tigo,arriendo,administracion"
-        )
-        cat_ocio = Categoria(
-            nombre="Ocio y Suscripciones",
-            icono="film",
-            color_hex="#8B5CF6",
-            palabras_clave="netflix,spotify,apple.com/bill,prime,hbo,cine colombia,cine,gym,smart fit"
-        )
-        cat_salud = Categoria(
-            nombre="Salud y Farmacia",
-            icono="heart",
-            color_hex="#EF4444",
-            palabras_clave="farmatodo,cruz verde,drogueria,la rebaja,eps,sanitas,sura"
-        )
-        cat_nomina = Categoria(
-            nombre="Nómina y Salario",
-            icono="dollar-sign",
-            color_hex="#059669",
-            palabras_clave="nomina,salario,sueldo,honorarios"
-        )
-        db.add_all([cat_alim, cat_trans, cat_serv, cat_ocio, cat_salud, cat_nomina])
-        db.flush()
-
-        # 4. Metas de Ahorro
-        meta_fondo = MetaAhorro(
-            nombre="Fondo de Emergencia (6 Meses)",
-            monto_objetivo=8000000.0,
-            monto_actual=3500000.0,
-            icono="shield"
-        )
-        meta_viaje = MetaAhorro(
-            nombre="Viaje Fin de Año",
-            monto_objetivo=3000000.0,
-            monto_actual=1200000.0,
-            icono="compass"
-        )
-        db.add_all([meta_fondo, meta_viaje])
         db.commit()
-        print("Seed completado exitosamente: cuentas base listas sin transacciones ficticias.")
+        print("Seed completado: Categorías base inicializadas. Base de datos lista para configuración desde cero.")
+    finally:
+        db.close()
+
+
+def reset_database_to_zero():
+    """
+    Función de utilidad para vaciar todas las cuentas, transacciones y metas,
+    permitiendo al usuario iniciar completamente desde cero.
+    """
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        db.query(Transaccion).delete()
+        db.query(MetaAhorro).delete()
+        db.query(Cuenta).delete()
+        perfil = db.query(PerfilFinanciero).first()
+        if perfil:
+            perfil.ingreso_mensual_estimado = 0.0
+            perfil.compromisos_fijos_mensual = 0.0
+        db.commit()
+        print("Base de datos reiniciada a cero con éxito.")
     finally:
         db.close()
 

@@ -94,6 +94,10 @@ def mobile_dashboard_preview():
                     <h1 class="text-2xl font-black text-white tracking-tight">Mi Billetera</h1>
                 </div>
                 <div class="flex items-center gap-2">
+                    <!-- Atajos de iOS & Siri ⚡ -->
+                    <button onclick="abrirModalAtajos()" class="w-10 h-10 rounded-2xl ios-card flex items-center justify-center text-slate-300 hover:text-white active:scale-95 transition" title="Atajos de iOS y Siri">
+                        <i class="fa-solid fa-bolt text-amber-400 text-sm"></i>
+                    </button>
                     <!-- Modo Privacidad 👁️ -->
                     <button onclick="toggleModoPrivacidad()" id="btn-privacidad" class="w-10 h-10 rounded-2xl ios-card flex items-center justify-center text-slate-300 hover:text-white active:scale-95 transition" title="Ocultar saldos">
                         <i class="fa-solid fa-eye text-sm" id="icono-ojo"></i>
@@ -371,6 +375,74 @@ def mobile_dashboard_preview():
                         <button onclick="cerrarModalPerfil()" class="w-1/2 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">Cancelar</button>
                         <button onclick="guardarPerfilReal()" class="w-1/2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black">Guardar Ajustes</button>
                     </div>
+
+                    <div class="pt-4 mt-2 border-t border-slate-800 text-center">
+                        <button onclick="reiniciarTodoDesdeCero()" class="w-full py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-trash-can"></i>
+                            <span>Borrar todo y empezar desde cero</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal 6: Guía y Configuración de Atajos de iOS (Siri & Apple Intelligence) ⚡ -->
+        <div id="modal-atajos" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-slate-900 border border-slate-700 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
+                            <i class="fa-solid fa-bolt"></i>
+                        </div>
+                        <h3 class="text-base font-extrabold text-white">Atajos de iOS & Siri</h3>
+                    </div>
+                    <button onclick="cerrarModalAtajos()" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="space-y-4 text-xs">
+                    <!-- Guía 1: Siri & Apple Intelligence (Sin abrir la app) -->
+                    <div class="p-3.5 rounded-2xl bg-slate-950 border border-amber-500/30">
+                        <div class="flex items-center gap-2 text-amber-400 font-black text-xs mb-1">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>1. Por Voz con Siri (Sin abrir la app)</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed text-[11px] mb-2">
+                            Di: <em>"Oye Siri, registrar gasto"</em> desde tus AirPods, CarPlay o con la pantalla bloqueada.
+                        </p>
+                        <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800 space-y-1 text-[11px] text-slate-300 mb-2">
+                            <div>• Crea un atajo en iOS llamado <strong>"Registrar Gasto"</strong></div>
+                            <div>• Acción 1: <strong>Solicitar entrada</strong> (Texto: <em>"¿Qué gastaste?"</em>)</div>
+                            <div>• Acción 2: <strong>Obtener contenido de URL</strong> (POST JSON con campo <code>texto</code>)</div>
+                            <div>• Acción 3: <strong>Mostrar notificación</strong> con la respuesta de Siri</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="url-ia-endpoint" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-amber-300 font-mono select-all">
+                            <button onclick="copiarUrlIA()" class="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-black text-[10px] shrink-0 active:scale-95 transition">
+                                Copiar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Guía 2: Apple Pay Automático -->
+                    <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
+                        <div class="flex items-center gap-2 text-blue-400 font-black text-xs mb-1">
+                            <i class="fa-brands fa-apple"></i>
+                            <span>2. Apple Pay Automático</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed text-[11px] mb-2">
+                            En la app <strong>Atajos</strong> -> <strong>Automatización</strong> -> <strong>"Transacción de Wallet"</strong>. Envía el webhook al pagar.
+                        </p>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="url-webhook-endpoint" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-blue-300 font-mono select-all">
+                            <button onclick="copiarUrlWebhook()" class="px-3 py-1.5 rounded-lg bg-blue-500 text-white font-bold text-[10px] shrink-0 active:scale-95 transition">
+                                Copiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-800 text-center">
+                    <button onclick="cerrarModalAtajos()" class="w-full py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold">Entendido</button>
                 </div>
             </div>
         </div>
@@ -452,50 +524,68 @@ def mobile_dashboard_preview():
                     const container = document.getElementById('cuentas-list');
                     const select = document.getElementById('select-cuenta');
                     container.innerHTML = '';
-                    select.innerHTML = '';
-
-                    cuentasData.forEach(c => {
-                        if(c.tipo === 'CREDITO') {
-                            totalDeuda += c.saldo_actual;
-                        } else {
-                            totalCuentas += c.saldo_actual;
-                        }
-
-                        let icon = 'fa-credit-card';
-                        let iconColor = 'text-blue-400';
-                        if(c.tipo === 'ALTO_RENDIMIENTO') { icon = 'fa-piggy-bank'; iconColor = 'text-purple-400'; }
-                        if(c.tipo === 'EFECTIVO') { icon = 'fa-money-bill-wave'; iconColor = 'text-emerald-400'; }
-                        if(c.tipo === 'CREDITO') { icon = 'fa-regular fa-credit-card'; iconColor = 'text-amber-400'; }
-
-                        const item = document.createElement('div');
-                        item.className = 'ios-card p-3.5 rounded-2xl flex items-center justify-between';
-                        item.innerHTML = `
-                            <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center ${iconColor} text-sm">
-                                    <i class="fa-solid ${icon}"></i>
+                    if(cuentasData.length === 0) {
+                        container.innerHTML = `
+                            <div class="ios-card p-6 rounded-3xl text-center border border-amber-500/20 bg-gradient-to-b from-slate-900 to-amber-950/10">
+                                <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-3 text-lg">
+                                    <i class="fa-solid fa-wallet"></i>
                                 </div>
-                                <div>
-                                    <span class="text-sm font-bold text-white block leading-tight">${c.nombre}</span>
-                                    <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">${c.tipo}</span>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2.5">
-                                <span class="text-sm font-black ${c.tipo === 'CREDITO' ? 'text-amber-400' : 'text-emerald-400'}">
-                                    ${formatearCOP(c.saldo_actual)}
-                                </span>
-                                <button onclick="abrirModalEditarCuenta(${c.id}, '${c.nombre}', '${c.tipo}', ${c.saldo_actual})" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-xs transition" title="Editar Saldo Real">
-                                    <i class="fa-solid fa-pen"></i>
+                                <h4 class="text-sm font-black text-white mb-1">¡Todo listo para empezar de cero!</h4>
+                                <p class="text-xs text-slate-400 mb-4 leading-relaxed">No tienes cuentas configuradas aún. Registra tu cuenta bancaria, billetera o efectivo con tu saldo real.</p>
+                                <button onclick="abrirModalNuevaCuenta()" class="w-full py-3 px-4 rounded-xl bg-amber-500 active:scale-95 text-slate-950 font-black text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-amber-500/20">
+                                    <i class="fa-solid fa-plus text-sm"></i>
+                                    <span>Agregar Mi Primera Cuenta</span>
                                 </button>
                             </div>
                         `;
-                        container.appendChild(item);
-
-                        // Llenar select modal
                         const opt = document.createElement('option');
-                        opt.value = c.id;
-                        opt.innerText = c.nombre;
+                        opt.value = "";
+                        opt.innerText = "Primero crea una cuenta";
                         select.appendChild(opt);
-                    });
+                    } else {
+                        cuentasData.forEach(c => {
+                            if(c.tipo === 'CREDITO') {
+                                totalDeuda += c.saldo_actual;
+                            } else {
+                                totalCuentas += c.saldo_actual;
+                            }
+
+                            let icon = 'fa-credit-card';
+                            let iconColor = 'text-blue-400';
+                            if(c.tipo === 'ALTO_RENDIMIENTO') { icon = 'fa-piggy-bank'; iconColor = 'text-purple-400'; }
+                            if(c.tipo === 'EFECTIVO') { icon = 'fa-money-bill-wave'; iconColor = 'text-emerald-400'; }
+                            if(c.tipo === 'CREDITO') { icon = 'fa-regular fa-credit-card'; iconColor = 'text-amber-400'; }
+
+                            const item = document.createElement('div');
+                            item.className = 'ios-card p-3.5 rounded-2xl flex items-center justify-between';
+                            item.innerHTML = `
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center ${iconColor} text-sm">
+                                        <i class="fa-solid ${icon}"></i>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm font-bold text-white block leading-tight">${c.nombre}</span>
+                                        <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">${c.tipo}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2.5">
+                                    <span class="text-sm font-black ${c.tipo === 'CREDITO' ? 'text-amber-400' : 'text-emerald-400'}">
+                                        ${formatearCOP(c.saldo_actual)}
+                                    </span>
+                                    <button onclick="abrirModalEditarCuenta(${c.id}, '${c.nombre}', '${c.tipo}', ${c.saldo_actual})" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-xs transition" title="Editar Saldo Real">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+                                </div>
+                            `;
+                            container.appendChild(item);
+
+                            // Llenar select modal
+                            const opt = document.createElement('option');
+                            opt.value = c.id;
+                            opt.innerText = c.nombre;
+                            select.appendChild(opt);
+                        });
+                    }
 
                     // Totales
                     document.getElementById('subtotal-cuentas').innerText = formatearCOP(totalCuentas);
@@ -764,6 +854,52 @@ def mobile_dashboard_preview():
                 });
                 cerrarModalPerfil();
                 recargarDatos();
+            }
+
+            async function reiniciarTodoDesdeCero() {
+                if(!confirm('¿Estás seguro de que deseas eliminar todas las cuentas, movimientos y empezar completamente desde cero? Esta acción no se puede deshacer.')) return;
+                try {
+                    const res = await fetch('/api/v1/metricas/reiniciar-todo', { method: 'POST' });
+                    const data = await res.json();
+                    alert(data.mensaje || 'Base de datos reiniciada a cero.');
+                    cerrarModalPerfil();
+                    recargarDatos();
+                } catch(e) {
+                    alert('Error al reiniciar datos');
+                }
+            }
+
+            // Modal Atajos de iOS
+            function abrirModalAtajos() {
+                const origin = window.location.origin;
+                document.getElementById('url-ia-endpoint').value = origin + '/api/v1/transacciones/ia-rapida';
+                document.getElementById('url-webhook-endpoint').value = origin + '/api/v1/webhooks/ios-shortcut';
+                document.getElementById('modal-atajos').classList.remove('hidden');
+            }
+            function cerrarModalAtajos() {
+                document.getElementById('modal-atajos').classList.add('hidden');
+            }
+
+            function copiarUrlIA() {
+                const input = document.getElementById('url-ia-endpoint');
+                navigator.clipboard.writeText(input.value).then(() => {
+                    alert('¡URL del Webhook de Siri copiada al portapapeles!');
+                }).catch(() => {
+                    input.select();
+                    document.execCommand('copy');
+                    alert('¡URL copiada!');
+                });
+            }
+
+            function copiarUrlWebhook() {
+                const input = document.getElementById('url-webhook-endpoint');
+                navigator.clipboard.writeText(input.value).then(() => {
+                    alert('¡URL de Apple Pay / SMS copiada al portapapeles!');
+                }).catch(() => {
+                    input.select();
+                    document.execCommand('copy');
+                    alert('¡URL copiada!');
+                });
             }
 
             function recargarDatos() {

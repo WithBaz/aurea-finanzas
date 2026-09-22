@@ -78,3 +78,9 @@ Registro cronológico y auditable de las interacciones, decisiones técnicas, pr
 * **Pruebas Automatizadas:**
   * Configuración centralizada `tests/conftest.py`.
   * Cobertura de 23 tests unitarios en `pytest` pasando al 100% en < 0.4s.
+* **Reinicio Absoluto a Cero y Atajos Manos Libres:**
+  * Vaciado completo de cuentas simuladas en `seed.py` y base de datos local para que el usuario inicie desde cero real.
+  * Nuevo endpoint `POST /api/v1/metricas/reiniciar-todo` y botón de reseteo en ajustes.
+  * Estado vacío amigable (*empty state*) en la lista de cuentas con botón directo de alta.
+  * Modal nativo en la app con copia de URLs para webhooks de Siri y Apple Pay.
+  * Documentación completa en `docs/shortcuts/atajo-apple-intelligence-voz.md` para invocar el registro por voz sin abrir la app (*"Oye Siri, registrar gasto"* o botón de acción).
