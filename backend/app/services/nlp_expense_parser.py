@@ -27,14 +27,29 @@ class NLPSmartExpenseParser:
         cuenta_id, cuenta_nombre = cls._detectar_cuenta(t, db)
 
         # 3. Detectar Tipo (Ingreso vs Egreso)
-        es_ingreso = any(palabra in t for palabra in ["ingreso", "me pagaron", "recibí", "consignaron", "sueldo", "abono"])
+        palabras_ingreso = [
+            "ingreso", "ingresos", "me pagaron", "pagaron", "recibí", "recibi",
+            "consignaron", "me consignaron", "consignación", "consignacion",
+            "transfirieron", "me transfirieron", "transferencia recibida",
+            "sueldo", "nómina", "nomina", "quincena", "abono", "honorarios",
+            "gané", "gane", "ganancia", "me entró", "me entro", "cobré", "cobre",
+            "depósito", "deposito", "depositaron", "me depositaron", "me giraron",
+            "giraron", "reembolso", "devolución", "devolucion", "freelance"
+        ]
+        es_ingreso = any(palabra in t for palabra in palabras_ingreso)
         tipo = "INGRESO" if es_ingreso else "EGRESO"
 
         # 4. Extraer Comercio / Concepto
-        comercio = cls._extraer_concepto(t)
+        comercio = cls._extraer_concepto(t, es_ingreso=es_ingreso)
 
         # 5. Categoría
         categoria_nombre, categoria_id = CategorizadorComercios.sugerir_categoria(comercio, db)
+        if es_ingreso and not categoria_id and db:
+            from backend.app.models import Categoria
+            cat_nom = db.query(Categoria).filter(Categoria.nombre.ilike("%nómina%")).first()
+            if cat_nom:
+                categoria_nombre = cat_nom.nombre
+                categoria_id = cat_nom.id
 
         return {
             "monto": monto,
@@ -146,10 +161,16 @@ class NLPSmartExpenseParser:
         return None, None
 
     @classmethod
-    def _extraer_concepto(cls, texto: str) -> str:
-        # Quitar palabras de enlace comunes para quedarnos con el comercio/concepto
-        limpio = re.sub(r"\b(pagué|pague|gasté|gaste|compré|compre|de|en|con|por|un|una|unos|unas|la|el|los|las|mil|k|pesos|cop|efectivo|tarjeta|crédito|debito|bancolombia|nu)\b", "", texto)
-        # Quitar dígitos
+    def _extraer_concepto(cls, texto: str, es_ingreso: bool = False) -> str:
+        stop_words = (
+            r"\b(pagué|pague|gasté|gaste|compré|compre|me|pagaron|recibí|recibi|consignaron|"
+            r"transfirieron|giraron|depositaron|entró|entro|cobré|cobre|de|en|con|por|un|una|"
+            r"unos|unas|la|el|los|las|mil|k|pesos|cop|efectivo|tarjeta|crédito|credito|debito|"
+            r"débito|bancolombia|nu|nequi|daviplata)\b"
+        )
+        limpio = re.sub(stop_words, "", texto)
         limpio = re.sub(r"\$?\s*\d+(?:[.,]\d+)?", "", limpio)
         limpio = " ".join(limpio.split()).capitalize()
-        return limpio if len(limpio) >= 2 else "Gasto General"
+        if len(limpio) >= 2:
+            return limpio
+        return "Ingreso General" if es_ingreso else "Gasto General"

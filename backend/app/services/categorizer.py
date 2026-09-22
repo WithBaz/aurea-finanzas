@@ -34,6 +34,10 @@ CATALOGO_COMERCIOS_COLOMBIA = {
         "platzi", "udemy", "coursera", "universidad", "colegio", "libreria",
         "panamericana", "kindle"
     ],
+    "Nómina y Salario": [
+        "nomina", "nómina", "sueldo", "honorarios", "salario", "ingreso", "quincena",
+        "pago", "abono", "reembolso", "freelance", "ganancia", "comision", "comisión"
+    ],
     "Transferencias y Retiros": [
         "retiro cajero", "cajero automatico", "atm", "servibanca", "redeban"
     ]

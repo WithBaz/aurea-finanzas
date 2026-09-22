@@ -27,6 +27,15 @@ def test_interpretar_gasto_con_cuenta_efectivo():
     assert resultado["requiere_confirmar_cuenta"] is False
 
 
+def test_interpretar_ingreso_nlp():
+    db = TestingSessionLocal()
+    resultado = NLPSmartExpenseParser.interpretar_texto_gasto("Me pagaron 500 mil de sueldo en efectivo", db)
+    db.close()
+    assert resultado["monto"] == 500000.0
+    assert resultado["tipo"] == "INGRESO"
+    assert resultado["cuenta_nombre"] == "Billetera Efectivo"
+
+
 def test_interpretar_gasto_sin_cuenta_requiere_confirmacion():
     db = TestingSessionLocal()
     resultado = NLPSmartExpenseParser.interpretar_texto_gasto("Café 8500", db)
@@ -55,6 +64,16 @@ def test_api_ia_rapida_get_query_param(client):
     assert data["monto"] == 25000.0
     assert data["cuenta"] == "Bancolombia Principal"
     assert data["saldo_cuenta_actual"] == 975000.0  # 1.000.000 - 25.000
+
+
+def test_api_ia_rapida_ingreso(client):
+    res = client.post("/api/v1/transacciones/ia-rapida", json={"texto": "Recibí 100 mil de nómina en Bancolombia"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "registrado"
+    assert data["monto"] == 100000.0
+    assert data["cuenta"] == "Bancolombia Principal"
+    assert data["saldo_cuenta_actual"] == 1100000.0  # 1.000.000 + 100.000
 
 
 def test_api_ia_rapida_sin_cuenta_solicita_seleccion(client):
