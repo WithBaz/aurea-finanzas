@@ -58,3 +58,38 @@ def test_descuento_automatico_gastos_fijos_en_dashboard(client):
 
     # Verificar que el semáforo y presupuesto disponible descuentan los 150.000 de gasto fijo
     assert data["semaforo"]["total_gastos_fijos"] == 150000.0
+
+
+def test_crear_gasto_fijo_ya_cubierto_no_pendiente(client):
+    # Crear un gasto fijo marcado expresamente como ya cubierto este mes
+    payload = {
+        "nombre": "Seguro de Salud",
+        "monto": 350000.0,
+        "dia_pago": 1,
+        "pagado_este_mes": True
+    }
+    res = client.post("/api/v1/gastos-fijos", json=payload)
+    assert res.status_code == 201
+    item = res.json()
+    assert item["pagado_este_mes"] is True
+    gasto_id = item["id"]
+
+    # Verificar que en el resumen aparezca en total_apartado_nomina y NO en total_pendiente
+    res_list = client.get("/api/v1/gastos-fijos")
+    assert res_list.status_code == 200
+    resumen = res_list.json()
+    assert resumen["total_apartado_nomina"] >= 350000.0
+    
+    # Limpiar
+    client.delete(f"/api/v1/gastos-fijos/{gasto_id}")
+
+
+def test_dashboard_transacciones_incluyen_tipo_cuenta_y_origen_id(client):
+    res = client.get("/api/v1/metricas/dashboard")
+    assert res.status_code == 200
+    data = res.json()
+    assert "transacciones" in data
+    for tx in data["transacciones"]:
+        assert "cuenta_origen_id" in tx
+        assert "cuenta_tipo" in tx
+

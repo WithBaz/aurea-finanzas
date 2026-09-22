@@ -189,6 +189,7 @@ class GastoFijoCreate(BaseModel):
     monto: float = Field(..., gt=0)
     dia_pago: Optional[int] = Field(5, ge=1, le=31)
     categoria: Optional[str] = "Hogar y Servicios"
+    pagado_este_mes: Optional[bool] = False
 
 
 class GastoFijoUpdate(BaseModel):

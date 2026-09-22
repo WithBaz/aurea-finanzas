@@ -175,6 +175,34 @@ def mobile_dashboard_preview():
                         <!-- Dinámico -->
                     </div>
                 </div>
+
+                <!-- Apartado 3: Movimientos Tarjeta de Crédito (Aislado de Saldo Disponible) -->
+                <div class="ios-card rounded-3xl p-5 mb-4 border border-rose-500/25 bg-gradient-to-b from-[#160E24] to-[#0E0A1A]">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Movimientos Tarjeta de Crédito</span>
+                            <div class="text-2xl font-black text-rose-400 mt-0.5" id="total-deuda-tc">$ 0</div>
+                        </div>
+                        <span id="badge-tc-estado" class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-950/80 text-rose-300 border border-rose-600/40">
+                            DEUDA ACUMULADA
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-purple-300/70 leading-relaxed mb-3">
+                        Compras a crédito fuera del saldo disponible. No se descuentan de tu dinero líquido diario.
+                    </p>
+
+                    <div class="flex justify-between items-center mb-2.5 pt-2 border-t border-purple-900/30">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Compras con Tarjeta</span>
+                        <button onclick="abrirModalGastoTC()" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[11px] font-bold border border-rose-500/35 flex items-center gap-1 active:scale-95 transition">
+                            <i class="fa-solid fa-plus text-[9px]"></i>
+                            <span>+ Gasto con TC</span>
+                        </button>
+                    </div>
+
+                    <div id="transacciones-tc-list" class="space-y-2">
+                        <!-- Dinámico -->
+                    </div>
+                </div>
             </div>
 
             <!-- VISTA 2: MOVIMIENTOS (Panel Independiente) -->
@@ -499,6 +527,20 @@ def mobile_dashboard_preview():
                         <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">Día Habitual de Pago (1 - 31)</label>
                         <input type="number" id="nuevo-fijo-dia" min="1" max="31" placeholder="Ej: 5" value="5" class="w-full bg-[#0B0816] border border-purple-900/40 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-400 outline-none">
                     </div>
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-purple-300 block mb-1">¿Ya cubriste este pago este mes?</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" id="btn-fijo-cubierto" onclick="setEstadoNuevoFijo(true)" class="py-2.5 px-2 rounded-xl text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 transition">
+                                ✓ Ya cubierto este mes
+                            </button>
+                            <button type="button" id="btn-fijo-pendiente" onclick="setEstadoNuevoFijo(false)" class="py-2.5 px-2 rounded-xl text-[11px] font-bold bg-[#0B0816] text-slate-400 border border-purple-900/40 transition">
+                                ⏳ Por pagar este mes
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-purple-300/70 mt-1" id="ayuda-estado-fijo">
+                            ✓ No se descontará de tu saldo disponible actual porque ya fue cubierto.
+                        </p>
+                    </div>
                     <div class="pt-2 flex gap-2">
                         <button onclick="cerrarModalNuevoGastoFijo()" class="w-1/2 py-2.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/50 text-purple-200 border border-purple-900/30 text-xs font-bold">Cancelar</button>
                         <button onclick="guardarNuevoGastoFijo()" class="w-1/2 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black shadow-md shadow-purple-900/30">Crear Gasto Fijo</button>
@@ -512,6 +554,40 @@ def mobile_dashboard_preview():
             let modoPrivacidad = false;
             let tipoMovimientoActual = 'EGRESO';
             let transaccionPendienteAsignar = null;
+            let nuevoFijoPagado = true;
+
+            function setEstadoNuevoFijo(cubierto) {
+                nuevoFijoPagado = cubierto;
+                const btnCubierto = document.getElementById('btn-fijo-cubierto');
+                const btnPendiente = document.getElementById('btn-fijo-pendiente');
+                const ayuda = document.getElementById('ayuda-estado-fijo');
+                if(!btnCubierto || !btnPendiente) return;
+                if(cubierto) {
+                    btnCubierto.className = 'py-2.5 px-2 rounded-xl text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 transition';
+                    btnPendiente.className = 'py-2.5 px-2 rounded-xl text-[11px] font-bold bg-[#0B0816] text-slate-400 border border-purple-900/40 transition';
+                    if(ayuda) ayuda.innerText = '✓ No se descontará de tu saldo disponible actual porque ya fue cubierto.';
+                } else {
+                    btnPendiente.className = 'py-2.5 px-2 rounded-xl text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 transition';
+                    btnCubierto.className = 'py-2.5 px-2 rounded-xl text-[11px] font-bold bg-[#0B0816] text-slate-400 border border-purple-900/40 transition';
+                    if(ayuda) ayuda.innerText = '⏳ Se apartará y descontará de tu saldo disponible para proteger este pago.';
+                }
+            }
+
+            function abrirModalGastoTC() {
+                const tc = cuentasData.find(c => c.tipo === 'CREDITO');
+                if(!tc) {
+                    if(confirm('No tienes registrada una Tarjeta de Crédito todavía. ¿Deseas agregar tu Tarjeta de Crédito ahora?')) {
+                        abrirModalNuevaCuenta();
+                        const selectTipo = document.getElementById('nueva-cuenta-tipo');
+                        if(selectTipo) selectTipo.value = 'CREDITO';
+                    }
+                    return;
+                }
+                abrirModalGasto();
+                const select = document.getElementById('select-cuenta');
+                if(select) select.value = tc.id;
+                setTipoMovimiento('EGRESO');
+            }
 
             function toggleModoPrivacidad() {
                 modoPrivacidad = !modoPrivacidad;
@@ -632,36 +708,43 @@ def mobile_dashboard_preview():
                 const elSubDeuda = document.getElementById('subtotal-deuda');
                 if(elSubDeuda) elSubDeuda.innerText = formatearCOP(totalDeuda);
 
-                const balanceNeto = totalCuentas - totalDeuda;
+                // Saldo Total de cuentas líquidas (débito, efectivo, alto rendimiento)
                 const elBalTotal = document.getElementById('balance-neto-total');
-                if(elBalTotal) elBalTotal.innerText = formatearCOP(balanceNeto);
+                if(elBalTotal) elBalTotal.innerText = formatearCOP(totalCuentas);
 
                 // 2. Gastos Fijos (Apartados de Nómina)
                 const gfData = data.gastos_fijos;
                 let totalFijos = 0;
-                let nominaRecibida = false;
+                let totalFijosPendientes = 0;
+                let totalFijosCubiertos = 0;
+                let itemsFijos = [];
                 if(gfData) {
+                    itemsFijos = gfData.items || [];
                     totalFijos = gfData.total_fijos || 0;
-                    nominaRecibida = !!gfData.nomina_recibida;
+                    totalFijosPendientes = itemsFijos.filter(i => !i.pagado_este_mes).reduce((sum, i) => sum + i.monto, 0);
+                    totalFijosCubiertos = itemsFijos.filter(i => i.pagado_este_mes).reduce((sum, i) => sum + i.monto, 0);
+
                     const totalGfEl = document.getElementById('total-gastos-fijos');
                     if(totalGfEl) totalGfEl.innerText = formatearCOP(totalFijos);
 
                     const badgeGf = document.getElementById('badge-estado-gastos-fijos');
                     if(badgeGf) {
-                        if(nominaRecibida) {
+                        if(totalFijos === 0) {
                             badgeGf.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-950/80 text-purple-300 border border-purple-600/40';
-                            badgeGf.innerText = '🔒 APARTADOS DE NÓMINA';
+                            badgeGf.innerText = 'SIN COMPROMISOS';
+                        } else if(totalFijosPendientes === 0) {
+                            badgeGf.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+                            badgeGf.innerText = '✓ TODOS CUBIERTOS';
                         } else {
                             badgeGf.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40';
-                            badgeGf.innerText = '⏳ PENDIENTE POR APARTAR';
+                            badgeGf.innerText = '⏳ ' + formatearCOP(totalFijosPendientes) + ' POR PAGAR';
                         }
                     }
 
                     const containerGf = document.getElementById('gastos-fijos-list');
                     if(containerGf) {
                         containerGf.innerHTML = '';
-                        const items = gfData.items || [];
-                        if(items.length === 0) {
+                        if(itemsFijos.length === 0) {
                             containerGf.innerHTML = `
                                 <div class="text-center py-4 px-3 rounded-2xl bg-purple-950/30 border border-purple-900/40">
                                     <p class="text-xs text-purple-300/80 font-bold mb-1">Sin compromisos fijos aún</p>
@@ -670,7 +753,7 @@ def mobile_dashboard_preview():
                                 </div>
                             `;
                         } else {
-                            items.forEach(item => {
+                            itemsFijos.forEach(item => {
                                 let icon = 'fa-house';
                                 const nom = (item.nombre || '').toLowerCase();
                                 if(nom.includes('servicio') || nom.includes('luz') || nom.includes('agua') || nom.includes('gas') || nom.includes('enel') || nom.includes('epm')) icon = 'fa-bolt';
@@ -692,8 +775,8 @@ def mobile_dashboard_preview():
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <span class="text-xs font-black text-purple-200">${formatearCOP(item.monto)}</span>
-                                        <button onclick="togglePagadoGastoFijo(${item.id})" class="px-2 py-1 rounded-lg text-[10px] font-bold transition ${item.pagado_este_mes ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-purple-900/40 text-purple-300 border border-purple-700/40'}" title="Marcar como pagado o pendiente">
-                                            ${item.pagado_este_mes ? '✓ Cubierto' : 'Apartado'}
+                                        <button onclick="togglePagadoGastoFijo(${item.id})" class="px-2 py-1 rounded-lg text-[10px] font-bold transition ${item.pagado_este_mes ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}" title="Toca para alternar entre cubierto y por pagar">
+                                            ${item.pagado_este_mes ? '✓ Cubierto' : '⏳ Por pagar'}
                                         </button>
                                         <button onclick="eliminarGastoFijo(${item.id})" class="w-6 h-6 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 flex items-center justify-center text-[10px] transition" title="Eliminar compromiso">
                                             <i class="fa-solid fa-trash"></i>
@@ -706,34 +789,109 @@ def mobile_dashboard_preview():
                     }
                 }
 
-                // Actualizar subtotal apartado de gastos fijos en la Card 1
+                // Actualizar subtotal apartado de gastos fijos en la Card 1 (solo los PENDIENTES)
                 const elSubApartadoFijos = document.getElementById('subtotal-apartado-fijos');
-                if(elSubApartadoFijos) elSubApartadoFijos.innerText = formatearCOP(totalFijos);
+                if(elSubApartadoFijos) elSubApartadoFijos.innerText = formatearCOP(totalFijosPendientes);
+
+                const elEstadoFijosApartados = document.getElementById('estado-fijos-apartados');
+                if(elEstadoFijosApartados) {
+                    if(totalFijosPendientes > 0) {
+                        elEstadoFijosApartados.innerText = '🔒 ' + formatearCOP(totalFijosPendientes) + ' por pagar';
+                    } else if(totalFijosCubiertos > 0) {
+                        elEstadoFijosApartados.innerText = '✓ Todos cubiertos este mes';
+                    } else {
+                        elEstadoFijosApartados.innerText = 'Sin compromisos fijos';
+                    }
+                }
 
                 // 3. Saldo Disponible para Gastar (Card 1 Principal)
-                // Se descuentan los gastos fijos del mes del saldo total disponible
-                const fijosADescontar = (nominaRecibida || totalFijos > 0) ? totalFijos : 0;
-                const saldoDisponibleReal = Math.max(0, balanceNeto - fijosADescontar);
+                // Se descuentan ÚNICAMENTE los gastos fijos PENDIENTES del saldo líquido (las TC no descuentan de este disponible)
+                const saldoDisponibleReal = Math.max(0, totalCuentas - totalFijosPendientes);
                 const elDispHoy = document.getElementById('disponible-hoy');
                 if(elDispHoy) {
-                    elDispHoy.innerText = formatearCOP(totalFijos > 0 ? saldoDisponibleReal : balanceNeto);
+                    elDispHoy.innerText = formatearCOP(saldoDisponibleReal);
                 }
 
                 const badgeDisp = document.getElementById('badge-disponible');
                 if(badgeDisp) {
-                    if(balanceNeto <= 0) {
+                    if(saldoDisponibleReal <= 0) {
                         badgeDisp.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30';
                         badgeDisp.innerText = 'SIN SALDO';
-                    } else if(totalFijos > 0) {
+                    } else if(totalFijosPendientes > 0) {
+                        badgeDisp.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30';
+                        badgeDisp.innerText = 'FIJOS APARTADOS';
+                    } else {
                         badgeDisp.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
                         badgeDisp.innerText = 'LIBRE PARA GASTAR';
-                    } else {
-                        badgeDisp.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30';
-                        badgeDisp.innerText = 'TOTAL DISPONIBLE';
                     }
                 }
 
-                // 4. Rendimientos Nu
+                // 4. Apartado 3: Tarjeta de Crédito (Deuda y Movimientos de TC)
+                const totalDeudaTcEl = document.getElementById('total-deuda-tc');
+                if(totalDeudaTcEl) totalDeudaTcEl.innerText = formatearCOP(totalDeuda);
+
+                const badgeTc = document.getElementById('badge-tc-estado');
+                if(badgeTc) {
+                    if(totalDeuda === 0) {
+                        badgeTc.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+                        badgeTc.innerText = '✓ AL DÍA (SIN DEUDA)';
+                    } else {
+                        badgeTc.className = 'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-950/80 text-rose-300 border border-rose-600/40';
+                        badgeTc.innerText = 'DEUDA ACUMULADA';
+                    }
+                }
+
+                const containerTcList = document.getElementById('transacciones-tc-list');
+                const txs = data.transacciones || [];
+                if(containerTcList) {
+                    containerTcList.innerHTML = '';
+                    const tcAccountIds = new Set(cuentasData.filter(c => c.tipo === 'CREDITO').map(c => c.id));
+                    const txsTc = txs.filter(t => 
+                        (t.cuenta_origen_id && tcAccountIds.has(t.cuenta_origen_id)) ||
+                        t.cuenta_tipo === 'CREDITO' ||
+                        t.medio === 'CREDITO' ||
+                        (t.cuenta_nombre && cuentasData.some(c => c.nombre === t.cuenta_nombre && c.tipo === 'CREDITO'))
+                    );
+
+                    if(txsTc.length === 0) {
+                        containerTcList.innerHTML = `
+                            <div class="text-center py-3.5 px-3 rounded-2xl bg-rose-950/20 border border-rose-900/30">
+                                <p class="text-xs text-rose-300/80 font-bold mb-0.5">Sin compras con TC registradas</p>
+                                <p class="text-[11px] text-slate-400 mb-2">Tus pagos a crédito se registrarán aquí sin restar de tu saldo disponible.</p>
+                                <button onclick="abrirModalGastoTC()" class="text-xs text-rose-300 font-extrabold underline hover:text-white">+ Registrar Gasto con Tarjeta</button>
+                            </div>
+                        `;
+                    } else {
+                        txsTc.slice(0, 5).forEach(t => {
+                            const item = document.createElement('div');
+                            item.className = 'p-3 rounded-2xl bg-rose-950/25 border border-rose-500/15 flex items-center justify-between';
+                            item.innerHTML = `
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-xl bg-rose-900/40 flex items-center justify-center text-rose-300 text-xs">
+                                        <i class="fa-regular fa-credit-card"></i>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs font-bold text-white block leading-tight">${t.comercio}</span>
+                                        <span class="text-[10px] text-slate-400">${t.cuenta_nombre || 'Tarjeta de Crédito'}</span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-xs font-black text-rose-300 block">- ${formatearCOP(t.monto)}</span>
+                                    <span class="text-[9px] text-purple-400/80 uppercase font-semibold">Crédito</span>
+                                </div>
+                            `;
+                            containerTcList.appendChild(item);
+                        });
+                        if(txsTc.length > 5) {
+                            const verMas = document.createElement('div');
+                            verMas.className = 'text-center pt-1';
+                            verMas.innerHTML = `<button onclick="cambiarTab('movimientos')" class="text-[10px] font-bold text-purple-300 hover:text-white">Ver todos los movimientos (${txsTc.length}) →</button>`;
+                            containerTcList.appendChild(verMas);
+                        }
+                    }
+                }
+
+                // 5. Rendimientos Nu
                 const cardRend = document.getElementById('card-rendimientos');
                 if(cardRend) {
                     if(data.rendimientos && data.rendimientos.length > 0) {
@@ -746,9 +904,8 @@ def mobile_dashboard_preview():
                     }
                 }
 
-                // 5. Transacciones
+                // 6. Transacciones (Historial General)
                 const containerTx = document.getElementById('transacciones-list');
-                const txs = data.transacciones || [];
                 const elConteoTx = document.getElementById('conteo-tx');
                 if(elConteoTx) elConteoTx.innerText = txs.length + ' movimientos registrados';
                 if(containerTx) {
@@ -1169,6 +1326,7 @@ def mobile_dashboard_preview():
 
             // Gestión de Gastos Fijos
             function abrirModalNuevoGastoFijo() {
+                setEstadoNuevoFijo(true);
                 document.getElementById('modal-nuevo-gasto-fijo').classList.remove('hidden');
                 document.getElementById('nuevo-fijo-nombre').focus();
             }
@@ -1191,7 +1349,12 @@ def mobile_dashboard_preview():
                     const res = await fetch('/api/v1/gastos-fijos', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ nombre: nombre, monto: monto, dia_pago: diaPago })
+                        body: JSON.stringify({ 
+                            nombre: nombre, 
+                            monto: monto, 
+                            dia_pago: diaPago,
+                            pagado_este_mes: nuevoFijoPagado
+                        })
                     });
                     if(res.ok) {
                         cerrarModalNuevoGastoFijo();

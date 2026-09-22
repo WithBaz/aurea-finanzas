@@ -49,7 +49,7 @@ def crear_transaccion_manual(
 
     # Actualizar saldos según tipo
     if tx_in.tipo == TipoTransaccion.EGRESO:
-        if cuenta_origen.tipo == TipoCuenta.DEBITO or cuenta_origen.tipo == TipoCuenta.EFECTIVO:
+        if cuenta_origen.tipo in (TipoCuenta.DEBITO, TipoCuenta.EFECTIVO, TipoCuenta.ALTO_RENDIMIENTO):
             cuenta_origen.saldo_actual -= tx_in.monto
         elif cuenta_origen.tipo == TipoCuenta.CREDITO:
             cuenta_origen.saldo_actual += tx_in.monto

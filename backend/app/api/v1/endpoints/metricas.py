@@ -136,6 +136,8 @@ def obtener_resumen_dashboard(db: Session = Depends(get_db)):
                 "medio": t.medio.value if hasattr(t.medio, "value") else str(t.medio),
                 "es_gasto_hormiga": t.es_gasto_hormiga,
                 "cuenta_nombre": t.cuenta_origen.nombre if t.cuenta_origen else "General",
+                "cuenta_origen_id": t.cuenta_origen_id,
+                "cuenta_tipo": (t.cuenta_origen.tipo.value if hasattr(t.cuenta_origen.tipo, "value") else str(t.cuenta_origen.tipo)) if t.cuenta_origen else None,
             }
             for t in transacciones
         ]

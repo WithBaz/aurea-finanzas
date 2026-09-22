@@ -153,8 +153,8 @@ class FinancialEngine:
 
         items = db.query(GastoFijo).filter(GastoFijo.activo == True).order_by(GastoFijo.dia_pago.asc()).all()
         total_fijos = sum(i.monto for i in items) if items else (perfil.compromisos_fijos_mensual if perfil else 0.0)
-        total_apartado = total_fijos if nomina_recibida else sum(i.monto for i in items if i.pagado_este_mes)
-        total_pendiente = max(0.0, total_fijos - total_apartado)
+        total_apartado = sum(i.monto for i in items if i.pagado_este_mes)
+        total_pendiente = sum(i.monto for i in items if not i.pagado_este_mes)
 
         return {
             "total_fijos": total_fijos,
@@ -170,7 +170,7 @@ class FinancialEngine:
                     "dia_pago": i.dia_pago,
                     "categoria": i.categoria,
                     "activo": i.activo,
-                    "pagado_este_mes": i.pagado_este_mes or nomina_recibida,
+                    "pagado_este_mes": bool(i.pagado_este_mes),
                     "created_at": i.created_at.isoformat() if i.created_at else None,
                 }
                 for i in items

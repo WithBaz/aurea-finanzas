@@ -34,7 +34,7 @@ def crear_gasto_fijo(gasto_in: GastoFijoCreate, db: Session = Depends(get_db)):
         dia_pago=gasto_in.dia_pago or 5,
         categoria=gasto_in.categoria or "Hogar y Servicios",
         activo=True,
-        pagado_este_mes=False,
+        pagado_este_mes=bool(gasto_in.pagado_este_mes),
     )
     db.add(nuevo)
     db.commit()
