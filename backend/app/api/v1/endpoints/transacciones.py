@@ -7,6 +7,7 @@ from backend.app.models import Cuenta, Transaccion, TipoCuenta, TipoTransaccion,
 from backend.app.schemas import TransaccionCreate, TransaccionResponse, TransaccionUpdate
 from backend.app.services.categorizer import CategorizadorComercios
 from backend.app.services.nlp_expense_parser import NLPSmartExpenseParser
+from backend.app.api.deps import get_current_user_id
 
 router = APIRouter()
 
@@ -17,12 +18,15 @@ def listar_transacciones(
     medio: Optional[MedioCaptura] = None,
     cuenta_id: Optional[int] = None,
     limit: int = Query(50, ge=1, le=200),
+    current_uid: Optional[int] = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """
-    Lista las transacciones históricas con filtros opcionales.
+    Lista las transacciones históricas del usuario actual con filtros opcionales.
     """
     query = db.query(Transaccion)
+    if current_uid:
+        query = query.filter((Transaccion.usuario_id == current_uid) | (Transaccion.usuario_id == None))
     if tipo:
         query = query.filter(Transaccion.tipo == tipo)
     if medio:
@@ -35,6 +39,7 @@ def listar_transacciones(
 @router.post("", response_model=TransaccionResponse, status_code=status.HTTP_201_CREATED)
 def crear_transaccion_manual(
     tx_in: TransaccionCreate,
+    current_uid: Optional[int] = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """
@@ -86,7 +91,8 @@ def crear_transaccion_manual(
         categoria_id=cat_id,
         cuotas_totales=tx_in.cuotas_totales,
         cuota_actual=tx_in.cuota_actual,
-        es_gasto_hormiga=es_hormiga
+        es_gasto_hormiga=es_hormiga,
+        usuario_id=current_uid
     )
     db.add(tx)
     db.commit()

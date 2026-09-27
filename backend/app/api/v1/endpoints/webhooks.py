@@ -111,7 +111,8 @@ def procesar_atajo_ios(
             categoria_id=cat_id,
             es_gasto_hormiga=es_hormiga,
             hash_idempotencia=hash_idemp,
-            raw_payload=str(payload)
+            raw_payload=str(payload),
+            usuario_id=cuenta.usuario_id if (cuenta and cuenta.usuario_id) else payload.get("usuario_id"),
         )
         db.add(transaccion)
         db.commit()
@@ -194,7 +195,8 @@ def procesar_atajo_ios(
             cuenta_destino_id=billetera_efectivo.id,
             es_gasto_hormiga=False,
             hash_idempotencia=hash_idemp,
-            raw_payload=texto_sms
+            raw_payload=texto_sms,
+            usuario_id=cuenta_bancaria.usuario_id if (cuenta_bancaria and cuenta_bancaria.usuario_id) else payload.get("usuario_id"),
         )
         db.add(transaccion)
         db.commit()
@@ -239,7 +241,8 @@ def procesar_atajo_ios(
             categoria_id=cat_id,
             es_gasto_hormiga=es_hormiga,
             hash_idempotencia=hash_idemp,
-            raw_payload=texto_sms
+            raw_payload=texto_sms,
+            usuario_id=cuenta.usuario_id if (cuenta and cuenta.usuario_id) else payload.get("usuario_id"),
         )
         db.add(transaccion)
         db.commit()
@@ -271,7 +274,8 @@ def procesar_atajo_ios(
         cuenta_origen_id=cuenta_ingreso.id if cuenta_ingreso else 1,
         es_gasto_hormiga=False,
         hash_idempotencia=hash_idemp,
-        raw_payload=texto_sms
+        raw_payload=texto_sms,
+        usuario_id=cuenta_ingreso.usuario_id if (cuenta_ingreso and cuenta_ingreso.usuario_id) else payload.get("usuario_id"),
     )
     db.add(transaccion)
     db.commit()

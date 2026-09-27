@@ -1,7 +1,8 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
+from backend.app.api.deps import get_current_user_id
 from backend.app.schemas import (
     SemaforoResponse,
     RendimientoDiarioResponse,
@@ -15,29 +16,44 @@ router = APIRouter()
 
 
 @router.get("/semaforo", response_model=SemaforoResponse)
-def obtener_semaforo_mensual(db: Session = Depends(get_db)):
+def obtener_semaforo_mensual(
+    db: Session = Depends(get_db),
+    current_uid: Optional[int] = Depends(get_current_user_id)
+):
     """
     Calcula el estado del semáforo diario basado en el presupuesto mensual del usuario en COP.
     """
-    return FinancialEngine.calcular_semaforo_mensual(db)
+    return FinancialEngine.calcular_semaforo_mensual(db, usuario_id=current_uid)
 
 
 @router.get("/rendimientos", response_model=List[RendimientoDiarioResponse])
-def obtener_rendimientos_diarios(db: Session = Depends(get_db)):
+def obtener_rendimientos_diarios(
+    db: Session = Depends(get_db),
+    current_uid: Optional[int] = Depends(get_current_user_id)
+):
     """
     Calcula los rendimientos generados hoy por cuentas remuneradas (Nu Colombia, Lulo, Pibank).
     """
-    return FinancialEngine.calcular_rendimientos_diarios(db)
+    return FinancialEngine.calcular_rendimientos_diarios(db, usuario_id=current_uid)
 
 
 @router.get("/perfil", response_model=PerfilFinancieroResponse)
-def obtener_perfil(db: Session = Depends(get_db)):
+def obtener_perfil(
+    db: Session = Depends(get_db),
+    current_uid: Optional[int] = Depends(get_current_user_id)
+):
     """
     Obtiene el perfil financiero y parámetros del ciclo de nómina del usuario.
     """
-    perfil = db.query(PerfilFinanciero).first()
+    perfil_q = db.query(PerfilFinanciero)
+    if current_uid:
+        perfil = perfil_q.filter((PerfilFinanciero.usuario_id == current_uid) | (PerfilFinanciero.usuario_id == None)).first()
+    else:
+        perfil = perfil_q.first()
+
     if not perfil:
         perfil = PerfilFinanciero(
+            usuario_id=current_uid,
             dia_pago_mensual=30,
             ingreso_mensual_estimado=4000000.0,
             compromisos_fijos_mensual=1800000.0,
@@ -53,14 +69,20 @@ def obtener_perfil(db: Session = Depends(get_db)):
 @router.put("/perfil", response_model=PerfilFinancieroResponse)
 def actualizar_perfil(
     perfil_in: PerfilFinancieroUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_uid: Optional[int] = Depends(get_current_user_id)
 ):
     """
     Actualiza ingresos reales, compromisos fijos y día de cobro de nómina.
     """
-    perfil = db.query(PerfilFinanciero).first()
+    perfil_q = db.query(PerfilFinanciero)
+    if current_uid:
+        perfil = perfil_q.filter((PerfilFinanciero.usuario_id == current_uid) | (PerfilFinanciero.usuario_id == None)).first()
+    else:
+        perfil = perfil_q.first()
+
     if not perfil:
-        perfil = PerfilFinanciero(**perfil_in.model_dump())
+        perfil = PerfilFinanciero(usuario_id=current_uid, **perfil_in.model_dump())
         db.add(perfil)
     else:
         update_data = perfil_in.model_dump(exclude_unset=True)
@@ -73,35 +95,59 @@ def actualizar_perfil(
 
 @router.post("/reiniciar-todo")
 @router.post("/limpiar-demo")
-def reiniciar_todo_desde_cero(db: Session = Depends(get_db)):
+def reiniciar_todo_desde_cero(
+    db: Session = Depends(get_db),
+    current_uid: Optional[int] = Depends(get_current_user_id)
+):
     """
-    Elimina todas las transacciones, metas, gastos fijos y cuentas, y resetea el perfil a 0 para empezar desde cero absoluto.
+    Elimina datos asociados al usuario actual para empezar desde cero.
     """
     from backend.app.models import MetaAhorro, GastoFijo
-    db.query(Transaccion).delete()
-    db.query(MetaAhorro).delete()
-    db.query(Cuenta).delete()
-    db.query(GastoFijo).delete()
-    perfil = db.query(PerfilFinanciero).first()
-    if perfil:
-        perfil.ingreso_mensual_estimado = 0.0
-        perfil.compromisos_fijos_mensual = 0.0
+    if current_uid:
+        db.query(Transaccion).filter((Transaccion.usuario_id == current_uid) | (Transaccion.usuario_id == None)).delete(synchronize_session=False)
+        db.query(MetaAhorro).filter((MetaAhorro.usuario_id == current_uid) | (MetaAhorro.usuario_id == None)).delete(synchronize_session=False)
+        db.query(Cuenta).filter((Cuenta.usuario_id == current_uid) | (Cuenta.usuario_id == None)).delete(synchronize_session=False)
+        db.query(GastoFijo).filter((GastoFijo.usuario_id == current_uid) | (GastoFijo.usuario_id == None)).delete(synchronize_session=False)
+        perfil = db.query(PerfilFinanciero).filter((PerfilFinanciero.usuario_id == current_uid) | (PerfilFinanciero.usuario_id == None)).first()
+        if perfil:
+            perfil.ingreso_mensual_estimado = 0.0
+            perfil.compromisos_fijos_mensual = 0.0
+    else:
+        db.query(Transaccion).delete()
+        db.query(MetaAhorro).delete()
+        db.query(Cuenta).delete()
+        db.query(GastoFijo).delete()
+        perfil = db.query(PerfilFinanciero).first()
+        if perfil:
+            perfil.ingreso_mensual_estimado = 0.0
+            perfil.compromisos_fijos_mensual = 0.0
     db.commit()
     return {"status": "exitoso", "mensaje": "Base de datos reiniciada a cero. Tu aplicación está 100% limpia para registrar tus cuentas reales."}
 
 
 @router.get("/dashboard")
-def obtener_resumen_dashboard(db: Session = Depends(get_db)):
+def obtener_resumen_dashboard(
+    db: Session = Depends(get_db),
+    current_uid: Optional[int] = Depends(get_current_user_id)
+):
     """
     Consolida todo el estado del dashboard (cuentas, semáforo, rendimientos, gastos fijos y transacciones)
-    en una sola petición HTTP ultra-rápida para minimizar latencia en móviles y Apple Shortcuts.
+    en una sola petición HTTP ultra-rápida para el usuario actual.
     """
     from backend.app.models import TipoCuenta
-    semaforo = FinancialEngine.calcular_semaforo_mensual(db)
-    rendimientos = FinancialEngine.calcular_rendimientos_diarios(db)
-    gastos_fijos = FinancialEngine.obtener_resumen_gastos_fijos(db)
-    cuentas = db.query(Cuenta).filter(Cuenta.activa == True).all()
-    transacciones = db.query(Transaccion).order_by(Transaccion.fecha.desc()).limit(30).all()
+    semaforo = FinancialEngine.calcular_semaforo_mensual(db, usuario_id=current_uid)
+    rendimientos = FinancialEngine.calcular_rendimientos_diarios(db, usuario_id=current_uid)
+    gastos_fijos = FinancialEngine.obtener_resumen_gastos_fijos(db, usuario_id=current_uid)
+
+    cuentas_q = db.query(Cuenta).filter(Cuenta.activa == True)
+    if current_uid:
+        cuentas_q = cuentas_q.filter((Cuenta.usuario_id == current_uid) | (Cuenta.usuario_id == None))
+    cuentas = cuentas_q.all()
+
+    transacciones_q = db.query(Transaccion)
+    if current_uid:
+        transacciones_q = transacciones_q.filter((Transaccion.usuario_id == current_uid) | (Transaccion.usuario_id == None))
+    transacciones = transacciones_q.order_by(Transaccion.fecha.desc()).limit(30).all()
 
     total_saldo = sum(c.saldo_actual for c in cuentas if c.tipo != TipoCuenta.CREDITO)
 

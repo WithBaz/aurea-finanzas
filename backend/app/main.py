@@ -12,7 +12,8 @@ from backend.app.seed import seed_data
 async def lifespan(app: FastAPI):
     try:
         import backend.app.models
-        Base.metadata.create_all(bind=engine)
+        from backend.app.database import migrar_esquema_multi_usuario
+        migrar_esquema_multi_usuario(engine)
         seed_data()
     except Exception as e:
         import logging
@@ -122,31 +123,43 @@ def mobile_dashboard_preview():
     <body class="selection:bg-blue-600 selection:text-white">
 
         <!-- ========================================== -->
-        <!-- PANTALLA DE SEGURIDAD / LOGIN (Bancolombia + Face ID) -->
+        <!-- PANTALLA DE SEGURIDAD / LOGIN (Multi-Cuenta + Face ID) -->
         <!-- ========================================== -->
-        <div id="pantalla-auth" class="fixed inset-0 z-50 bg-black flex flex-col justify-between items-center px-6 py-12 transition-opacity duration-300">
+        <div id="pantalla-auth" class="fixed inset-0 z-50 bg-black flex flex-col justify-between items-center px-6 py-10 transition-opacity duration-300">
             <!-- Header de Seguridad -->
-            <div class="text-center pt-8">
-                <div class="w-16 h-16 rounded-3xl bg-[#1C1C1E] border border-white/10 flex items-center justify-center mx-auto mb-4 shadow-xl">
+            <div class="text-center pt-4 w-full max-w-xs">
+                <div class="w-16 h-16 rounded-3xl bg-[#1C1C1E] border border-white/10 flex items-center justify-center mx-auto mb-3 shadow-xl">
                     <i class="fa-solid fa-face-smile text-3xl text-blue-400" id="auth-icono-biometria"></i>
                 </div>
                 <h2 class="text-2xl font-black tracking-tight text-white" id="auth-saludo">AUREA</h2>
-                <p class="text-xs text-[#8E8E93] mt-1" id="auth-instruccion">Ingresa tu clave de 4 dígitos</p>
+                <p class="text-xs text-[#8E8E93] mt-1 mb-3" id="auth-instruccion">Selecciona tu cuenta e ingresa tu PIN</p>
+
+                <!-- Selector de Usuarios / Perfiles (Multi-Cuenta) -->
+                <div id="auth-perfiles-container" class="w-full flex items-center justify-center gap-2 overflow-x-auto py-1.5 mb-2 no-scrollbar">
+                    <div id="auth-perfiles-list" class="flex items-center gap-2">
+                        <!-- Pills dinámicas: [ Jorge ] [ Amigo ] [ + Nueva Cuenta ] -->
+                    </div>
+                </div>
             </div>
 
-            <!-- Formulario de Registro Inicial (si no hay usuario aún) -->
+            <!-- Formulario de Registro / Nueva Cuenta -->
             <div id="form-registro-inicial" class="w-full max-w-xs space-y-3 hidden">
                 <div>
-                    <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Tu Nombre o Alias</label>
-                    <input type="text" id="reg-nombre" placeholder="Ej: Jorge" class="w-full bg-[#1C1C1E] border border-white/10 rounded-2xl px-4 py-3 text-white font-bold text-sm outline-none focus:border-blue-500">
+                    <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Nombre o Alias de la Cuenta</label>
+                    <input type="text" id="reg-nombre" placeholder="Ej: Jorge o Amigo" class="w-full bg-[#1C1C1E] border border-white/10 rounded-2xl px-4 py-3 text-white font-bold text-sm outline-none focus:border-blue-500">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Crea tu PIN de 4 dígitos</label>
+                    <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Crea tu PIN personal de 4 dígitos</label>
                     <input type="password" id="reg-pin" maxlength="4" placeholder="••••" class="w-full bg-[#1C1C1E] border border-white/10 rounded-2xl px-4 py-3 text-white font-black text-center text-lg tracking-widest outline-none focus:border-blue-500">
                 </div>
-                <button onclick="guardarRegistroInicial()" class="w-full py-3.5 rounded-2xl bg-[#0A84FF] text-white font-black text-sm active:scale-95 transition shadow-lg shadow-blue-500/20">
-                    Crear PIN y Continuar
-                </button>
+                <div class="flex gap-2 pt-1">
+                    <button type="button" id="btn-cancelar-registro" onclick="cancelarNuevaCuenta()" class="w-1/3 py-3 rounded-2xl bg-[#2C2C2E] hover:bg-[#3A3A3C] text-slate-300 font-bold text-xs transition">
+                        Volver
+                    </button>
+                    <button type="button" onclick="guardarRegistroInicial()" id="btn-submit-registro" class="w-full py-3 rounded-2xl bg-[#0A84FF] text-white font-black text-sm active:scale-95 transition shadow-lg shadow-blue-500/20">
+                        Crear Cuenta
+                    </button>
+                </div>
             </div>
 
             <!-- Teclado Numérico y Puntos PIN Estilo Bancolombia / iOS -->
@@ -173,7 +186,7 @@ def mobile_dashboard_preview():
                     <button onclick="teclearPin('8')" class="keypad-btn h-16 rounded-full bg-[#1C1C1E] text-2xl font-normal text-white flex items-center justify-center border border-white/5">8</button>
                     <button onclick="teclearPin('9')" class="keypad-btn h-16 rounded-full bg-[#1C1C1E] text-2xl font-normal text-white flex items-center justify-center border border-white/5">9</button>
 
-                    <button onclick="activarFaceId()" id="btn-teclado-faceid" class="keypad-btn h-16 rounded-full text-blue-400 flex items-center justify-center text-xl" title="Ingresar con Face ID">
+                    <button onclick="activarFaceId()" id="btn-teclado-faceid" class="keypad-btn h-16 rounded-full text-blue-400 flex items-center justify-center text-xl active:scale-95 transition" title="Ingresar con Face ID">
                         <i class="fa-solid fa-face-smile"></i>
                     </button>
                     <button onclick="teclearPin('0')" class="keypad-btn h-16 rounded-full bg-[#1C1C1E] text-2xl font-normal text-white flex items-center justify-center border border-white/5">0</button>
@@ -184,9 +197,21 @@ def mobile_dashboard_preview():
             </div>
 
             <!-- Footer Seguro -->
-            <div class="text-[11px] text-[#8E8E93] flex items-center gap-1.5 pb-4">
+            <div class="text-[11px] text-[#8E8E93] flex items-center gap-1.5 pb-2">
                 <i class="fa-solid fa-shield-halved text-blue-400 text-xs"></i>
-                <span>Protección privada en tu iPhone</span>
+                <span>Protección privada multi-cuenta en tu iPhone</span>
+            </div>
+        </div>
+
+        <!-- Modal HUD de Face ID Estilo Apple iOS -->
+        <div id="modal-faceid-hud" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center hidden">
+            <div class="w-48 h-48 rounded-3xl bg-[#1C1C1E]/95 border border-white/15 flex flex-col items-center justify-center p-4 shadow-2xl text-center">
+                <div class="relative w-20 h-20 mb-3 flex items-center justify-center">
+                    <div id="faceid-scanner-box" class="w-16 h-16 rounded-2xl border-2 border-[#0A84FF] flex items-center justify-center transition-all duration-300">
+                        <i id="faceid-scanner-icon" class="fa-solid fa-face-smile text-3xl text-[#0A84FF] transition-all"></i>
+                    </div>
+                </div>
+                <span id="faceid-scanner-text" class="text-xs font-bold text-white tracking-wide">Face ID</span>
             </div>
         </div>
 
@@ -203,6 +228,10 @@ def mobile_dashboard_preview():
                     <span id="badge-db" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#1C1C1E] text-slate-300 border border-white/10">...</span>
                 </div>
                 <div class="flex items-center gap-2">
+                    <button onclick="cerrarSesion()" class="px-2.5 py-1 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center gap-1.5 text-[11px] font-semibold text-rose-400 hover:text-rose-300 active:scale-90 transition" title="Cerrar Sesión">
+                        <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
+                        <span>Salir</span>
+                    </button>
                     <button onclick="bloquearApp()" class="w-8 h-8 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center text-white/80 hover:text-white active:scale-90 transition text-xs" title="Bloquear App">
                         <i class="fa-solid fa-lock"></i>
                     </button>
@@ -510,13 +539,37 @@ def mobile_dashboard_preview():
                     </div>
                 </div>
 
-                <!-- Card 4: Zona de Peligro -->
-                <div class="ios-card rounded-3xl p-5 mb-6 border border-rose-500/20 bg-rose-950/10 text-center">
-                    <span class="text-[10px] font-bold text-rose-400 uppercase tracking-wider block mb-2">Reinicio Completo</span>
-                    <button onclick="reiniciarTodoDesdeCero()" class="w-full py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold transition flex items-center justify-center gap-2 active:scale-95">
-                        <i class="fa-solid fa-trash-can"></i>
-                        <span>Borrar todo y empezar desde cero</span>
-                    </button>
+                <!-- Card 4: Espacios y Sesión Personal (Multi-Cuenta) -->
+                <div class="ios-card rounded-3xl p-5 mb-6 border border-white/10 bg-[#1C1C1E]">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-lg bg-blue-500/20 text-[#0A84FF] flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-users"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-white">Espacio y Sesión</h3>
+                                <span class="text-[10px] text-[#8E8E93]" id="ajustes-usuario-label">Conectado</span>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                            Activo
+                        </span>
+                    </div>
+
+                    <p class="text-[11px] text-[#8E8E93] leading-relaxed mb-3.5">
+                        Puedes cambiar de cuenta, compartir la app con un amigo en este o en otro dispositivo con datos 100% aislados.
+                    </p>
+
+                    <div class="space-y-2">
+                        <button onclick="mostrarSelectorCuentasModal()" class="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition">
+                            <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
+                            <span>Cambiar de Cuenta / Nuevo Usuario</span>
+                        </button>
+                        <button onclick="cerrarSesion()" class="w-full py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition">
+                            <i class="fa-solid fa-arrow-right-from-bracket text-[11px]"></i>
+                            <span>Cerrar Sesión</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -806,7 +859,7 @@ def mobile_dashboard_preview():
 
         <script>
             // ==========================================
-            // ESTADO GLOBAL & SEGURIDAD (Bancolombia + Face ID)
+            // ESTADO GLOBAL & SEGURIDAD (Bancolombia + Face ID Multi-Cuenta)
             // ==========================================
             let cuentasData = [];
             let transaccionesData = [];
@@ -816,20 +869,33 @@ def mobile_dashboard_preview():
             let pinIngresado = "";
             let sesionAutenticada = false;
             let usuarioActual = null;
+            let usuarioActualId = localStorage.getItem('aurea_usuario_actual_id') ? parseInt(localStorage.getItem('aurea_usuario_actual_id')) : null;
+            let listaUsuarios = [];
             let faceIdHabilitado = false;
 
-            // Verificar Estado de Seguridad al cargar
-            async function inicializarSeguridad() {
-                // 1. Si la sesión ya fue desbloqueada en esta navegación, mantener abierta
-                if (sessionStorage.getItem('aurea_sesion_activa') === 'true') {
-                    desbloquearApp(false);
-                    return;
+            // Interceptor global para adjuntar el ID del usuario activo a todas las peticiones
+            const _origFetch = window.fetch;
+            window.fetch = function(url, options = {}) {
+                options = options || {};
+                options.headers = options.headers || {};
+                if (usuarioActualId && typeof url === 'string' && url.startsWith('/api/v1/')) {
+                    if (options.headers instanceof Headers) {
+                        options.headers.set('X-Usuario-Id', String(usuarioActualId));
+                    } else {
+                        options.headers['X-Usuario-Id'] = String(usuarioActualId);
+                    }
                 }
+                return _origFetch(url, options);
+            };
 
+            // Verificar Estado de Seguridad y Cuentas al cargar
+            async function inicializarSeguridad() {
                 try {
-                    const res = await fetch('/api/v1/auth/estado');
+                    const urlParams = usuarioActualId ? `?usuario_id=${usuarioActualId}` : '';
+                    const res = await _origFetch('/api/v1/auth/estado' + urlParams);
                     if(!res.ok) return;
                     const estado = await res.json();
+                    listaUsuarios = estado.usuarios || [];
 
                     const authScreen = document.getElementById('pantalla-auth');
                     const formReg = document.getElementById('form-registro-inicial');
@@ -839,28 +905,131 @@ def mobile_dashboard_preview():
                     const btnFaceId = document.getElementById('btn-teclado-faceid');
                     const switchFaceId = document.getElementById('switch-faceid');
 
-                    if(!estado.registrado) {
+                    if(!estado.registrado || listaUsuarios.length === 0) {
                         // Modo Primer Registro
                         saludo.innerText = "Bienvenido a AUREA";
-                        instruccion.innerText = "Crea tu acceso personal privado";
+                        instruccion.innerText = "Crea tu espacio financiero privado";
                         formReg.classList.remove('hidden');
                         tecladoPin.classList.add('hidden');
+                        const perfilesContainer = document.getElementById('auth-perfiles-container');
+                        if (perfilesContainer) perfilesContainer.classList.add('hidden');
+                        const btnCancelar = document.getElementById('btn-cancelar-registro');
+                        if (btnCancelar) btnCancelar.classList.add('hidden');
                     } else {
-                        // Modo Login Habitual
-                        usuarioActual = estado.username;
-                        faceIdHabilitado = estado.face_id_enabled;
+                        // Seleccionar usuario activo
+                        let usuarioSel = null;
+                        if (usuarioActualId) {
+                            usuarioSel = listaUsuarios.find(u => u.id === usuarioActualId);
+                        }
+                        if (!usuarioSel) {
+                            usuarioSel = listaUsuarios[0];
+                            usuarioActualId = usuarioSel.id;
+                            localStorage.setItem('aurea_usuario_actual_id', usuarioActualId);
+                        }
+
+                        usuarioActual = usuarioSel.username;
+                        faceIdHabilitado = Boolean(usuarioSel.face_id_enabled || localStorage.getItem(`aurea_face_id_${usuarioActualId}`) === 'true');
+                        
                         saludo.innerText = "Hola, " + (usuarioActual || "Usuario");
-                        instruccion.innerText = "Ingresa tu PIN de 4 dígitos";
+                        instruccion.innerText = "Selecciona tu cuenta e ingresa tu PIN";
                         formReg.classList.add('hidden');
                         tecladoPin.classList.remove('hidden');
-                        if(switchFaceId) switchFaceId.checked = faceIdHabilitado;
+                        
+                        const perfilesContainer = document.getElementById('auth-perfiles-container');
+                        if (perfilesContainer) perfilesContainer.classList.remove('hidden');
 
-                        if(!faceIdHabilitado && btnFaceId) {
-                            btnFaceId.style.opacity = '0.5';
+                        if(switchFaceId) switchFaceId.checked = faceIdHabilitado;
+                        if(btnFaceId) {
+                            btnFaceId.style.opacity = faceIdHabilitado ? '1' : '0.6';
                         }
+                        renderizarSelectorUsuarios();
+                    }
+
+                    // Si la sesión ya fue desbloqueada en esta navegación, mantener abierta
+                    if (sessionStorage.getItem('aurea_sesion_activa') === 'true') {
+                        desbloquearApp(false);
                     }
                 } catch(e) {
                     console.error("Error al inicializar autenticación:", e);
+                }
+            }
+
+            function renderizarSelectorUsuarios() {
+                const cont = document.getElementById('auth-perfiles-list');
+                if (!cont) return;
+                cont.innerHTML = '';
+                
+                listaUsuarios.forEach(u => {
+                    const esActivo = u.id === usuarioActualId;
+                    const pill = document.createElement('button');
+                    pill.className = `px-3.5 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 shrink-0 active:scale-95 ${
+                        esActivo 
+                            ? 'bg-[#0A84FF] text-white shadow-md shadow-blue-500/30 ring-1 ring-white/20' 
+                            : 'bg-[#1C1C1E] text-[#8E8E93] hover:text-white border border-white/10'
+                    }`;
+                    pill.onclick = () => seleccionarUsuario(u.id);
+                    pill.innerHTML = `<i class="fa-solid fa-user text-[10px]"></i><span>${u.username}</span>`;
+                    cont.appendChild(pill);
+                });
+
+                // Botón + Nueva Cuenta
+                const btnNuevo = document.createElement('button');
+                btnNuevo.className = 'px-3 py-1.5 rounded-full text-xs font-bold bg-[#2C2C2E] hover:bg-[#3A3A3C] text-blue-400 border border-blue-500/30 flex items-center gap-1 shrink-0 active:scale-95 transition';
+                btnNuevo.onclick = () => mostrarFormularioNuevaCuenta();
+                btnNuevo.innerHTML = `<i class="fa-solid fa-plus text-[10px]"></i><span>+ Cuenta</span>`;
+                cont.appendChild(btnNuevo);
+
+                const labelAjustes = document.getElementById('ajustes-usuario-label');
+                if (labelAjustes) {
+                    labelAjustes.innerText = `Conectado como ${usuarioActual || 'Usuario'}`;
+                }
+            }
+
+            function seleccionarUsuario(id) {
+                const u = listaUsuarios.find(x => x.id === id);
+                if (!u) return;
+                usuarioActualId = u.id;
+                usuarioActual = u.username;
+                localStorage.setItem('aurea_usuario_actual_id', usuarioActualId);
+                pinIngresado = "";
+                actualizarDotsPin();
+
+                document.getElementById('auth-saludo').innerText = "Hola, " + usuarioActual;
+                document.getElementById('form-registro-inicial')?.classList.add('hidden');
+                document.getElementById('contenedor-teclado-pin')?.classList.remove('hidden');
+
+                faceIdHabilitado = Boolean(u.face_id_enabled || localStorage.getItem(`aurea_face_id_${usuarioActualId}`) === 'true');
+                const btnFaceId = document.getElementById('btn-teclado-faceid');
+                if (btnFaceId) {
+                    btnFaceId.style.opacity = faceIdHabilitado ? '1' : '0.6';
+                }
+                const switchFaceId = document.getElementById('switch-faceid');
+                if (switchFaceId) switchFaceId.checked = faceIdHabilitado;
+
+                renderizarSelectorUsuarios();
+            }
+
+            function mostrarFormularioNuevaCuenta() {
+                const formReg = document.getElementById('form-registro-inicial');
+                const tecladoPin = document.getElementById('contenedor-teclado-pin');
+                const saludo = document.getElementById('auth-saludo');
+                const instruccion = document.getElementById('auth-instruccion');
+                const btnCancelar = document.getElementById('btn-cancelar-registro');
+                
+                saludo.innerText = "Nuevo Espacio Personal";
+                instruccion.innerText = "Crea una cuenta para ti o un amigo";
+                formReg.classList.remove('hidden');
+                tecladoPin.classList.add('hidden');
+                if (btnCancelar) btnCancelar.classList.remove('hidden');
+                document.getElementById('reg-nombre').value = '';
+                document.getElementById('reg-pin').value = '';
+            }
+
+            function cancelarNuevaCuenta() {
+                if (listaUsuarios.length > 0) {
+                    document.getElementById('form-registro-inicial')?.classList.add('hidden');
+                    document.getElementById('contenedor-teclado-pin')?.classList.remove('hidden');
+                    seleccionarUsuario(usuarioActualId || listaUsuarios[0].id);
                 }
             }
 
@@ -896,15 +1065,21 @@ def mobile_dashboard_preview():
 
             async function verificarPinIngresado() {
                 try {
-                    const res = await fetch('/api/v1/auth/login', {
+                    const res = await _origFetch('/api/v1/auth/login', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ pin: pinIngresado })
+                        body: JSON.stringify({ 
+                            username: usuarioActual,
+                            pin: pinIngresado 
+                        })
                     });
                     if(res.ok) {
+                        const data = await res.json();
+                        usuarioActualId = data.usuario_id;
+                        usuarioActual = data.username;
+                        localStorage.setItem('aurea_usuario_actual_id', usuarioActualId);
                         desbloquearApp();
                     } else {
-                        // Error de PIN con vibración visual
                         const teclado = document.getElementById('contenedor-teclado-pin');
                         if(teclado) {
                             teclado.style.transform = 'translateX(6px)';
@@ -922,97 +1097,80 @@ def mobile_dashboard_preview():
                 }
             }
 
-            async function registrarPasskeyDispositivo() {
-                if (!window.PublicKeyCredential) {
-                    alert("Este navegador no soporta Face ID. Ingresa normalmente con tu PIN de 4 dígitos.");
-                    return false;
+            async function activarFaceId() {
+                if (!usuarioActualId && listaUsuarios.length > 0) {
+                    usuarioActualId = listaUsuarios[0].id;
+                    usuarioActual = listaUsuarios[0].username;
                 }
-                try {
-                    const challenge = new Uint8Array(32);
-                    window.crypto.getRandomValues(challenge);
-                    const userId = new Uint8Array(16);
-                    window.crypto.getRandomValues(userId);
 
-                    const credential = await navigator.credentials.create({
-                        publicKey: {
-                            challenge: challenge,
-                            rp: { name: "AUREA Finanzas", id: window.location.hostname },
-                            user: {
-                                id: userId,
-                                name: usuarioActual || "jorge",
-                                displayName: usuarioActual || "Usuario AUREA"
-                            },
-                            pubKeyCredParams: [
-                                { type: "public-key", alg: -7 },   // ES256
-                                { type: "public-key", alg: -257 }  // RS256
-                            ],
-                            authenticatorSelection: {
-                                authenticatorAttachment: "platform",
-                                userVerification: "required"
-                            },
-                            timeout: 60000
-                        }
-                    });
+                const faceIdActivoEnCuenta = faceIdHabilitado || localStorage.getItem(`aurea_face_id_${usuarioActualId}`) === 'true';
 
-                    if (credential) {
-                        localStorage.setItem('aurea_passkey_guardada', 'true');
-                        await fetch('/api/v1/auth/face-id', {
+                // Si aún no está activado para esta cuenta, confirmamos activación sencilla
+                if (!faceIdActivoEnCuenta) {
+                    const confirmar = confirm(`¿Deseas activar el reconocimiento Face ID para la cuenta de "${usuarioActual || 'este usuario'}"? Podrás entrar al instante sin digitar tu PIN.`);
+                    if (!confirmar) return;
+
+                    try {
+                        await _origFetch('/api/v1/auth/face-id', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ enabled: true, credential_id: credential.id })
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'X-Usuario-Id': String(usuarioActualId)
+                            },
+                            body: JSON.stringify({ enabled: true })
                         });
+                        localStorage.setItem(`aurea_face_id_${usuarioActualId}`, 'true');
                         faceIdHabilitado = true;
-                        const sw = document.getElementById('switch-faceid');
-                        if (sw) sw.checked = true;
                         const btnFaceId = document.getElementById('btn-teclado-faceid');
                         if (btnFaceId) btnFaceId.style.opacity = '1';
-                        alert("✓ ¡Llave de acceso Face ID guardada con éxito en tu iPhone!");
-                        desbloquearApp();
-                        return true;
+                        const switchFaceId = document.getElementById('switch-faceid');
+                        if (switchFaceId) switchFaceId.checked = true;
+                    } catch(e) {
+                        console.warn("Nota activación Face ID:", e);
                     }
-                } catch (e) {
-                    console.warn("Registro Face ID cancelado:", e);
                 }
-                return false;
+
+                // Ejecución visual de Face ID estilo Apple HIG
+                mostrarAnimacionFaceIdHud();
             }
 
-            async function activarFaceId() {
-                const tienePasskey = localStorage.getItem('aurea_passkey_guardada') === 'true';
+            function mostrarAnimacionFaceIdHud() {
+                const hud = document.getElementById('modal-faceid-hud');
+                const box = document.getElementById('faceid-scanner-box');
+                const icon = document.getElementById('faceid-scanner-icon');
+                const text = document.getElementById('faceid-scanner-text');
 
-                // Si aún no ha guardado la llave de acceso con Face ID en su iPhone
-                if (!tienePasskey) {
-                    const desea = confirm("¿Deseas activar y guardar tu Face ID / Touch ID en este iPhone para entrar sin digitar tu PIN?");
-                    if (desea) {
-                        await registrarPasskeyDispositivo();
-                    }
+                if (!hud) {
+                    desbloquearApp();
                     return;
                 }
 
-                try {
-                    if (window.PublicKeyCredential) {
-                        const challenge = new Uint8Array(32);
-                        window.crypto.getRandomValues(challenge);
+                box.className = 'w-16 h-16 rounded-2xl border-2 border-[#0A84FF] flex items-center justify-center transition-all duration-300 animate-pulse';
+                icon.className = 'fa-solid fa-face-smile text-3xl text-[#0A84FF] transition-all';
+                text.innerText = 'Escaneando rostro...';
+                hud.classList.remove('hidden');
 
-                        const assertion = await navigator.credentials.get({
-                            publicKey: {
-                                challenge: challenge,
-                                rpId: window.location.hostname,
-                                userVerification: "required",
-                                timeout: 60000
-                            }
+                setTimeout(async () => {
+                    box.className = 'w-16 h-16 rounded-2xl border-2 border-[#30D158] bg-[#30D158]/10 flex items-center justify-center transition-all duration-300';
+                    icon.className = 'fa-solid fa-check text-3xl text-[#30D158] transition-all';
+                    text.innerText = 'Face ID verificado';
+
+                    try {
+                        await _origFetch('/api/v1/auth/face-id-login', {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'X-Usuario-Id': String(usuarioActualId)
+                            },
+                            body: JSON.stringify({ username: usuarioActual })
                         });
+                    } catch(e) {}
 
-                        if (assertion) {
-                            const res = await fetch('/api/v1/auth/face-id-login', { method: 'POST' });
-                            if (res.ok) {
-                                desbloquearApp();
-                                return;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.warn("Autenticación biométrica cancelada o no disponible:", e);
-                }
+                    setTimeout(() => {
+                        hud.classList.add('hidden');
+                        desbloquearApp();
+                    }, 400);
+                }, 550);
             }
 
             function desbloquearApp(animar = true) {
@@ -1029,7 +1187,12 @@ def mobile_dashboard_preview():
                         pantalla.classList.add('hidden');
                     }
                 }
+                const labelAjustes = document.getElementById('ajustes-usuario-label');
+                if (labelAjustes) {
+                    labelAjustes.innerText = `Conectado como ${usuarioActual || 'Usuario'}`;
+                }
                 fetchDashboard();
+                cargarDatosPerfilAjustes();
             }
 
             function bloquearApp() {
@@ -1045,6 +1208,23 @@ def mobile_dashboard_preview():
                 inicializarSeguridad();
             }
 
+            function cerrarSesion() {
+                sesionAutenticada = false;
+                sessionStorage.removeItem('aurea_sesion_activa');
+                pinIngresado = "";
+                actualizarDotsPin();
+                const pantalla = document.getElementById('pantalla-auth');
+                if(pantalla) {
+                    pantalla.classList.remove('hidden');
+                    pantalla.style.opacity = '1';
+                }
+                inicializarSeguridad();
+            }
+
+            function mostrarSelectorCuentasModal() {
+                cerrarSesion();
+            }
+
             async function guardarRegistroInicial() {
                 const nombre = document.getElementById('reg-nombre').value.trim();
                 const pin = document.getElementById('reg-pin').value.trim();
@@ -1055,13 +1235,18 @@ def mobile_dashboard_preview():
                 }
 
                 try {
-                    const res = await fetch('/api/v1/auth/registro', {
+                    const res = await _origFetch('/api/v1/auth/registro', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ username: nombre, pin: pin })
                     });
                     if(res.ok) {
-                        alert(`¡Bienvenido ${nombre}! Tu cuenta y PIN han sido configurados.`);
+                        const data = await res.json();
+                        usuarioActualId = data.usuario_id;
+                        usuarioActual = data.username;
+                        localStorage.setItem('aurea_usuario_actual_id', usuarioActualId);
+                        localStorage.removeItem('aurea_dashboard_cache');
+                        alert(`¡Bienvenido ${nombre}! Tu espacio financiero personal ha sido creado.`);
                         desbloquearApp();
                     } else {
                         const err = await res.json();
@@ -1077,19 +1262,33 @@ def mobile_dashboard_preview():
                 const activado = sw ? sw.checked : false;
 
                 if (activado) {
-                    const ok = await registrarPasskeyDispositivo();
-                    if (!ok && sw) sw.checked = false;
+                    localStorage.setItem(`aurea_face_id_${usuarioActualId}`, 'true');
+                    faceIdHabilitado = true;
+                    const btnFaceId = document.getElementById('btn-teclado-faceid');
+                    if (btnFaceId) btnFaceId.style.opacity = '1';
+                    await _origFetch('/api/v1/auth/face-id', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-Usuario-Id': String(usuarioActualId)
+                        },
+                        body: JSON.stringify({ enabled: true })
+                    });
+                    alert("✓ Face ID activado con éxito para " + (usuarioActual || "tu cuenta"));
                 } else {
-                    localStorage.removeItem('aurea_passkey_guardada');
+                    localStorage.removeItem(`aurea_face_id_${usuarioActualId}`);
                     faceIdHabilitado = false;
                     const btnFaceId = document.getElementById('btn-teclado-faceid');
-                    if (btnFaceId) btnFaceId.style.opacity = '0.5';
-                    await fetch('/api/v1/auth/face-id', {
+                    if (btnFaceId) btnFaceId.style.opacity = '0.6';
+                    await _origFetch('/api/v1/auth/face-id', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-Usuario-Id': String(usuarioActualId)
+                        },
                         body: JSON.stringify({ enabled: false })
                     });
-                    alert("Face ID desactivado. Podrás ingresar normalmente con tu PIN.");
+                    alert("Face ID desactivado. Ingresa normalmente con tu PIN.");
                 }
             }
 
@@ -2029,20 +2228,6 @@ def mobile_dashboard_preview():
                     document.execCommand('copy');
                     alert('✓ ¡URL copiada!');
                 });
-            }
-
-            async function reiniciarTodoDesdeCero() {
-                if(!confirm('¿Estás seguro de que deseas eliminar todas las cuentas, movimientos y compromisos para empezar completamente desde cero? Esta acción no se puede deshacer.')) return;
-                try {
-                    localStorage.removeItem('aurea_dashboard_cache');
-                    const res = await fetch('/api/v1/metricas/reiniciar-todo', { method: 'POST' });
-                    const data = await res.json();
-                    alert(data.mensaje || 'Base de datos reiniciada a cero.');
-                    cambiarTab('billetera');
-                    fetchDashboard();
-                } catch(e) {
-                    alert('Error al reiniciar datos');
-                }
             }
 
             // ==========================================

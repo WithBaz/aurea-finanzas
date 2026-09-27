@@ -35,6 +35,7 @@ class CuentaUpdate(BaseModel):
 class CuentaResponse(CuentaBase):
     id: int
     cupo_disponible: Optional[float] = None
+    usuario_id: Optional[int] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -90,6 +91,7 @@ class TransaccionUpdate(BaseModel):
 class TransaccionResponse(TransaccionBase):
     id: int
     hash_idempotencia: Optional[str] = None
+    usuario_id: Optional[int] = None
     created_at: datetime
     categoria: Optional[CategoriaResponse] = None
     model_config = ConfigDict(from_attributes=True)
@@ -216,6 +218,7 @@ class GastoFijoUpdate(BaseModel):
 
 class GastoFijoResponse(GastoFijoBase):
     id: int
+    usuario_id: Optional[int] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -240,10 +243,23 @@ class UsuarioLogin(BaseModel):
     pin: str = Field(..., min_length=4, max_length=4)
 
 
+class FaceIdLogin(BaseModel):
+    username: Optional[str] = None
+    biometric_token: Optional[str] = None
+
+
+class UsuarioPerfil(BaseModel):
+    id: int
+    username: str
+    face_id_enabled: bool = False
+    model_config = ConfigDict(from_attributes=True)
+
+
 class UsuarioEstado(BaseModel):
     registrado: bool
     username: Optional[str] = None
     face_id_enabled: bool = False
+    usuarios: List[UsuarioPerfil] = []
 
 
 class UsuarioCambiarPin(BaseModel):
@@ -254,5 +270,6 @@ class UsuarioCambiarPin(BaseModel):
 class FaceIdToggle(BaseModel):
     enabled: bool
     credential_id: Optional[str] = None
+    biometric_token: Optional[str] = None
 
 

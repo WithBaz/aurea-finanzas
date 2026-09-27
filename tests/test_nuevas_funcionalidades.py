@@ -110,3 +110,67 @@ def test_edicion_y_eliminacion_transaccion(client):
 
     # Limpiar cuenta
     client.delete(f"/api/v1/cuentas/{cuenta_id}")
+
+
+def test_multi_usuario_aislamiento_de_datos(client):
+    """
+    Verifica que dos usuarios independientes (ej. titular y un amigo) tengan sus cuentas,
+    gastos fijos y movimientos 100% aislados y seguros.
+    """
+    # 1. Registrar Usuario A (Carlos)
+    res_a = client.post("/api/v1/auth/registro", json={"username": "carlos", "pin": "4321"})
+    assert res_a.status_code == 201
+    uid_a = res_a.json()["usuario_id"]
+
+    # 2. Registrar Usuario B (Pedro / Amigo)
+    res_b = client.post("/api/v1/auth/registro", json={"username": "pedro_amigo", "pin": "9876"})
+    assert res_b.status_code == 201
+    uid_b = res_b.json()["usuario_id"]
+
+    # 3. Listar perfiles en el selector multi-cuenta
+    res_usuarios = client.get("/api/v1/auth/usuarios")
+    assert res_usuarios.status_code == 200
+    nombres_usuarios = [u["username"] for u in res_usuarios.json()]
+    assert "carlos" in nombres_usuarios
+    assert "pedro_amigo" in nombres_usuarios
+
+    # 4. Carlos crea una cuenta y un gasto fijo
+    header_a = {"X-Usuario-Id": str(uid_a)}
+    c_a = client.post("/api/v1/cuentas", json={"nombre": "Ahorros Carlos", "tipo": "DEBITO", "saldo_actual": 1200000.0}, headers=header_a)
+    assert c_a.status_code == 201
+    cuenta_a_id = c_a.json()["id"]
+
+    gf_a = client.post("/api/v1/gastos-fijos", json={"nombre": "Internet Carlos", "monto": 80000.0, "dia_pago": 10}, headers=header_a)
+    assert gf_a.status_code == 201
+    gasto_a_id = gf_a.json()["id"]
+
+    # 5. Pedro consulta su dashboard y cuentas: NO debe ver las cuentas ni gastos de Carlos
+    header_b = {"X-Usuario-Id": str(uid_b)}
+    cuentas_pedro = client.get("/api/v1/cuentas", headers=header_b).json()
+    assert all(c["id"] != cuenta_a_id for c in cuentas_pedro)
+
+    gastos_pedro = client.get("/api/v1/gastos-fijos", headers=header_b).json()
+    assert all(g["id"] != gasto_a_id for g in gastos_pedro["items"])
+
+    dash_pedro = client.get("/api/v1/metricas/dashboard", headers=header_b).json()
+    assert all(c["id"] != cuenta_a_id for c in dash_pedro["cuentas"])
+
+    # 6. Pedro crea su propia cuenta personal
+    c_b = client.post("/api/v1/cuentas", json={"nombre": "Billetera Pedro", "tipo": "EFECTIVO", "saldo_actual": 300000.0}, headers=header_b)
+    assert c_b.status_code == 201
+    cuenta_b_id = c_b.json()["id"]
+
+    # 7. Carlos consulta sus cuentas: NO debe ver la cuenta de Pedro
+    cuentas_carlos = client.get("/api/v1/cuentas", headers=header_a).json()
+    assert any(c["id"] == cuenta_a_id for c in cuentas_carlos)
+    assert all(c["id"] != cuenta_b_id for c in cuentas_carlos)
+
+    # 8. Face ID independiente
+    res_face_b = client.post("/api/v1/auth/face-id", json={"enabled": True}, headers=header_b)
+    assert res_face_b.status_code == 200
+    assert res_face_b.json()["face_id_enabled"] is True
+
+    res_face_login_b = client.post("/api/v1/auth/face-id-login", json={"username": "pedro_amigo"}, headers=header_b)
+    assert res_face_login_b.status_code == 200
+    assert res_face_login_b.json()["username"] == "pedro_amigo"
+

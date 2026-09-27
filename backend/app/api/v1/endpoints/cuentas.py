@@ -1,25 +1,36 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import Cuenta, Transaccion, TipoCuenta
 from backend.app.schemas import CuentaCreate, CuentaUpdate, CuentaResponse
+from backend.app.api.deps import get_current_user_id
 
 router = APIRouter()
 
 
 @router.get("", response_model=List[CuentaResponse])
-def listar_cuentas(db: Session = Depends(get_db)):
+def listar_cuentas(
+    current_uid: Optional[int] = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """
-    Lista todos los instrumentos financieros (Débito, Crédito, Alto Rendimiento, Efectivo).
+    Lista todos los instrumentos financieros del usuario actual (Débito, Crédito, Alto Rendimiento, Efectivo).
     """
-    return db.query(Cuenta).filter(Cuenta.activa == True).all()
+    query = db.query(Cuenta).filter(Cuenta.activa == True)
+    if current_uid:
+        query = query.filter((Cuenta.usuario_id == current_uid) | (Cuenta.usuario_id == None))
+    return query.all()
 
 
 @router.post("", response_model=CuentaResponse, status_code=status.HTTP_201_CREATED)
-def crear_cuenta(cuenta_in: CuentaCreate, db: Session = Depends(get_db)):
+def crear_cuenta(
+    cuenta_in: CuentaCreate,
+    current_uid: Optional[int] = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """
-    Registra un nuevo instrumento financiero.
+    Registra un nuevo instrumento financiero para el usuario actual.
     Para tarjetas de crédito, si se especifica cupo_disponible y cupo_total,
     calcula la deuda inicial automáticamente: saldo_actual = max(0.0, cupo_total - cupo_disponible).
     """
@@ -29,6 +40,9 @@ def crear_cuenta(cuenta_in: CuentaCreate, db: Session = Depends(get_db)):
     if data.get("tipo") == TipoCuenta.CREDITO and cupo_disp is not None:
         cupo_tot = float(data.get("cupo_total") or 0.0)
         data["saldo_actual"] = max(0.0, cupo_tot - float(cupo_disp))
+
+    if current_uid:
+        data["usuario_id"] = current_uid
 
     cuenta = Cuenta(**data)
     db.add(cuenta)

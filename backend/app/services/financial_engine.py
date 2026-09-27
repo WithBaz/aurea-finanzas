@@ -19,15 +19,26 @@ class FinancialEngine:
     """
 
     @classmethod
-    def calcular_semaforo_mensual(cls, db: Session, fecha_referencia: Optional[datetime] = None) -> Dict[str, Any]:
+    def calcular_semaforo_mensual(
+        cls,
+        db: Session,
+        fecha_referencia: Optional[datetime] = None,
+        usuario_id: Optional[int] = None
+    ) -> Dict[str, Any]:
         ahora = fecha_referencia or datetime.now(timezone.utc)
         hoy_inicio = datetime(ahora.year, ahora.month, ahora.day, 0, 0, 0)
         hoy_fin = datetime(ahora.year, ahora.month, ahora.day, 23, 59, 59)
 
         # 1. Obtener perfil financiero
-        perfil = db.query(PerfilFinanciero).first()
+        perfil_q = db.query(PerfilFinanciero)
+        if usuario_id:
+            perfil = perfil_q.filter(PerfilFinanciero.usuario_id == usuario_id).first()
+        else:
+            perfil = perfil_q.first()
+
         if not perfil:
             perfil = PerfilFinanciero(
+                usuario_id=usuario_id,
                 dia_pago_mensual=1,
                 ingreso_mensual_estimado=4000000.0,
                 compromisos_fijos_mensual=1800000.0,
@@ -49,32 +60,42 @@ class FinancialEngine:
         fin_mes = datetime(ahora.year, ahora.month, total_dias_mes, 23, 59, 59)
 
         # Suma de egresos del mes (excluyendo transferencias internas)
-        egresos_mes_query = db.query(func.sum(Transaccion.monto)).filter(
+        egresos_q = db.query(func.sum(Transaccion.monto)).filter(
             Transaccion.tipo == TipoTransaccion.EGRESO,
             Transaccion.fecha >= inicio_mes,
             Transaccion.fecha <= fin_mes
-        ).scalar()
-        gasto_acumulado_mes = float(egresos_mes_query or 0.0)
+        )
+        if usuario_id:
+            egresos_q = egresos_q.filter((Transaccion.usuario_id == usuario_id) | (Transaccion.usuario_id == None))
+        gasto_acumulado_mes = float(egresos_q.scalar() or 0.0)
 
         # Gasto de hoy
-        gasto_hoy_query = db.query(func.sum(Transaccion.monto)).filter(
+        gasto_hoy_q = db.query(func.sum(Transaccion.monto)).filter(
             Transaccion.tipo == TipoTransaccion.EGRESO,
             Transaccion.fecha >= hoy_inicio,
             Transaccion.fecha <= hoy_fin
-        ).scalar()
-        gasto_hoy = float(gasto_hoy_query or 0.0)
+        )
+        if usuario_id:
+            gasto_hoy_q = gasto_hoy_q.filter((Transaccion.usuario_id == usuario_id) | (Transaccion.usuario_id == None))
+        gasto_hoy = float(gasto_hoy_q.scalar() or 0.0)
 
         # Gastos hormiga del mes
-        gastos_hormiga_query = db.query(func.sum(Transaccion.monto)).filter(
+        hormiga_q = db.query(func.sum(Transaccion.monto)).filter(
             Transaccion.tipo == TipoTransaccion.EGRESO,
             Transaccion.es_gasto_hormiga == True,
             Transaccion.fecha >= inicio_mes,
             Transaccion.fecha <= fin_mes
-        ).scalar()
-        gastos_hormiga_acumulados = float(gastos_hormiga_query or 0.0)
+        )
+        if usuario_id:
+            hormiga_q = hormiga_q.filter((Transaccion.usuario_id == usuario_id) | (Transaccion.usuario_id == None))
+        gastos_hormiga_acumulados = float(hormiga_q.scalar() or 0.0)
 
         # 4. Sincronización y cálculo de Gastos Fijos
-        gastos_fijos_activos = db.query(GastoFijo).filter(GastoFijo.activo == True).all()
+        fijos_q = db.query(GastoFijo).filter(GastoFijo.activo == True)
+        if usuario_id:
+            fijos_q = fijos_q.filter((GastoFijo.usuario_id == usuario_id) | (GastoFijo.usuario_id == None))
+        gastos_fijos_activos = fijos_q.all()
+
         if gastos_fijos_activos:
             total_fijos = sum(g.monto for g in gastos_fijos_activos)
             if perfil.compromisos_fijos_mensual != total_fijos:
@@ -84,12 +105,14 @@ class FinancialEngine:
             total_fijos = perfil.compromisos_fijos_mensual
 
         # Detección de cobro de nómina (inicio de mes o ingreso recibido)
-        ingresos_mes_query = db.query(func.sum(Transaccion.monto)).filter(
+        ingresos_q = db.query(func.sum(Transaccion.monto)).filter(
             Transaccion.tipo == TipoTransaccion.INGRESO,
             Transaccion.fecha >= inicio_mes,
             Transaccion.fecha <= fin_mes
-        ).scalar()
-        nomina_recibida = (dia_actual >= perfil.dia_pago_mensual) or (float(ingresos_mes_query or 0.0) > 0)
+        )
+        if usuario_id:
+            ingresos_q = ingresos_q.filter((Transaccion.usuario_id == usuario_id) | (Transaccion.usuario_id == None))
+        nomina_recibida = (dia_actual >= perfil.dia_pago_mensual) or (float(ingresos_q.scalar() or 0.0) > 0)
 
         # 5. Cálculo de presupuesto disponible (los gastos fijos se apartan de inmediato)
         ahorro_planeado = perfil.ingreso_mensual_estimado * (perfil.porcentaje_ahorro_meta / 100.0)
@@ -135,23 +158,38 @@ class FinancialEngine:
         }
 
     @classmethod
-    def obtener_resumen_gastos_fijos(cls, db: Session, fecha_referencia: Optional[datetime] = None) -> Dict[str, Any]:
+    def obtener_resumen_gastos_fijos(
+        cls,
+        db: Session,
+        fecha_referencia: Optional[datetime] = None,
+        usuario_id: Optional[int] = None
+    ) -> Dict[str, Any]:
         ahora = fecha_referencia or datetime.now(timezone.utc)
         _, total_dias_mes = calendar.monthrange(ahora.year, ahora.month)
         inicio_mes = datetime(ahora.year, ahora.month, 1, 0, 0, 0)
         fin_mes = datetime(ahora.year, ahora.month, total_dias_mes, 23, 59, 59)
 
-        perfil = db.query(PerfilFinanciero).first()
+        perfil_q = db.query(PerfilFinanciero)
+        if usuario_id:
+            perfil = perfil_q.filter((PerfilFinanciero.usuario_id == usuario_id) | (PerfilFinanciero.usuario_id == None)).first()
+        else:
+            perfil = perfil_q.first()
         dia_pago = perfil.dia_pago_mensual if perfil else 1
 
-        ingresos_mes = db.query(func.sum(Transaccion.monto)).filter(
+        ingresos_q = db.query(func.sum(Transaccion.monto)).filter(
             Transaccion.tipo == TipoTransaccion.INGRESO,
             Transaccion.fecha >= inicio_mes,
             Transaccion.fecha <= fin_mes
-        ).scalar()
+        )
+        if usuario_id:
+            ingresos_q = ingresos_q.filter((Transaccion.usuario_id == usuario_id) | (Transaccion.usuario_id == None))
+        ingresos_mes = ingresos_q.scalar()
         nomina_recibida = (ahora.day >= dia_pago) or (float(ingresos_mes or 0.0) > 0)
 
-        items = db.query(GastoFijo).filter(GastoFijo.activo == True).order_by(GastoFijo.dia_pago.asc()).all()
+        items_q = db.query(GastoFijo).filter(GastoFijo.activo == True)
+        if usuario_id:
+            items_q = items_q.filter((GastoFijo.usuario_id == usuario_id) | (GastoFijo.usuario_id == None))
+        items = items_q.order_by(GastoFijo.dia_pago.asc()).all()
         total_fijos = sum(i.monto for i in items) if items else (perfil.compromisos_fijos_mensual if perfil else 0.0)
         total_apartado = sum(i.monto for i in items if i.pagado_este_mes)
         total_pendiente = sum(i.monto for i in items if not i.pagado_este_mes)
@@ -178,18 +216,21 @@ class FinancialEngine:
         }
 
     @classmethod
-    def calcular_rendimientos_diarios(cls, db: Session) -> List[Dict[str, Any]]:
+    def calcular_rendimientos_diarios(cls, db: Session, usuario_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Calcula el rendimiento diario y mensual devengado por cuentas de alto rendimiento
         según la fórmula de interés compuesto con tasa E.A.
         Rendimiento diario = Saldo * ((1 + Tasa_EA)^(1/365) - 1)
         """
-        cuentas_rendimiento = db.query(Cuenta).filter(
+        cuentas_q = db.query(Cuenta).filter(
             Cuenta.tipo == TipoCuenta.ALTO_RENDIMIENTO,
             Cuenta.activa == True,
             Cuenta.saldo_actual > 0,
             Cuenta.tasa_ea > 0
-        ).all()
+        )
+        if usuario_id:
+            cuentas_q = cuentas_q.filter((Cuenta.usuario_id == usuario_id) | (Cuenta.usuario_id == None))
+        cuentas_rendimiento = cuentas_q.all()
 
         resultados = []
         for cuenta in cuentas_rendimiento:
@@ -210,3 +251,4 @@ class FinancialEngine:
                 "rendimiento_mensual_proyectado": rendimiento_mensual,
             })
         return resultados
+
