@@ -2,7 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
-from backend.app.models import Cuenta, Transaccion
+from backend.app.models import Cuenta, Transaccion, TipoCuenta
 from backend.app.schemas import CuentaCreate, CuentaUpdate, CuentaResponse
 
 router = APIRouter()
@@ -20,8 +20,17 @@ def listar_cuentas(db: Session = Depends(get_db)):
 def crear_cuenta(cuenta_in: CuentaCreate, db: Session = Depends(get_db)):
     """
     Registra un nuevo instrumento financiero.
+    Para tarjetas de crédito, si se especifica cupo_disponible y cupo_total,
+    calcula la deuda inicial automáticamente: saldo_actual = max(0.0, cupo_total - cupo_disponible).
     """
-    cuenta = Cuenta(**cuenta_in.model_dump())
+    data = cuenta_in.model_dump()
+    cupo_disp = data.pop("cupo_disponible", None)
+
+    if data.get("tipo") == TipoCuenta.CREDITO and cupo_disp is not None:
+        cupo_tot = float(data.get("cupo_total") or 0.0)
+        data["saldo_actual"] = max(0.0, cupo_tot - float(cupo_disp))
+
+    cuenta = Cuenta(**data)
     db.add(cuenta)
     db.commit()
     db.refresh(cuenta)
@@ -53,6 +62,11 @@ def actualizar_cuenta(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
 
     update_data = cuenta_in.model_dump(exclude_unset=True)
+    cupo_disp = update_data.pop("cupo_disponible", None)
+    if cuenta.tipo == TipoCuenta.CREDITO and cupo_disp is not None:
+        cupo_tot = float(update_data.get("cupo_total") if update_data.get("cupo_total") is not None else (cuenta.cupo_total or 0.0))
+        update_data["saldo_actual"] = max(0.0, cupo_tot - float(cupo_disp))
+
     for field, value in update_data.items():
         setattr(cuenta, field, value)
 
@@ -96,7 +110,9 @@ def sincronizar_cuentas(cuentas_in: List[CuentaCreate], db: Session = Depends(ge
             existente.cupo_total = c_data.cupo_total
             resultados.append(existente)
         else:
-            nueva = Cuenta(**c_data.model_dump())
+            d = c_data.model_dump()
+            d.pop("cupo_disponible", None)
+            nueva = Cuenta(**d)
             db.add(nueva)
             resultados.append(nueva)
     db.commit()

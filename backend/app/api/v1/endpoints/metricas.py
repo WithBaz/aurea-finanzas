@@ -118,6 +118,7 @@ def obtener_resumen_dashboard(db: Session = Depends(get_db)):
                 "tipo": c.tipo.value if hasattr(c.tipo, "value") else str(c.tipo),
                 "saldo_actual": c.saldo_actual,
                 "cupo_total": c.cupo_total,
+                "cupo_disponible": max(0.0, (c.cupo_total or 0.0) - c.saldo_actual) if c.tipo == TipoCuenta.CREDITO else None,
                 "tasa_ea": c.tasa_ea,
                 "dia_corte": c.dia_corte,
                 "dia_limite_pago": c.dia_limite_pago,

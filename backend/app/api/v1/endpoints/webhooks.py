@@ -51,12 +51,22 @@ def procesar_atajo_ios(
                 detail="El monto de la transacción de Apple Pay debe ser superior a 0 COP"
             )
 
-        # Buscar cuenta asociada (o cuenta débito/crédito por defecto)
+        # Buscar cuenta asociada (o tarjeta de crédito / débito por defecto)
         cuenta = None
         if tarjeta_nombre:
-            cuenta = db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{tarjeta_nombre}%"), Cuenta.activa == True).first()
+            tarjeta_clean = str(tarjeta_nombre).strip()
+            cuenta = db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{tarjeta_clean}%"), Cuenta.activa == True).first()
+            if not cuenta:
+                palabras = [p for p in tarjeta_clean.split() if len(p) >= 2]
+                for p in palabras:
+                    c = db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{p}%"), Cuenta.activa == True).first()
+                    if c:
+                        cuenta = c
+                        break
         if not cuenta:
-            cuenta = db.query(Cuenta).filter(Cuenta.tipo.in_([TipoCuenta.DEBITO, TipoCuenta.CREDITO]), Cuenta.activa == True).first()
+            cuenta = db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.CREDITO, Cuenta.activa == True).first()
+            if not cuenta:
+                cuenta = db.query(Cuenta).filter(Cuenta.tipo.in_([TipoCuenta.DEBITO, TipoCuenta.ALTO_RENDIMIENTO, TipoCuenta.EFECTIVO]), Cuenta.activa == True).first()
         
         if not cuenta:
             raise HTTPException(
@@ -84,11 +94,11 @@ def procesar_atajo_ios(
         cat_nombre, cat_id = CategorizadorComercios.sugerir_categoria(comercio, db)
         es_hormiga = CategorizadorComercios.es_gasto_hormiga(monto)
 
-        # Descontar saldo o registrar deuda
-        if cuenta.tipo == TipoCuenta.DEBITO:
-            cuenta.saldo_actual -= monto
-        elif cuenta.tipo == TipoCuenta.CREDITO:
-            cuenta.saldo_actual += monto  # Deuda acumulada
+        # Descontar saldo o registrar deuda de tarjeta de crédito
+        if cuenta.tipo == TipoCuenta.CREDITO:
+            cuenta.saldo_actual += monto  # Deuda acumulada en la tarjeta
+        else:
+            cuenta.saldo_actual -= monto  # Débito de cuenta líquida
 
         transaccion = Transaccion(
             monto=monto,

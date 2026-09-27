@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import Cuenta, Transaccion, TipoCuenta, TipoTransaccion, MedioCaptura
-from backend.app.schemas import TransaccionCreate, TransaccionResponse
+from backend.app.schemas import TransaccionCreate, TransaccionResponse, TransaccionUpdate
 from backend.app.services.categorizer import CategorizadorComercios
 from backend.app.services.nlp_expense_parser import NLPSmartExpenseParser
 
@@ -273,3 +273,105 @@ def reasignar_cuenta_transaccion(
     db.commit()
     db.refresh(tx)
     return {"status": "exitoso", "mensaje": f"Gasto asignado correctamente a {nueva_cuenta.nombre}"}
+
+
+def _aplicar_efecto_saldo(cuenta: Cuenta, tipo_tx: TipoTransaccion, monto: float, aplicar: bool):
+    """
+    Aplica o revierte el impacto financiero de una transacción sobre una cuenta.
+    aplicar=True: la transacción ocurre.
+    aplicar=False: la transacción se cancela/revierte.
+    """
+    if tipo_tx == TipoTransaccion.EGRESO:
+        if cuenta.tipo == TipoCuenta.CREDITO:
+            cuenta.saldo_actual += monto if aplicar else -monto
+        else:
+            cuenta.saldo_actual += -monto if aplicar else monto
+    elif tipo_tx == TipoTransaccion.INGRESO:
+        cuenta.saldo_actual += monto if aplicar else -monto
+
+
+@router.get("/{transaccion_id}", response_model=TransaccionResponse)
+def obtener_detalle_transaccion(
+    transaccion_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene los detalles completos de una transacción específica.
+    """
+    tx = db.query(Transaccion).filter(Transaccion.id == transaccion_id).first()
+    if not tx:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
+    return tx
+
+
+@router.put("/{transaccion_id}", response_model=TransaccionResponse)
+def actualizar_transaccion(
+    transaccion_id: int,
+    tx_in: TransaccionUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Actualiza el comercio, monto, tipo, cuenta o categoría de una transacción, reajustando saldos automáticamente.
+    """
+    tx = db.query(Transaccion).filter(Transaccion.id == transaccion_id).first()
+    if not tx:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
+
+    cuenta_anterior = tx.cuenta_origen
+    cuenta_nueva = cuenta_anterior
+    if tx_in.cuenta_origen_id and tx_in.cuenta_origen_id != tx.cuenta_origen_id:
+        cuenta_nueva = db.query(Cuenta).filter(Cuenta.id == tx_in.cuenta_origen_id).first()
+        if not cuenta_nueva:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nueva cuenta no encontrada")
+
+    # 1. Revertir saldo anterior
+    if cuenta_anterior:
+        _aplicar_efecto_saldo(cuenta_anterior, tx.tipo, tx.monto, aplicar=False)
+
+    # 2. Aplicar nuevos valores
+    nuevo_monto = tx_in.monto if tx_in.monto is not None else tx.monto
+    nuevo_tipo = tx_in.tipo if tx_in.tipo is not None else tx.tipo
+
+    if tx_in.comercio is not None:
+        tx.comercio = tx_in.comercio.strip()
+    if tx_in.descripcion is not None:
+        tx.descripcion = tx_in.descripcion.strip()
+    if tx_in.categoria_id is not None:
+        tx.categoria_id = tx_in.categoria_id
+    if tx_in.cuotas_totales is not None:
+        tx.cuotas_totales = tx_in.cuotas_totales
+    if tx_in.cuota_actual is not None:
+        tx.cuota_actual = tx_in.cuota_actual
+
+    tx.monto = nuevo_monto
+    tx.tipo = nuevo_tipo
+    tx.cuenta_origen_id = cuenta_nueva.id
+    tx.es_gasto_hormiga = CategorizadorComercios.es_gasto_hormiga(nuevo_monto)
+
+    # 3. Aplicar nuevo saldo
+    _aplicar_efecto_saldo(cuenta_nueva, nuevo_tipo, nuevo_monto, aplicar=True)
+
+    db.commit()
+    db.refresh(tx)
+    return tx
+
+
+@router.delete("/{transaccion_id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_transaccion(
+    transaccion_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Elimina una transacción y revierte su impacto financiero en la cuenta o tarjeta de origen.
+    """
+    tx = db.query(Transaccion).filter(Transaccion.id == transaccion_id).first()
+    if not tx:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
+
+    if tx.cuenta_origen:
+        _aplicar_efecto_saldo(tx.cuenta_origen, tx.tipo, tx.monto, aplicar=False)
+
+    db.delete(tx)
+    db.commit()
+    return None
+

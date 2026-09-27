@@ -17,7 +17,7 @@ class CuentaBase(BaseModel):
 
 
 class CuentaCreate(CuentaBase):
-    pass
+    cupo_disponible: Optional[float] = None
 
 
 class CuentaUpdate(BaseModel):
@@ -25,6 +25,7 @@ class CuentaUpdate(BaseModel):
     tipo: Optional[TipoCuenta] = None
     saldo_actual: Optional[float] = None
     cupo_total: Optional[float] = None
+    cupo_disponible: Optional[float] = None
     tasa_ea: Optional[float] = None
     dia_corte: Optional[int] = None
     dia_limite_pago: Optional[int] = None
@@ -33,6 +34,7 @@ class CuentaUpdate(BaseModel):
 
 class CuentaResponse(CuentaBase):
     id: int
+    cupo_disponible: Optional[float] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -72,6 +74,17 @@ class TransaccionBase(BaseModel):
 
 class TransaccionCreate(TransaccionBase):
     pass
+
+
+class TransaccionUpdate(BaseModel):
+    monto: Optional[float] = Field(None, gt=0)
+    tipo: Optional[TipoTransaccion] = None
+    comercio: Optional[str] = None
+    descripcion: Optional[str] = None
+    cuenta_origen_id: Optional[int] = None
+    categoria_id: Optional[int] = None
+    cuotas_totales: Optional[int] = Field(None, ge=1)
+    cuota_actual: Optional[int] = Field(None, ge=1)
 
 
 class TransaccionResponse(TransaccionBase):
@@ -214,4 +227,32 @@ class GastosFijosResumen(BaseModel):
     cantidad_compromisos: int
     nomina_recibida: bool
     items: List[GastoFijoResponse]
+
+
+# --- Autenticación y Seguridad (Bancolombia + Face ID) ---
+class UsuarioRegistro(BaseModel):
+    username: str = Field(..., min_length=2, max_length=50)
+    pin: str = Field(..., min_length=4, max_length=4)
+
+
+class UsuarioLogin(BaseModel):
+    username: Optional[str] = None
+    pin: str = Field(..., min_length=4, max_length=4)
+
+
+class UsuarioEstado(BaseModel):
+    registrado: bool
+    username: Optional[str] = None
+    face_id_enabled: bool = False
+
+
+class UsuarioCambiarPin(BaseModel):
+    pin_actual: str = Field(..., min_length=4, max_length=4)
+    pin_nuevo: str = Field(..., min_length=4, max_length=4)
+
+
+class FaceIdToggle(BaseModel):
+    enabled: bool
+    credential_id: Optional[str] = None
+
 

@@ -6,9 +6,11 @@ from backend.app.api.v1.endpoints import (
     metricas,
     metas,
     gastos_fijos,
+    auth,
 )
 
 api_router = APIRouter()
+api_router.include_router(auth.router, prefix="/auth", tags=["Autenticación y Seguridad"])
 api_router.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks Atajos iOS"])
 api_router.include_router(cuentas.router, prefix="/cuentas", tags=["Cuentas e Instrumentos"])
 api_router.include_router(transacciones.router, prefix="/transacciones", tags=["Transacciones"])

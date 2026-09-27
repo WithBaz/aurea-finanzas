@@ -126,3 +126,15 @@ class GastoFijo(Base):
     activo = Column(Boolean, default=True, nullable=False)
     pagado_este_mes = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(100), unique=True, nullable=False)
+    pin_hash = Column(String(256), nullable=False)
+    face_id_enabled = Column(Boolean, default=False, nullable=False)
+    face_id_credential_id = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
