@@ -820,6 +820,12 @@ def mobile_dashboard_preview():
 
             // Verificar Estado de Seguridad al cargar
             async function inicializarSeguridad() {
+                // 1. Si la sesión ya fue desbloqueada en esta navegación, mantener abierta
+                if (sessionStorage.getItem('aurea_sesion_activa') === 'true') {
+                    desbloquearApp(false);
+                    return;
+                }
+
                 try {
                     const res = await fetch('/api/v1/auth/estado');
                     if(!res.ok) return;
@@ -850,14 +856,7 @@ def mobile_dashboard_preview():
                         if(switchFaceId) switchFaceId.checked = faceIdHabilitado;
 
                         if(!faceIdHabilitado && btnFaceId) {
-                            btnFaceId.style.opacity = '0.3';
-                        }
-
-                        // Si Face ID está activo y estamos en iPhone o navegador con soporte:
-                        if(faceIdHabilitado && !sesionAutenticada) {
-                            setTimeout(() => {
-                                activarFaceId(true);
-                            }, 350);
+                            btnFaceId.style.opacity = '0.5';
                         }
                     }
                 } catch(e) {
@@ -923,56 +922,119 @@ def mobile_dashboard_preview():
                 }
             }
 
-            async function activarFaceId(silencioso = false) {
+            async function registrarPasskeyDispositivo() {
+                if (!window.PublicKeyCredential) {
+                    alert("Este navegador no soporta Face ID. Ingresa normalmente con tu PIN de 4 dígitos.");
+                    return false;
+                }
                 try {
-                    // Intento de biometría nativa con WebAuthn API si está disponible
-                    if (window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
-                        const disponible = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-                        if (disponible) {
-                            // En iPhone dispara directamente la interfaz de Face ID
-                            try {
-                                const challenge = new Uint8Array(32);
-                                window.crypto.getRandomValues(challenge);
-                                // Intentamos llamada de validación biométrica
-                                await navigator.credentials.get({
-                                    publicKey: {
-                                        challenge: challenge,
-                                        timeout: 60000,
-                                        userVerification: "required"
-                                    }
-                                });
-                            } catch(e) {
-                                // Si cancela o no hay credencial registrada previa, procedemos por backend
+                    const challenge = new Uint8Array(32);
+                    window.crypto.getRandomValues(challenge);
+                    const userId = new Uint8Array(16);
+                    window.crypto.getRandomValues(userId);
+
+                    const credential = await navigator.credentials.create({
+                        publicKey: {
+                            challenge: challenge,
+                            rp: { name: "AUREA Finanzas", id: window.location.hostname },
+                            user: {
+                                id: userId,
+                                name: usuarioActual || "jorge",
+                                displayName: usuarioActual || "Usuario AUREA"
+                            },
+                            pubKeyCredParams: [
+                                { type: "public-key", alg: -7 },   // ES256
+                                { type: "public-key", alg: -257 }  // RS256
+                            ],
+                            authenticatorSelection: {
+                                authenticatorAttachment: "platform",
+                                userVerification: "required"
+                            },
+                            timeout: 60000
+                        }
+                    });
+
+                    if (credential) {
+                        localStorage.setItem('aurea_passkey_guardada', 'true');
+                        await fetch('/api/v1/auth/face-id', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ enabled: true, credential_id: credential.id })
+                        });
+                        faceIdHabilitado = true;
+                        const sw = document.getElementById('switch-faceid');
+                        if (sw) sw.checked = true;
+                        const btnFaceId = document.getElementById('btn-teclado-faceid');
+                        if (btnFaceId) btnFaceId.style.opacity = '1';
+                        alert("✓ ¡Llave de acceso Face ID guardada con éxito en tu iPhone!");
+                        desbloquearApp();
+                        return true;
+                    }
+                } catch (e) {
+                    console.warn("Registro Face ID cancelado:", e);
+                }
+                return false;
+            }
+
+            async function activarFaceId() {
+                const tienePasskey = localStorage.getItem('aurea_passkey_guardada') === 'true';
+
+                // Si aún no ha guardado la llave de acceso con Face ID en su iPhone
+                if (!tienePasskey) {
+                    const desea = confirm("¿Deseas activar y guardar tu Face ID / Touch ID en este iPhone para entrar sin digitar tu PIN?");
+                    if (desea) {
+                        await registrarPasskeyDispositivo();
+                    }
+                    return;
+                }
+
+                try {
+                    if (window.PublicKeyCredential) {
+                        const challenge = new Uint8Array(32);
+                        window.crypto.getRandomValues(challenge);
+
+                        const assertion = await navigator.credentials.get({
+                            publicKey: {
+                                challenge: challenge,
+                                rpId: window.location.hostname,
+                                userVerification: "required",
+                                timeout: 60000
+                            }
+                        });
+
+                        if (assertion) {
+                            const res = await fetch('/api/v1/auth/face-id-login', { method: 'POST' });
+                            if (res.ok) {
+                                desbloquearApp();
+                                return;
                             }
                         }
                     }
-
-                    // Confirmar autenticación Face ID en backend
-                    const res = await fetch('/api/v1/auth/face-id-login', { method: 'POST' });
-                    if(res.ok) {
-                        desbloquearApp();
-                    } else if(!silencioso) {
-                        alert("Face ID no reconocido o no activado aún.");
-                    }
-                } catch(e) {
-                    if(!silencioso) alert("Error con Face ID.");
+                } catch (e) {
+                    console.warn("Autenticación biométrica cancelada o no disponible:", e);
                 }
             }
 
-            function desbloquearApp() {
+            function desbloquearApp(animar = true) {
                 sesionAutenticada = true;
+                sessionStorage.setItem('aurea_sesion_activa', 'true');
                 pinIngresado = "";
                 actualizarDotsPin();
                 const pantalla = document.getElementById('pantalla-auth');
                 if(pantalla) {
-                    pantalla.style.opacity = '0';
-                    setTimeout(() => pantalla.classList.add('hidden'), 250);
+                    if (animar) {
+                        pantalla.style.opacity = '0';
+                        setTimeout(() => pantalla.classList.add('hidden'), 250);
+                    } else {
+                        pantalla.classList.add('hidden');
+                    }
                 }
                 fetchDashboard();
             }
 
             function bloquearApp() {
                 sesionAutenticada = false;
+                sessionStorage.removeItem('aurea_sesion_activa');
                 pinIngresado = "";
                 actualizarDotsPin();
                 const pantalla = document.getElementById('pantalla-auth');
@@ -1014,17 +1076,20 @@ def mobile_dashboard_preview():
                 const sw = document.getElementById('switch-faceid');
                 const activado = sw ? sw.checked : false;
 
-                try {
-                    const res = await fetch('/api/v1/auth/face-id', {
+                if (activado) {
+                    const ok = await registrarPasskeyDispositivo();
+                    if (!ok && sw) sw.checked = false;
+                } else {
+                    localStorage.removeItem('aurea_passkey_guardada');
+                    faceIdHabilitado = false;
+                    const btnFaceId = document.getElementById('btn-teclado-faceid');
+                    if (btnFaceId) btnFaceId.style.opacity = '0.5';
+                    await fetch('/api/v1/auth/face-id', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ enabled: activado })
+                        body: JSON.stringify({ enabled: false })
                     });
-                    if(res.ok) {
-                        alert(activado ? "✓ Face ID activado para tus próximos ingresos." : "Face ID desactivado.");
-                    }
-                } catch(e) {
-                    alert("No se pudo actualizar el estado de Face ID.");
+                    alert("Face ID desactivado. Podrás ingresar normalmente con tu PIN.");
                 }
             }
 
