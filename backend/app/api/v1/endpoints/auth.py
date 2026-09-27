@@ -83,10 +83,10 @@ def registrar_usuario(
     """
     Registra una cuenta de usuario nueva e independiente (para el titular o un amigo).
     """
-    if len(payload.pin) != 4 or not payload.pin.isdigit():
+    if not payload.pin or len(payload.pin) < 4:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El PIN debe ser exactamente de 4 dígitos numéricos."
+            detail="La contraseña debe tener al menos 4 caracteres."
         )
 
     clean_username = payload.username.strip()
@@ -94,7 +94,7 @@ def registrar_usuario(
     pin_hash = calcular_hash_pin(payload.pin)
 
     if existente:
-        # Si ya existe con ese nombre, verificar si el PIN coincide para iniciar sesión
+        # Si ya existe con ese nombre, verificar si el PIN/contraseña coincide para iniciar sesión
         if existente.pin_hash == pin_hash:
             return {
                 "status": "exitoso",
@@ -107,7 +107,7 @@ def registrar_usuario(
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"El usuario '{clean_username}' ya existe. Si eres tú, ingresa con tu PIN habitual."
+                detail=f"El usuario '{clean_username}' ya existe. Si eres tú, ingresa con tu contraseña habitual."
             )
 
     token = secrets.token_hex(24)
@@ -167,7 +167,7 @@ def iniciar_sesion(
     if pin_hash != usuario.pin_hash:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="PIN incorrecto. Intenta de nuevo."
+            detail="Contraseña o PIN incorrecto. Intenta de nuevo."
         )
 
     if not usuario.biometric_token:
@@ -287,12 +287,12 @@ def cambiar_pin(
             detail="El PIN actual no coincide."
         )
 
-    if len(payload.pin_nuevo) != 4 or not payload.pin_nuevo.isdigit():
+    if len(payload.pin_nuevo) < 4:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El nuevo PIN debe ser exactamente de 4 dígitos numéricos."
+            detail="La nueva contraseña debe tener al menos 4 caracteres."
         )
 
     usuario.pin_hash = calcular_hash_pin(payload.pin_nuevo)
     db.commit()
-    return {"status": "exitoso", "mensaje": "PIN actualizado correctamente."}
+    return {"status": "exitoso", "mensaje": "Contraseña actualizada correctamente."}

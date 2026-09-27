@@ -1,6 +1,6 @@
 from datetime import datetime, date
 from typing import Optional, List
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from backend.app.models import TipoCuenta, TipoTransaccion, MedioCaptura
 
 
@@ -235,12 +235,32 @@ class GastosFijosResumen(BaseModel):
 # --- Autenticación y Seguridad (Bancolombia + Face ID) ---
 class UsuarioRegistro(BaseModel):
     username: str = Field(..., min_length=2, max_length=50)
-    pin: str = Field(..., min_length=4, max_length=4)
+    pin: Optional[str] = Field(None, min_length=4, max_length=128)
+    password: Optional[str] = Field(None, min_length=4, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_password(self):
+        val = self.password or self.pin
+        if not val or len(val) < 4:
+            raise ValueError("La contraseña debe tener al menos 4 caracteres")
+        self.pin = val
+        self.password = val
+        return self
 
 
 class UsuarioLogin(BaseModel):
     username: Optional[str] = None
-    pin: str = Field(..., min_length=4, max_length=4)
+    pin: Optional[str] = Field(None, min_length=1, max_length=128)
+    password: Optional[str] = Field(None, min_length=1, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_password(self):
+        val = self.password or self.pin
+        if not val:
+            raise ValueError("Se requiere contraseña")
+        self.pin = val
+        self.password = val
+        return self
 
 
 class FaceIdLogin(BaseModel):
@@ -263,8 +283,8 @@ class UsuarioEstado(BaseModel):
 
 
 class UsuarioCambiarPin(BaseModel):
-    pin_actual: str = Field(..., min_length=4, max_length=4)
-    pin_nuevo: str = Field(..., min_length=4, max_length=4)
+    pin_actual: str = Field(..., min_length=4, max_length=128)
+    pin_nuevo: str = Field(..., min_length=4, max_length=128)
 
 
 class FaceIdToggle(BaseModel):

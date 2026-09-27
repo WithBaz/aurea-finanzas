@@ -174,3 +174,38 @@ def test_multi_usuario_aislamiento_de_datos(client):
     assert res_face_login_b.status_code == 200
     assert res_face_login_b.json()["username"] == "pedro_amigo"
 
+
+def test_auth_con_contrasena_alfanumerica(client):
+    # 1. Registro con contraseña de texto estándar
+    res_reg = client.post("/api/v1/auth/registro", json={
+        "username": "lucia_tech",
+        "password": "miClaveSegura2026"
+    })
+    assert res_reg.status_code == 201
+    assert res_reg.json()["username"] == "lucia_tech"
+
+    # 2. Login correcto con contraseña
+    res_login = client.post("/api/v1/auth/login", json={
+        "username": "lucia_tech",
+        "password": "miClaveSegura2026"
+    })
+    assert res_login.status_code == 200
+    assert res_login.json()["status"] == "autenticado"
+    assert res_login.json()["username"] == "lucia_tech"
+
+    # 3. Login con contraseña incorrecta
+    res_bad = client.post("/api/v1/auth/login", json={
+        "username": "lucia_tech",
+        "password": "claveIncorrecta"
+    })
+    assert res_bad.status_code == 401
+    assert "incorrecto" in res_bad.json()["detail"].lower()
+
+    # 4. Login con usuario inexistente
+    res_not_found = client.post("/api/v1/auth/login", json={
+        "username": "no_existo",
+        "password": "miClaveSegura2026"
+    })
+    assert res_not_found.status_code == 404
+
+
