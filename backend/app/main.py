@@ -10,9 +10,13 @@ from backend.app.seed import seed_data
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    import backend.app.models
-    Base.metadata.create_all(bind=engine)
-    seed_data()
+    try:
+        import backend.app.models
+        Base.metadata.create_all(bind=engine)
+        seed_data()
+    except Exception as e:
+        import logging
+        logging.error(f"Advertencia: no se pudo inicializar la base de datos en lifespan: {e}")
     yield
 
 

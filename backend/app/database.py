@@ -26,6 +26,7 @@ else:
     # Configuración de resiliencia para PostgreSQL (Neon / Supabase / Vercel Postgres)
     engine_kwargs["pool_pre_ping"] = True
     engine_kwargs["pool_recycle"] = 300
+    engine_kwargs["connect_args"] = {"connect_timeout": 5}
 
 engine = create_engine(
     DATABASE_URL,
