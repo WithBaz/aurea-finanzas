@@ -1,8 +1,10 @@
 import os
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from backend.app.database import engine, Base
 from backend.app.api.v1.api import api_router
 from backend.app.seed import seed_data
@@ -42,6 +44,36 @@ app.add_middleware(
 # Conectar routers
 app.include_router(api_router, prefix="/api/v1")
 
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+@app.get("/apple-touch-icon-precomposed.png", include_in_schema=False)
+def get_apple_touch_icon():
+    icon_path = STATIC_DIR / "apple-touch-icon.png"
+    if icon_path.exists():
+        return FileResponse(str(icon_path), media_type="image/png")
+    return HTMLResponse(status_code=404)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+@app.get("/favicon.png", include_in_schema=False)
+def get_favicon():
+    fav_path = STATIC_DIR / "favicon.png"
+    if fav_path.exists():
+        return FileResponse(str(fav_path), media_type="image/png")
+    return HTMLResponse(status_code=404)
+
+
+@app.get("/manifest.json", include_in_schema=False)
+def get_manifest():
+    manifest_path = STATIC_DIR / "manifest.json"
+    if manifest_path.exists():
+        return FileResponse(str(manifest_path), media_type="application/manifest+json")
+    return JSONResponse(status_code=404, content={"detail": "Manifest not found"})
+
 
 @app.get("/", response_class=HTMLResponse)
 def mobile_dashboard_preview():
@@ -60,7 +92,17 @@ def mobile_dashboard_preview():
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
         <meta name="apple-mobile-web-app-title" content="AUREA">
+        <meta name="application-name" content="AUREA">
         <meta name="theme-color" content="#000000">
+
+        <!-- Iconos oficiales iOS Home Screen y PWA WebClip -->
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+        <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-touch-icon-precomposed.png">
+        <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
+        <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png">
+        <link rel="shortcut icon" href="/favicon.ico">
+        <link rel="manifest" href="/manifest.json">
+
         <title>AUREA • Finanzas Personales</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -129,8 +171,8 @@ def mobile_dashboard_preview():
             
             <!-- Header Marca AUREA -->
             <div class="text-center pt-4 w-full max-w-sm mx-auto">
-                <div class="w-16 h-16 rounded-3xl bg-[#1C1C1E] border border-white/10 flex items-center justify-center mx-auto mb-3 shadow-xl shadow-black/60">
-                    <i class="fa-solid fa-wallet text-2xl text-[#0A84FF]"></i>
+                <div class="w-16 h-16 rounded-3xl bg-[#1C1C1E] border border-white/10 flex items-center justify-center mx-auto mb-3 shadow-xl shadow-black/60 overflow-hidden">
+                    <img src="/apple-touch-icon.png" alt="AUREA" class="w-full h-full object-cover">
                 </div>
                 <h1 class="text-2xl font-black tracking-tight text-white" id="auth-main-title">AUREA</h1>
                 <p class="text-xs text-[#8E8E93] mt-1" id="auth-main-subtitle">Gestión Financiera Personal</p>
@@ -279,7 +321,7 @@ def mobile_dashboard_preview():
             <!-- Top Header Estilo Apple HIG -->
             <div class="flex justify-between items-center py-2 mb-3">
                 <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-[#0A84FF]"></span>
+                    <img src="/apple-touch-icon.png" alt="AUREA" class="w-5 h-5 rounded-md object-cover border border-white/20">
                     <span class="text-xs font-bold tracking-widest text-[#8E8E93] uppercase">AUREA</span>
                     <span id="badge-db" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#1C1C1E] text-slate-300 border border-white/10">...</span>
                 </div>
@@ -538,6 +580,19 @@ def mobile_dashboard_preview():
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Acerca de AUREA -->
+                <div class="ios-card rounded-3xl p-4 mb-6 border border-white/10 bg-[#1C1C1E] flex items-center gap-3.5">
+                    <img src="/apple-touch-icon.png" alt="AUREA Logo" class="w-12 h-12 rounded-2xl border border-white/15 shadow-lg object-cover">
+                    <div>
+                        <h4 class="text-sm font-extrabold text-white">AUREA</h4>
+                        <p class="text-[11px] text-[#8E8E93]">Versión 1.0.0 • Mobile Native WebClip PWA</p>
+                        <span class="text-[10px] text-emerald-400 font-semibold flex items-center gap-1.5 mt-0.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            Sistema Activo en Línea
+                        </span>
                     </div>
                 </div>
             </div>

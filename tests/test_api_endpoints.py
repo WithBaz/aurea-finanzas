@@ -156,3 +156,34 @@ def test_webhook_apple_pay_auto_crea_tarjeta_nueva(client):
     assert nueva_tarjeta["tipo"] == "CREDITO"
     assert nueva_tarjeta["saldo_actual"] == 80000.0
 
+
+def test_apple_touch_icon_y_manifest_pwa(client):
+    """Valida que los endpoints de iconos nativos iOS y PWA respondan correctamente."""
+    # 1. Apple Touch Icon
+    res_icon = client.get("/apple-touch-icon.png")
+    assert res_icon.status_code == 200
+    assert "image/png" in res_icon.headers.get("content-type", "")
+
+    # 2. Apple Touch Icon Precomposed
+    res_pre = client.get("/apple-touch-icon-precomposed.png")
+    assert res_pre.status_code == 200
+    assert "image/png" in res_pre.headers.get("content-type", "")
+
+    # 3. Favicon
+    res_fav = client.get("/favicon.ico")
+    assert res_fav.status_code == 200
+
+    # 4. Manifest JSON
+    res_manifest = client.get("/manifest.json")
+    assert res_manifest.status_code == 200
+    manifest = res_manifest.json()
+    assert manifest["short_name"] == "AUREA"
+    assert len(manifest["icons"]) >= 2
+
+    # 5. HTML head contains link tags
+    res_html = client.get("/")
+    assert res_html.status_code == 200
+    assert 'rel="apple-touch-icon"' in res_html.text
+    assert 'rel="manifest"' in res_html.text
+
+
