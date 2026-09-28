@@ -529,48 +529,13 @@ def mobile_dashboard_preview():
                     </div>
                     
                     <div class="space-y-3 text-xs">
-                        <p class="text-[11px] text-[#8E8E93] leading-relaxed">
-                            Conecta tu iPhone para registrar automáticamente pagos con <strong>Apple Pay</strong> y consignaciones/transferencias por <strong>SMS bancario</strong>:
-                        </p>
-                        
                         <div class="p-3 rounded-2xl bg-[#000000] border border-white/5 space-y-2">
-                            <span class="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">Tu URL Webhook para Atajos</span>
+                            <span class="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">URL Webhook para Atajos</span>
                             <div class="flex items-center gap-2">
                                 <input type="text" id="url-webhook-endpoint" readonly class="w-full bg-[#1C1C1E] border border-white/10 rounded-xl px-2.5 py-2 text-[10px] text-blue-400 font-mono select-all">
                                 <button onclick="copiarUrlWebhook()" class="px-3.5 py-2 rounded-xl bg-[#0A84FF] text-white font-bold text-xs shrink-0 active:scale-95 transition">
                                     Copiar
                                 </button>
-                            </div>
-                        </div>
-
-                        <!-- Guías de Configuración -->
-                        <div class="space-y-2.5 pt-1">
-                            <!-- Apple Pay -->
-                            <div class="p-3 rounded-2xl bg-[#000000]/60 border border-white/5 space-y-1.5">
-                                <div class="flex items-center gap-2 text-white font-bold text-xs">
-                                    <i class="fa-solid fa-credit-card text-[#0A84FF]"></i>
-                                    <span>Apple Pay (Wallet)</span>
-                                </div>
-                                <ol class="text-[11px] text-[#8E8E93] space-y-1 list-decimal list-inside pl-1">
-                                    <li>En tu iPhone, abre la app <strong>Atajos</strong> &rarr; <strong>Automatización</strong> &rarr; (+).</li>
-                                    <li>Selecciona <strong>Transacción</strong> (Apple Pay / Wallet).</li>
-                                    <li>Elige tus tarjetas y marca <strong>"Ejecutar de inmediato"</strong>.</li>
-                                    <li>Agrega la acción <strong>"Obtener contenido de URL"</strong> en método <strong>POST</strong> hacia la URL de arriba con formato JSON: <code class="text-blue-400 font-mono">{"medio": "APPLE_PAY", "monto": Monto, "comercio": Comercio}</code>.</li>
-                                </ol>
-                            </div>
-
-                            <!-- Consignaciones y SMS -->
-                            <div class="p-3 rounded-2xl bg-[#000000]/60 border border-white/5 space-y-1.5">
-                                <div class="flex items-center gap-2 text-white font-bold text-xs">
-                                    <i class="fa-solid fa-comments-dollar text-emerald-400"></i>
-                                    <span>Consignaciones y Transferencias (SMS)</span>
-                                </div>
-                                <ol class="text-[11px] text-[#8E8E93] space-y-1 list-decimal list-inside pl-1">
-                                    <li>En la app <strong>Atajos</strong> &rarr; Nueva Automatización &rarr; <strong>Mensaje</strong>.</li>
-                                    <li>Remitente: Bancolombia (85432), Nequi o Daviplata.</li>
-                                    <li>Marca <strong>"Ejecutar inmediatamente"</strong>.</li>
-                                    <li>Agrega la acción <strong>"Obtener contenido de URL"</strong> (POST) enviando: <code class="text-emerald-400 font-mono">{"medio": "SMS", "texto_sms": Texto del mensaje}</code>. AUREA detectará automáticamente si es consignación recibida, pago o retiro.</li>
-                                </ol>
                             </div>
                         </div>
                     </div>

@@ -58,18 +58,52 @@ def procesar_atajo_ios(
                 detail="El monto de la transacción de Apple Pay debe ser superior a 0 COP"
             )
 
-        # Buscar cuenta asociada (o tarjeta de crédito / débito por defecto)
+        # Buscar cuenta asociada (o auto-crear si es nueva / fallback)
+        STOPWORDS_TARJETA = {"visa", "mastercard", "tarjeta", "card", "credito", "crédito", "debito", "débito", "de", "the"}
         cuenta = None
         if tarjeta_nombre:
             tarjeta_clean = str(tarjeta_nombre).strip()
+            # 1. Búsqueda directa (ej: cuenta="Bancolombia Principal", Apple Pay="Bancolombia")
             cuenta = db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{tarjeta_clean}%"), Cuenta.activa == True).first()
+            
+            # 2. Búsqueda inversa: el nombre de la cuenta está dentro del string de Apple Pay (ej: cuenta="Nu", Apple Pay="Nu Mastercard")
             if not cuenta:
-                palabras = [p for p in tarjeta_clean.split() if len(p) >= 2]
+                cuentas_activas = db.query(Cuenta).filter(Cuenta.activa == True).all()
+                for c in cuentas_activas:
+                    c_nom = c.nombre.strip().lower()
+                    if c_nom not in STOPWORDS_TARJETA and len(c_nom) >= 3 and c_nom in tarjeta_clean.lower():
+                        cuenta = c
+                        break
+
+            # 3. Búsqueda por palabras significativas descartando franquicias genéricas
+            if not cuenta:
+                palabras = [p for p in tarjeta_clean.split() if len(p) >= 3 and p.lower() not in STOPWORDS_TARJETA]
                 for p in palabras:
                     c = db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{p}%"), Cuenta.activa == True).first()
                     if c:
                         cuenta = c
                         break
+
+            # 4. Si no existe ninguna coincidencia, crear la tarjeta de crédito automáticamente (Zero-Setup)
+            if not cuenta and tarjeta_clean:
+                target_user_id = payload.get("usuario_id")
+                if not target_user_id:
+                    primera_c = db.query(Cuenta).filter(Cuenta.activa == True).first()
+                    if primera_c and primera_c.usuario_id:
+                        target_user_id = primera_c.usuario_id
+
+                cuenta = Cuenta(
+                    nombre=tarjeta_clean,
+                    tipo=TipoCuenta.CREDITO,
+                    saldo_actual=0.0,
+                    cupo_total=0.0,
+                    activa=True,
+                    usuario_id=target_user_id
+                )
+                db.add(cuenta)
+                db.commit()
+                db.refresh(cuenta)
+
         if not cuenta:
             cuenta = db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.CREDITO, Cuenta.activa == True).first()
             if not cuenta:

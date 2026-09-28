@@ -134,3 +134,25 @@ def test_eliminar_cuenta_con_transacciones(client):
     res_get = client.get(f"/api/v1/cuentas/{cuenta_id}")
     assert res_get.status_code == 404
 
+
+def test_webhook_apple_pay_auto_crea_tarjeta_nueva(client):
+    payload = {
+        "medio": "APPLE_PAY",
+        "monto": 80000.0,
+        "comercio": "Zara Titán Plaza",
+        "tarjeta": "RappiCard Visa Infinite"
+    }
+    response = client.post("/api/v1/webhooks/ios-shortcut", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "exitoso"
+    assert data["cuenta_afectada"] == "RappiCard Visa Infinite"
+    assert data["monto_cop"] == 80000.0
+
+    # Verificar que la cuenta se creó como CREDITO y tiene la deuda acumulada
+    c_res = client.get("/api/v1/cuentas")
+    nueva_tarjeta = next((c for c in c_res.json() if c["nombre"] == "RappiCard Visa Infinite"), None)
+    assert nueva_tarjeta is not None
+    assert nueva_tarjeta["tipo"] == "CREDITO"
+    assert nueva_tarjeta["saldo_actual"] == 80000.0
+
