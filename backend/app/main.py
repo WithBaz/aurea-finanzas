@@ -127,8 +127,9 @@ def mobile_dashboard_preview():
                 -webkit-font-smoothing: antialiased;
                 -webkit-tap-highlight-color: transparent;
                 padding-top: var(--sat);
-                padding-bottom: calc(var(--sab) + 72px);
+                padding-bottom: 0px;
                 user-select: none;
+                min-height: 100vh;
             }
             .ios-card {
                 background: #1C1C1E;
@@ -147,10 +148,21 @@ def mobile_dashboard_preview():
             }
             .tab-view {
                 animation: fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+                padding-bottom: calc(var(--sab) + 96px);
             }
             @keyframes fadeIn {
-                from { opacity: 0; transform: translateY(6px); }
+                from { opacity: 0; transform: translateY(4px); }
                 to { opacity: 1; transform: translateY(0); }
+            }
+            /* Panel Inferior Liquid Glass Estilo WhatsApp / Apple iOS */
+            .liquid-glass-nav {
+                background: rgba(18, 18, 22, 0.75);
+                backdrop-filter: blur(32px) saturate(210%);
+                -webkit-backdrop-filter: blur(32px) saturate(210%);
+                border-top: 0.5px solid rgba(255, 255, 255, 0.14);
+                box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.5), inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
+                padding-top: 8px;
+                padding-bottom: calc(var(--sab) + 4px);
             }
             .keypad-btn {
                 transition: transform 0.1s ease, background-color 0.1s ease;
@@ -319,20 +331,26 @@ def mobile_dashboard_preview():
         <div class="w-full max-w-lg mx-auto px-4 sm:px-6 pt-2">
 
             <!-- Top Header Estilo Apple HIG -->
-            <div class="flex justify-between items-center py-2 mb-3">
+            <div class="flex justify-between items-center py-2 mb-2">
                 <div class="flex items-center gap-2">
                     <img src="/apple-touch-icon.png" alt="AUREA" class="w-5 h-5 rounded-md object-cover border border-white/20">
                     <span class="text-xs font-bold tracking-widest text-[#8E8E93] uppercase">AUREA</span>
                     <span id="badge-db" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#1C1C1E] text-slate-300 border border-white/10">...</span>
                 </div>
+                <div id="header-action-container"></div>
             </div>
 
-            <h1 class="text-3xl font-extrabold text-white tracking-tight mb-4" id="header-titulo">Billetera</h1>
+            <!-- Page Title and Subtitle uniform across all tabs -->
+            <div class="mb-4">
+                <h1 class="text-3xl font-extrabold text-white tracking-tight" id="header-titulo">Billetera</h1>
+                <p class="text-xs text-[#8E8E93] mt-0.5" id="header-subtitulo">Resumen financiero y disponible para hoy</p>
+                <span id="conteo-tx" class="hidden">0 movimientos</span>
+            </div>
 
             <!-- ========================================== -->
             <!-- VISTA 1: BILLETERA (Panel Principal) -->
             <!-- ========================================== -->
-            <div id="view-billetera" class="tab-view pb-24">
+            <div id="view-billetera" class="tab-view">
 
                 <!-- Apartado 1: Saldo Disponible para Gastar con Saldo Total Integrado -->
                 <div class="ios-card rounded-3xl p-5 mb-4 border border-white/10 bg-[#1C1C1E]">
@@ -456,18 +474,7 @@ def mobile_dashboard_preview():
             <!-- ========================================== -->
             <!-- VISTA 2: MOVIMIENTOS (Historial Interactivo con Detalle) -->
             <!-- ========================================== -->
-            <div id="view-movimientos" class="tab-view hidden pb-24">
-                <div class="flex justify-between items-center mb-4">
-                    <div>
-                        <span class="text-[11px] font-bold text-[#8E8E93] uppercase tracking-wider">Historial Financiero</span>
-                        <div class="text-xs text-[#8E8E93]" id="conteo-tx">0 movimientos</div>
-                    </div>
-                    <button onclick="abrirModalGasto()" class="px-3.5 py-2 rounded-2xl bg-[#0A84FF] hover:bg-blue-600 text-white text-xs font-bold flex items-center gap-1.5 active:scale-95 transition shadow-md shadow-blue-500/20">
-                        <i class="fa-solid fa-plus text-[10px]"></i>
-                        <span>Registrar</span>
-                    </button>
-                </div>
-
+            <div id="view-movimientos" class="tab-view hidden">
                 <div id="transacciones-list" class="space-y-2.5">
                     <!-- Dinámico: cada fila abre modal de detalle al tocarse -->
                 </div>
@@ -476,18 +483,7 @@ def mobile_dashboard_preview():
             <!-- ========================================== -->
             <!-- VISTA 3: CUENTAS E INSTRUMENTOS -->
             <!-- ========================================== -->
-            <div id="view-cuentas" class="tab-view hidden pb-24">
-                <div class="flex justify-between items-center mb-3">
-                    <div>
-                        <span class="text-[11px] font-bold text-[#8E8E93] uppercase tracking-wider">Tus Instrumentos</span>
-                        <p class="text-[11px] text-[#8E8E93]">Toca el lápiz para actualizar tu saldo o cupo</p>
-                    </div>
-                    <button onclick="abrirModalNuevaCuenta()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold border border-white/10 flex items-center gap-1.5 active:scale-95 transition">
-                        <i class="fa-solid fa-plus text-[10px]"></i>
-                        <span>Nueva Cuenta</span>
-                    </button>
-                </div>
-
+            <div id="view-cuentas" class="tab-view hidden">
                 <!-- Resumen de Saldos -->
                 <div class="ios-card p-4 rounded-3xl mb-4 border border-white/10 bg-[#1C1C1E]">
                     <div class="grid grid-cols-2 gap-4">
@@ -528,12 +524,7 @@ def mobile_dashboard_preview():
             <!-- ========================================== -->
             <!-- VISTA 4: AJUSTES Y AUTOMATIZACIONES -->
             <!-- ========================================== -->
-            <div id="view-ajustes" class="tab-view hidden pb-24">
-                <div class="mb-4">
-                    <span class="text-[11px] font-bold text-[#8E8E93] uppercase tracking-wider">Ajustes Generales</span>
-                    <p class="text-[11px] text-[#8E8E93]">Seguridad de cuenta y automatizaciones de Apple Pay / SMS</p>
-                </div>
-
+            <div id="view-ajustes" class="tab-view hidden">
                 <!-- Card 1: Cuenta y Seguridad -->
                 <div class="ios-card rounded-3xl p-5 mb-4 border border-white/10 bg-[#1C1C1E]">
                     <div class="flex items-center gap-2 mb-3">
@@ -600,33 +591,35 @@ def mobile_dashboard_preview():
         </div>
 
         <!-- ========================================== -->
-        <!-- BARRA DE NAVEGACIÓN INFERIOR (Apple iOS Tab Bar) -->
+        <!-- BARRA DE NAVEGACIÓN INFERIOR (Estilo WhatsApp iOS Liquid Glass) -->
         <!-- ========================================== -->
-        <nav class="fixed bottom-0 left-0 right-0 z-40 bg-[#1C1C1E]/90 backdrop-blur-2xl border-t border-white/10 px-6 py-2 flex justify-between items-center max-w-lg mx-auto">
-            <button onclick="cambiarTab('billetera')" id="tab-btn-billetera" class="flex flex-col items-center text-[#0A84FF] py-1 transition-colors">
-                <i class="fa-solid fa-wallet text-lg"></i>
-                <span class="text-[10px] font-bold mt-1">Billetera</span>
-            </button>
+        <nav class="fixed bottom-0 left-0 right-0 z-40 liquid-glass-nav">
+            <div class="max-w-lg mx-auto px-6 flex justify-between items-center">
+                <button onclick="cambiarTab('billetera')" id="tab-btn-billetera" class="flex flex-col items-center text-[#0A84FF] py-1 transition-all">
+                    <i class="fa-solid fa-wallet text-[19px]"></i>
+                    <span class="text-[10px] font-semibold mt-1 tracking-tight">Billetera</span>
+                </button>
 
-            <button onclick="cambiarTab('movimientos')" id="tab-btn-movimientos" class="flex flex-col items-center text-[#8E8E93] hover:text-white py-1 transition-colors">
-                <i class="fa-solid fa-clock-rotate-left text-lg"></i>
-                <span class="text-[10px] font-bold mt-1">Movimientos</span>
-            </button>
+                <button onclick="cambiarTab('movimientos')" id="tab-btn-movimientos" class="flex flex-col items-center text-[#8E8E93] hover:text-white py-1 transition-all">
+                    <i class="fa-solid fa-clock-rotate-left text-[19px]"></i>
+                    <span class="text-[10px] font-semibold mt-1 tracking-tight">Movimientos</span>
+                </button>
 
-            <!-- Botón Central Destacado (+) -->
-            <button onclick="abrirModalGasto()" class="w-12 h-12 rounded-full bg-[#0A84FF] hover:bg-blue-600 -mt-6 shadow-lg shadow-blue-500/30 flex items-center justify-center text-white text-xl font-black active:scale-90 transition border-4 border-[#000000]" title="Registrar Movimiento">
-                <i class="fa-solid fa-plus"></i>
-            </button>
+                <!-- Botón Central Destacado (+) con degradado Liquid Glass Morado y Azul -->
+                <button onclick="abrirModalGasto()" class="w-12 h-12 -mt-5 rounded-full bg-gradient-to-tr from-[#9333EA] to-[#0A84FF] hover:opacity-95 shadow-xl shadow-purple-500/30 flex items-center justify-center text-white text-lg font-black active:scale-90 transition-all border-[3px] border-[#000000]/80" title="Registrar Movimiento">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
 
-            <button onclick="cambiarTab('cuentas')" id="tab-btn-cuentas" class="flex flex-col items-center text-[#8E8E93] hover:text-white py-1 transition-colors">
-                <i class="fa-solid fa-credit-card text-lg"></i>
-                <span class="text-[10px] font-bold mt-1">Cuentas</span>
-            </button>
+                <button onclick="cambiarTab('cuentas')" id="tab-btn-cuentas" class="flex flex-col items-center text-[#8E8E93] hover:text-white py-1 transition-all">
+                    <i class="fa-solid fa-credit-card text-[19px]"></i>
+                    <span class="text-[10px] font-semibold mt-1 tracking-tight">Cuentas</span>
+                </button>
 
-            <button onclick="cambiarTab('ajustes')" id="tab-btn-ajustes" class="flex flex-col items-center text-[#8E8E93] hover:text-white py-1 transition-colors">
-                <i class="fa-solid fa-gear text-lg"></i>
-                <span class="text-[10px] font-bold mt-1">Ajustes</span>
-            </button>
+                <button onclick="cambiarTab('ajustes')" id="tab-btn-ajustes" class="flex flex-col items-center text-[#8E8E93] hover:text-white py-1 transition-all">
+                    <i class="fa-solid fa-gear text-[19px]"></i>
+                    <span class="text-[10px] font-semibold mt-1 tracking-tight">Ajustes</span>
+                </button>
+            </div>
         </nav>
 
         <!-- ========================================== -->
@@ -2320,35 +2313,57 @@ def mobile_dashboard_preview():
             // ==========================================
             // NAVEGACIÓN ENTRE TABS
             // ==========================================
+            // GESTIÓN DE TABS & NAVEGACIÓN
+            // ==========================================
             let tabActual = 'billetera';
 
             function cambiarTab(tab) {
                 tabActual = tab;
                 const tabs = ['billetera', 'movimientos', 'cuentas', 'ajustes'];
-                const titulos = {
-                    'billetera': 'Billetera',
-                    'movimientos': 'Movimientos',
-                    'cuentas': 'Cuentas',
-                    'ajustes': 'Ajustes'
+                const configTab = {
+                    'billetera': {
+                        titulo: 'Billetera',
+                        subtitulo: 'Resumen financiero y disponible para hoy',
+                        accion: ''
+                    },
+                    'movimientos': {
+                        titulo: 'Movimientos',
+                        subtitulo: `${transaccionesData.length} movimientos registrados`,
+                        accion: '<button onclick="abrirModalGasto()" class="px-3.5 py-1.5 rounded-xl bg-[#0A84FF] hover:bg-blue-600 text-white text-xs font-bold flex items-center gap-1.5 active:scale-95 transition shadow-md shadow-blue-500/20"><i class="fa-solid fa-plus text-[10px]"></i><span>Registrar</span></button>'
+                    },
+                    'cuentas': {
+                        titulo: 'Cuentas',
+                        subtitulo: 'Toca el lápiz para actualizar saldo o cupo',
+                        accion: '<button onclick="abrirModalNuevaCuenta()" class="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold border border-white/15 flex items-center gap-1.5 active:scale-95 transition"><i class="fa-solid fa-plus text-[10px]"></i><span>Nueva Cuenta</span></button>'
+                    },
+                    'ajustes': {
+                        titulo: 'Ajustes',
+                        subtitulo: 'Seguridad de cuenta y automatizaciones iOS',
+                        accion: ''
+                    }
                 };
+
+                const cfg = configTab[tab] || configTab['billetera'];
                 const elTitulo = document.getElementById('header-titulo');
-                if (elTitulo && titulos[tab]) {
-                    elTitulo.innerText = titulos[tab];
-                }
+                const elSub = document.getElementById('header-subtitulo');
+                const elAccion = document.getElementById('header-action-container');
+                if (elTitulo) elTitulo.innerText = cfg.titulo;
+                if (elSub) elSub.innerText = cfg.subtitulo;
+                if (elAccion) elAccion.innerHTML = cfg.accion;
 
                 tabs.forEach(t => {
                     const viewEl = document.getElementById('view-' + t);
                     const btnEl = document.getElementById('tab-btn-' + t);
                     if (t === tab) {
                         if (viewEl) viewEl.classList.remove('hidden');
-                        if (btnEl) btnEl.className = 'flex flex-col items-center text-[#0A84FF] py-1 transition-colors';
+                        if (btnEl) btnEl.className = 'flex flex-col items-center text-[#0A84FF] py-1 transition-all';
                     } else {
                         if (viewEl) viewEl.classList.add('hidden');
-                        if (btnEl) btnEl.className = 'flex flex-col items-center text-[#8E8E93] hover:text-white py-1 transition-colors';
+                        if (btnEl) btnEl.className = 'flex flex-col items-center text-[#8E8E93] hover:text-white py-1 transition-all';
                     }
                 });
 
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                window.scrollTo({ top: 0, behavior: 'instant' });
 
                 if (tab === 'ajustes') {
                     cargarDatosPerfilAjustes();
