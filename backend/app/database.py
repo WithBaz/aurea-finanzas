@@ -84,6 +84,15 @@ def migrar_esquema_multi_usuario(eng=engine):
                             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN biometric_token VARCHAR(256);"))
                         else:
                             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS biometric_token VARCHAR(256);"))
+                    if table == 'cuentas':
+                        if 'saldo_al_corte' not in existing_cols:
+                            conn.execute(text(f"ALTER TABLE cuentas ADD COLUMN saldo_al_corte FLOAT DEFAULT 0.0;"))
+                        if 'fecha_ultimo_corte' not in existing_cols:
+                            conn.execute(text(f"ALTER TABLE cuentas ADD COLUMN fecha_ultimo_corte DATETIME;"))
+                        if 'fecha_ultimo_pago' not in existing_cols:
+                            conn.execute(text(f"ALTER TABLE cuentas ADD COLUMN fecha_ultimo_pago DATETIME;"))
+                        if 'estado_corte' not in existing_cols:
+                            conn.execute(text(f"ALTER TABLE cuentas ADD COLUMN estado_corte VARCHAR(30) DEFAULT 'AL_DIA';"))
 
             # Si ya existen usuarios, asociar registros huérfanos anteriores al primer usuario
             if 'usuarios' in existing_tables:

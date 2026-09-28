@@ -1,9 +1,16 @@
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
-from backend.app.models import Cuenta, Transaccion, TipoCuenta
-from backend.app.schemas import CuentaCreate, CuentaUpdate, CuentaResponse
+from backend.app.models import Cuenta, Transaccion, TipoCuenta, TipoTransaccion, MedioCaptura
+from backend.app.schemas import (
+    CuentaCreate,
+    CuentaUpdate,
+    CuentaResponse,
+    PagoTarjetaRequest,
+    PagoTarjetaResponse
+)
 from backend.app.api.deps import get_current_user_id
 
 router = APIRouter()
@@ -133,3 +140,103 @@ def sincronizar_cuentas(cuentas_in: List[CuentaCreate], db: Session = Depends(ge
     for r in resultados:
         db.refresh(r)
     return resultados
+
+
+@router.post("/{cuenta_id}/corte", response_model=CuentaResponse)
+def registrar_corte_tarjeta(
+    cuenta_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Registra la fecha de corte para una tarjeta de crédito, fijando la deuda actual como
+    el saldo facturado al corte (saldo_al_corte) y marcando el estado como PENDIENTE_PAGO.
+    """
+    cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
+    if not cuenta:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
+    if cuenta.tipo != TipoCuenta.CREDITO:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo las tarjetas de crédito tienen fecha de corte")
+
+    cuenta.saldo_al_corte = max(0.0, cuenta.saldo_actual)
+    cuenta.fecha_ultimo_corte = datetime.now(timezone.utc)
+    cuenta.estado_corte = "PENDIENTE_PAGO" if cuenta.saldo_al_corte > 0 else "AL_DIA"
+    db.commit()
+    db.refresh(cuenta)
+    return cuenta
+
+
+@router.post("/{cuenta_id}/pagar", response_model=PagoTarjetaResponse)
+def registrar_pago_tarjeta(
+    cuenta_id: int,
+    pago_in: PagoTarjetaRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Registra el pago total o parcial de una tarjeta de crédito.
+    Si se especifica cuenta_origen_id, descuenta de la cuenta de ahorros/débito y
+    genera una transacción de TRANSFERENCIA_INTERNA (sin computar doble gasto en el presupuesto).
+    Disminuye la deuda de la tarjeta y restablece su cupo disponible.
+    """
+    cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
+    if not cuenta:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")
+    if cuenta.tipo != TipoCuenta.CREDITO:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo se pueden registrar pagos a tarjetas de crédito")
+
+    monto = float(pago_in.monto)
+    if monto <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El monto a pagar debe ser mayor a 0 COP")
+
+    cuenta_origen = None
+    tx_creada_id = None
+    if pago_in.cuenta_origen_id:
+        cuenta_origen = db.query(Cuenta).filter(Cuenta.id == pago_in.cuenta_origen_id).first()
+        if not cuenta_origen:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta de origen para el pago no encontrada")
+        # Descontar de la cuenta líquida
+        cuenta_origen.saldo_actual -= monto
+        
+        # Registrar movimiento de transferencia interna
+        tx = Transaccion(
+            monto=monto,
+            tipo=TipoTransaccion.TRANSFERENCIA_INTERNA,
+            medio=MedioCaptura.MANUAL,
+            fecha=datetime.now(timezone.utc),
+            comercio=f"Pago {cuenta.nombre}",
+            descripcion=pago_in.descripcion or f"Pago de tarjeta {cuenta.nombre} con fondos de {cuenta_origen.nombre}",
+            cuenta_origen_id=cuenta_origen.id,
+            cuenta_destino_id=cuenta.id,
+            usuario_id=cuenta.usuario_id
+        )
+        db.add(tx)
+        db.flush()
+        tx_creada_id = tx.id
+
+    # Reducir deuda de la tarjeta de crédito
+    cuenta.saldo_actual = max(0.0, cuenta.saldo_actual - monto)
+    
+    # Reducir saldo al corte si existe
+    if cuenta.saldo_al_corte:
+        cuenta.saldo_al_corte = max(0.0, cuenta.saldo_al_corte - monto)
+    if not cuenta.saldo_al_corte or cuenta.saldo_al_corte <= 0.0:
+        cuenta.saldo_al_corte = 0.0
+        cuenta.estado_corte = "AL_DIA"
+
+    cuenta.fecha_ultimo_pago = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(cuenta)
+
+    cupo_disp = max(0.0, (cuenta.cupo_total or 0.0) - cuenta.saldo_actual)
+    monto_fmt = f"{int(monto):,}".replace(",", ".") + " pesos"
+
+    return PagoTarjetaResponse(
+        status="exitoso",
+        mensaje=f"Pago de {monto_fmt} registrado exitosamente para {cuenta.nombre}",
+        monto_pagado=monto,
+        saldo_deuda_restante=cuenta.saldo_actual,
+        cupo_disponible=cupo_disp,
+        saldo_al_corte_restante=cuenta.saldo_al_corte or 0.0,
+        estado_corte=cuenta.estado_corte or "AL_DIA",
+        transaccion_id=tx_creada_id
+    )
+

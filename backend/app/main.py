@@ -613,9 +613,23 @@ def mobile_dashboard_preview():
                             <!-- Dinámico -->
                         </select>
                     </div>
-                    <div id="dtx-cuotas-container" class="hidden">
-                        <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Número de Cuotas</label>
-                        <input type="number" id="dtx-cuotas" min="1" max="48" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-xs focus:border-blue-500 outline-none">
+                    <div id="dtx-cuotas-container" class="space-y-1.5 pt-1">
+                        <div class="flex justify-between items-center">
+                            <label class="text-[10px] font-bold uppercase text-[#8E8E93]">Número de Cuotas</label>
+                            <span class="text-[10px] font-bold text-blue-400" id="dtx-cuotas-preview">1 cuota</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="dtx-cuotas" min="1" max="48" value="1" oninput="actualizarPrevisualizacionCuotas()" class="w-16 bg-[#000000] border border-white/10 rounded-xl px-2 py-1.5 text-white font-bold text-xs text-center focus:border-blue-500 outline-none">
+                            <div class="flex gap-1 overflow-x-auto py-0.5">
+                                <button type="button" onclick="setPresetCuotas(1)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-slate-300 active:scale-95 transition">1</button>
+                                <button type="button" onclick="setPresetCuotas(2)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-slate-300 active:scale-95 transition">2</button>
+                                <button type="button" onclick="setPresetCuotas(3)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-slate-300 active:scale-95 transition">3</button>
+                                <button type="button" onclick="setPresetCuotas(6)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-slate-300 active:scale-95 transition">6</button>
+                                <button type="button" onclick="setPresetCuotas(12)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-slate-300 active:scale-95 transition">12</button>
+                                <button type="button" onclick="setPresetCuotas(24)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-slate-300 active:scale-95 transition">24</button>
+                            </div>
+                        </div>
+                        <div id="dtx-cuotas-calc" class="hidden text-[11px] text-blue-300 bg-blue-500/10 p-2 rounded-xl border border-blue-500/20 font-medium"></div>
                     </div>
                     <div class="pt-3 flex gap-2">
                         <button onclick="eliminarMovimientoActual()" class="w-1/3 py-3 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold border border-rose-500/30 text-xs active:scale-95 transition">
@@ -796,6 +810,46 @@ def mobile_dashboard_preview():
                     <div class="pt-2 flex gap-2">
                         <button onclick="cerrarModalNuevoGastoFijo()" class="w-1/2 py-3 rounded-2xl bg-[#2C2C2E] hover:bg-[#3A3A3C] text-white text-xs font-bold transition">Cancelar</button>
                         <button onclick="guardarNuevoGastoFijo()" class="w-1/2 py-3 rounded-2xl bg-[#0A84FF] hover:bg-blue-600 text-white text-xs font-black shadow-lg shadow-blue-500/20 transition">Crear Gasto Fijo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Pagar / Abonar a Tarjeta de Crédito 💳 -->
+        <div id="modal-pagar-tarjeta" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#1C1C1E] border border-white/10">
+                <div class="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4"></div>
+                <div class="flex justify-between items-center mb-3">
+                    <div>
+                        <h3 class="text-base font-extrabold text-white" id="pago-tc-nombre">Pagar Tarjeta</h3>
+                        <span class="text-[11px] text-[#8E8E93]" id="pago-tc-info-deuda">Deuda total actual: $ 0</span>
+                    </div>
+                    <button onclick="cerrarModalPagarTarjeta()" class="text-[#8E8E93] hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <input type="hidden" id="pago-tc-id">
+                <input type="hidden" id="pago-tc-val-corte">
+                <input type="hidden" id="pago-tc-val-deuda">
+                <div class="space-y-3">
+                    <div id="pago-tc-alerta-corte" class="hidden p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                        ✂️ Saldo facturado al corte: <strong id="pago-tc-monto-corte" class="text-white">$ 0</strong>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Monto a Pagar ($)</label>
+                        <input type="text" inputmode="numeric" id="pago-tc-monto" oninput="formatearInputMoneda(this)" placeholder="$ 0" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white font-extrabold text-lg focus:border-blue-500 outline-none">
+                        <div class="flex gap-2 mt-2">
+                            <button type="button" onclick="setMontoPagoCorte()" id="btn-pago-sugerido-corte" class="hidden px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[10px] font-bold text-slate-300 active:scale-95 transition">Pagar Corte</button>
+                            <button type="button" onclick="setMontoPagoTotal()" id="btn-pago-sugerido-total" class="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[10px] font-bold text-slate-300 active:scale-95 transition">Pagar Deuda Total</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">¿De qué cuenta sale el dinero?</label>
+                        <select id="pago-tc-cuenta-origen" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white text-xs focus:border-blue-500 outline-none">
+                            <!-- Dinámico -->
+                        </select>
+                    </div>
+                    <div class="pt-2 flex gap-2">
+                        <button onclick="cerrarModalPagarTarjeta()" class="w-1/2 py-3 rounded-2xl bg-[#2C2C2E] hover:bg-[#3A3A3C] text-white text-xs font-bold transition">Cancelar</button>
+                        <button onclick="confirmarPagoTarjeta()" class="w-1/2 py-3 rounded-2xl bg-[#30D158] hover:bg-emerald-600 text-black font-black text-xs shadow-lg shadow-emerald-500/20 transition active:scale-95">Registrar Pago</button>
                     </div>
                 </div>
             </div>
@@ -1477,10 +1531,31 @@ def mobile_dashboard_preview():
                             const deuda = tc.saldo_actual || 0;
                             const cupoDisp = tc.cupo_disponible !== undefined ? tc.cupo_disponible : Math.max(0, cupoTot - deuda);
                             const porcentajeUso = cupoTot > 0 ? Math.min(100, Math.round((deuda / cupoTot) * 100)) : 0;
+                            const saldoCorte = tc.saldo_al_corte || 0;
 
                             let colorBarra = 'bg-emerald-400';
-                            if(porcentajeUso > 50) colorBarra = 'bg-amber-400';
-                            if(porcentajeUso > 80) colorBarra = 'bg-rose-400';
+                            if(porcentajeUso > 30) colorBarra = 'bg-amber-400';
+                            if(porcentajeUso > 50) colorBarra = 'bg-rose-400';
+
+                            let bannerCorteHtml = '';
+                            if(tc.estado_corte === 'PENDIENTE_PAGO' && saldoCorte > 0) {
+                                bannerCorteHtml = `
+                                    <div class="mb-3 p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-between text-[11px]">
+                                        <div class="flex items-center gap-1.5 text-amber-300 font-bold">
+                                            <i class="fa-solid fa-scissors text-xs"></i>
+                                            <span>Extracto Cortado:</span>
+                                        </div>
+                                        <span class="text-white font-extrabold">${formatearCOP(saldoCorte)} por pagar</span>
+                                    </div>
+                                `;
+                            } else if(tc.fecha_ultimo_pago && deuda === 0) {
+                                bannerCorteHtml = `
+                                    <div class="mb-3 px-2.5 py-1 rounded-xl bg-[#30D158]/15 border border-[#30D158]/30 flex items-center gap-1.5 text-[10px] text-[#30D158] font-bold">
+                                        <i class="fa-solid fa-circle-check text-xs"></i>
+                                        <span>Al día sin saldo pendiente</span>
+                                    </div>
+                                `;
+                            }
 
                             const cardEl = document.createElement('div');
                             cardEl.className = 'apple-wallet-card rounded-2xl p-4 relative overflow-hidden transition active:scale-[0.99]';
@@ -1494,6 +1569,8 @@ def mobile_dashboard_preview():
                                     <span class="text-[10px] font-mono text-white/50">•••• ${String(tc.id).padStart(4, '0')}</span>
                                 </div>
 
+                                ${bannerCorteHtml}
+
                                 <div class="mb-3">
                                     <span class="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">Cupo Disponible</span>
                                     <div class="text-2xl font-black text-white tracking-tight">${formatearCOP(cupoDisp)}</div>
@@ -1501,7 +1578,7 @@ def mobile_dashboard_preview():
 
                                 <div class="space-y-1.5 pt-2 border-t border-white/10">
                                     <div class="flex justify-between text-[10px] text-[#8E8E93] font-semibold">
-                                        <span>Deuda: <strong class="text-rose-400">${formatearCOP(deuda)}</strong></span>
+                                        <span>Deuda Total: <strong class="text-rose-400">${formatearCOP(deuda)}</strong></span>
                                         <span>Cupo Total: ${formatearCOP(cupoTot)}</span>
                                     </div>
                                     <div class="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
@@ -1509,10 +1586,19 @@ def mobile_dashboard_preview():
                                     </div>
                                 </div>
 
-                                <div class="mt-3 pt-2.5 border-t border-white/5 flex justify-between items-center">
-                                    <span class="text-[10px] text-white/60 font-medium">${porcentajeUso}% de cupo utilizado</span>
-                                    <button onclick="abrirGastoConTarjetaEspecifica(${tc.id})" class="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-white font-bold text-[10px] active:scale-95 transition">
-                                        + Gasto con esta tarjeta
+                                <div class="mt-3 pt-2.5 border-t border-white/5 flex flex-wrap gap-1.5 justify-between items-center">
+                                    <div class="flex items-center gap-1.5">
+                                        <button onclick="confirmarRegistrarCorte(${tc.id}, '${tc.nombre}', ${deuda})" class="px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-bold text-[10px] active:scale-95 transition flex items-center gap-1" title="Registrar que ya cortó la tarjeta este mes">
+                                            <i class="fa-solid fa-scissors text-[9px]"></i>
+                                            <span>Ya Cortó</span>
+                                        </button>
+                                        <button onclick="abrirModalPagarTarjeta(${tc.id})" class="px-2.5 py-1.5 rounded-xl bg-[#30D158]/20 hover:bg-[#30D158]/30 text-[#30D158] font-bold text-[10px] active:scale-95 transition flex items-center gap-1" title="Registrar pago a la tarjeta">
+                                            <i class="fa-solid fa-check text-[9px]"></i>
+                                            <span>Ya Pagué</span>
+                                        </button>
+                                    </div>
+                                    <button onclick="abrirGastoConTarjetaEspecifica(${tc.id})" class="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-[10px] active:scale-95 transition">
+                                        + Gasto
                                     </button>
                                 </div>
                             `;
@@ -1547,7 +1633,10 @@ def mobile_dashboard_preview():
                                     </div>
                                     <div>
                                         <span class="text-xs font-bold text-white block leading-tight">${t.comercio}</span>
-                                        <span class="text-[10px] text-[#8E8E93]">${t.cuenta_nombre || 'TC'}</span>
+                                        <div class="flex items-center gap-1.5 mt-0.5">
+                                            <span class="text-[10px] text-[#8E8E93]">${t.cuenta_nombre || 'TC'}</span>
+                                            ${t.cuotas_totales && t.cuotas_totales > 1 ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">${t.cuotas_totales} cuotas</span>` : ''}
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="text-right">
@@ -1592,6 +1681,7 @@ def mobile_dashboard_preview():
                                     <div class="flex items-center gap-1.5 mt-0.5">
                                         <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-white/10 text-slate-300">${t.medio}</span>
                                         <span class="text-[9px] text-[#8E8E93]">${t.cuenta_nombre || ''}</span>
+                                        ${t.cuotas_totales && t.cuotas_totales > 1 ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">${t.cuotas_totales} cuotas</span>` : ''}
                                     </div>
                                 </div>
                                 <div class="text-right">
@@ -1633,18 +1723,43 @@ def mobile_dashboard_preview():
 
                     setDetalleTipo(tx.tipo);
 
-                    const cuotasCont = document.getElementById('dtx-cuotas-container');
                     const inputCuotas = document.getElementById('dtx-cuotas');
-                    if(tx.cuotas_totales && tx.cuotas_totales > 1) {
-                        cuotasCont.classList.remove('hidden');
-                        inputCuotas.value = tx.cuotas_totales;
-                    } else {
-                        cuotasCont.classList.add('hidden');
+                    if(inputCuotas) {
+                        inputCuotas.value = tx.cuotas_totales || 1;
+                        actualizarPrevisualizacionCuotas();
                     }
 
                     document.getElementById('modal-detalle-tx').classList.remove('hidden');
                 } catch(e) {
                     console.error("Error al abrir detalle:", e);
+                }
+            }
+
+            function setPresetCuotas(n) {
+                const input = document.getElementById('dtx-cuotas');
+                if(input) {
+                    input.value = n;
+                    actualizarPrevisualizacionCuotas();
+                }
+            }
+
+            function actualizarPrevisualizacionCuotas() {
+                const input = document.getElementById('dtx-cuotas');
+                const prev = document.getElementById('dtx-cuotas-preview');
+                const calc = document.getElementById('dtx-cuotas-calc');
+                if(!input) return;
+                const cuotas = Math.max(1, parseInt(input.value) || 1);
+                input.value = cuotas;
+                if(prev) prev.innerText = cuotas === 1 ? '1 cuota (total)' : `${cuotas} cuotas`;
+                if(calc) {
+                    if(cuotas > 1) {
+                        const monto = obtenerValorMoneda('dtx-monto');
+                        const valorCuota = monto > 0 ? Math.round(monto / cuotas) : 0;
+                        calc.classList.remove('hidden');
+                        calc.innerHTML = `💳 <strong>${cuotas} cuotas</strong> de aprox. <strong class="text-white">${formatearCOP(valorCuota)}</strong> / mes`;
+                    } else {
+                        calc.classList.add('hidden');
+                    }
                 }
             }
 
@@ -1670,6 +1785,7 @@ def mobile_dashboard_preview():
                 const monto = obtenerValorMoneda('dtx-monto');
                 const comercio = document.getElementById('dtx-comercio').value.trim();
                 const cuentaId = parseInt(document.getElementById('dtx-cuenta').value);
+                const cuotasTot = parseInt(document.getElementById('dtx-cuotas').value) || 1;
 
                 if(!monto || !comercio || !cuentaId) {
                     alert("Ingresa monto, comercio y cuenta válidos.");
@@ -1684,7 +1800,8 @@ def mobile_dashboard_preview():
                             monto: monto,
                             comercio: comercio,
                             cuenta_origen_id: cuentaId,
-                            tipo: detalleTipoActual
+                            tipo: detalleTipoActual,
+                            cuotas_totales: cuotasTot
                         })
                     });
                     if(res.ok) {
@@ -1695,6 +1812,124 @@ def mobile_dashboard_preview():
                     }
                 } catch(e) {
                     alert("Error de conexión al actualizar.");
+                }
+            }
+
+            // ==========================================
+            // CORTE Y PAGO DE TARJETAS DE CRÉDITO
+            // ==========================================
+            async function confirmarRegistrarCorte(cuentaId, cuentaNombre, deudaActual) {
+                const deudaFmt = formatearCOP(deudaActual);
+                const msg = deudaActual > 0
+                    ? `¿Confirmas que ya se realizó la fecha de corte para ${cuentaNombre}?\n\nLa deuda facturada al corte será de ${deudaFmt}.`
+                    : `¿Confirmas registrar corte para ${cuentaNombre}? (Deuda actual: $ 0)`;
+                if(!confirm(msg)) return;
+
+                try {
+                    const res = await fetch(`/api/v1/cuentas/${cuentaId}/corte`, { method: 'POST' });
+                    if(res.ok) {
+                        fetchDashboard();
+                    } else {
+                        const err = await res.json();
+                        alert(err.detail || 'Error al registrar corte.');
+                    }
+                } catch(e) {
+                    alert('Error de conexión al registrar corte.');
+                }
+            }
+
+            function abrirModalPagarTarjeta(cuentaId) {
+                const tc = cuentasData.find(c => c.id == cuentaId);
+                if(!tc) return;
+
+                document.getElementById('pago-tc-id').value = tc.id;
+                document.getElementById('pago-tc-nombre').innerText = `Pagar ${tc.nombre}`;
+                
+                const deuda = tc.saldo_actual || 0;
+                const saldoCorte = tc.saldo_al_corte || 0;
+                document.getElementById('pago-tc-val-corte').value = saldoCorte;
+                document.getElementById('pago-tc-val-deuda').value = deuda;
+
+                document.getElementById('pago-tc-info-deuda').innerText = `Deuda total actual: ${formatearCOP(deuda)}`;
+
+                const alertaCorte = document.getElementById('pago-tc-alerta-corte');
+                const btnCorte = document.getElementById('btn-pago-sugerido-corte');
+                if(tc.estado_corte === 'PENDIENTE_PAGO' && saldoCorte > 0) {
+                    alertaCorte.classList.remove('hidden');
+                    document.getElementById('pago-tc-monto-corte').innerText = formatearCOP(saldoCorte);
+                    btnCorte.classList.remove('hidden');
+                    fijarValorMoneda('pago-tc-monto', saldoCorte);
+                } else {
+                    alertaCorte.classList.add('hidden');
+                    btnCorte.classList.add('hidden');
+                    fijarValorMoneda('pago-tc-monto', deuda);
+                }
+
+                // Cargar selector de cuentas líquidas
+                const selOrigen = document.getElementById('pago-tc-cuenta-origen');
+                selOrigen.innerHTML = '';
+                
+                // Cuentas con saldo disponible
+                const cuentasLiquidas = cuentasData.filter(c => c.tipo !== 'CREDITO');
+                cuentasLiquidas.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.innerText = `${c.nombre} (Saldo: ${formatearCOP(c.saldo_actual)})`;
+                    selOrigen.appendChild(opt);
+                });
+
+                const optExt = document.createElement('option');
+                optExt.value = '';
+                optExt.innerText = 'Pago externo / No debitar de mis cuentas';
+                selOrigen.appendChild(optExt);
+
+                document.getElementById('modal-pagar-tarjeta').classList.remove('hidden');
+            }
+
+            function cerrarModalPagarTarjeta() {
+                document.getElementById('modal-pagar-tarjeta').classList.add('hidden');
+            }
+
+            function setMontoPagoCorte() {
+                const val = parseFloat(document.getElementById('pago-tc-val-corte').value) || 0;
+                fijarValorMoneda('pago-tc-monto', val);
+            }
+
+            function setMontoPagoTotal() {
+                const val = parseFloat(document.getElementById('pago-tc-val-deuda').value) || 0;
+                fijarValorMoneda('pago-tc-monto', val);
+            }
+
+            async function confirmarPagoTarjeta() {
+                const cuentaId = document.getElementById('pago-tc-id').value;
+                const monto = obtenerValorMoneda('pago-tc-monto');
+                const cuentaOrigenVal = document.getElementById('pago-tc-cuenta-origen').value;
+                const cuentaOrigenId = cuentaOrigenVal ? parseInt(cuentaOrigenVal) : null;
+
+                if(!monto || monto <= 0) {
+                    alert('Por favor ingresa un monto válido a pagar.');
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`/api/v1/cuentas/${cuentaId}/pagar`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            monto: monto,
+                            cuenta_origen_id: cuentaOrigenId
+                        })
+                    });
+
+                    if(res.ok) {
+                        cerrarModalPagarTarjeta();
+                        fetchDashboard();
+                    } else {
+                        const err = await res.json();
+                        alert(err.detail || 'Error al procesar el pago.');
+                    }
+                } catch(e) {
+                    alert('Error de conexión al registrar pago.');
                 }
             }
 

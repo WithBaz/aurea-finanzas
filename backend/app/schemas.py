@@ -10,6 +10,10 @@ class CuentaBase(BaseModel):
     tipo: TipoCuenta
     saldo_actual: float = Field(0.0)
     cupo_total: Optional[float] = Field(0.0)
+    saldo_al_corte: Optional[float] = Field(0.0)
+    fecha_ultimo_corte: Optional[datetime] = None
+    fecha_ultimo_pago: Optional[datetime] = None
+    estado_corte: Optional[str] = Field("AL_DIA")
     tasa_ea: Optional[float] = Field(0.0)
     dia_corte: Optional[int] = Field(None, ge=1, le=31)
     dia_limite_pago: Optional[int] = Field(None, ge=1, le=31)
@@ -26,10 +30,31 @@ class CuentaUpdate(BaseModel):
     saldo_actual: Optional[float] = None
     cupo_total: Optional[float] = None
     cupo_disponible: Optional[float] = None
+    saldo_al_corte: Optional[float] = None
+    fecha_ultimo_corte: Optional[datetime] = None
+    fecha_ultimo_pago: Optional[datetime] = None
+    estado_corte: Optional[str] = None
     tasa_ea: Optional[float] = None
     dia_corte: Optional[int] = None
     dia_limite_pago: Optional[int] = None
     activa: Optional[bool] = None
+
+
+class PagoTarjetaRequest(BaseModel):
+    monto: float = Field(..., gt=0)
+    cuenta_origen_id: Optional[int] = None
+    descripcion: Optional[str] = None
+
+
+class PagoTarjetaResponse(BaseModel):
+    status: str
+    mensaje: str
+    monto_pagado: float
+    saldo_deuda_restante: float
+    cupo_disponible: float
+    saldo_al_corte_restante: float
+    estado_corte: str
+    transaccion_id: Optional[int] = None
 
 
 class CuentaResponse(CuentaBase):

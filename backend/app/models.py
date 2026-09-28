@@ -44,6 +44,10 @@ class Cuenta(Base):
     tipo = Column(Enum(TipoCuenta), nullable=False)
     saldo_actual = Column(Float, default=0.0, nullable=False)
     cupo_total = Column(Float, default=0.0, nullable=True)  # Para tarjetas de crédito
+    saldo_al_corte = Column(Float, default=0.0, nullable=True)  # Deuda facturada en la fecha de corte
+    fecha_ultimo_corte = Column(DateTime, nullable=True)        # Fecha exacta en que se registró el último corte
+    fecha_ultimo_pago = Column(DateTime, nullable=True)         # Fecha en que se realizó el último pago
+    estado_corte = Column(String(30), default="AL_DIA", nullable=True)  # AL_DIA, PENDIENTE_PAGO
     tasa_ea = Column(Float, default=0.0, nullable=True)     # Tasa E.A. en % (ej. 12.5)
     dia_corte = Column(Integer, nullable=True)              # Día del mes para tarjetas de crédito
     dia_limite_pago = Column(Integer, nullable=True)        # Día límite de pago para tarjetas de crédito

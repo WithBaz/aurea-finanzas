@@ -89,14 +89,16 @@ def test_edicion_y_eliminacion_transaccion(client):
     c_check = client.get(f"/api/v1/cuentas/{cuenta_id}").json()
     assert c_check["saldo_actual"] == 150000.0
 
-    # 3. Editar transacción: cambiar monto a 30.000 (debe devolver 20.000, saldo pasa a 170.000)
+    # 3. Editar transacción: cambiar monto a 30.000 y cuotas a 3
     tx_edit = client.put(f"/api/v1/transacciones/{tx_id}", json={
         "monto": 30000.0,
-        "comercio": "Almuerzo Ejecutivo"
+        "comercio": "Almuerzo Ejecutivo",
+        "cuotas_totales": 3
     })
     assert tx_edit.status_code == 200
     assert tx_edit.json()["monto"] == 30000.0
     assert tx_edit.json()["comercio"] == "Almuerzo Ejecutivo"
+    assert tx_edit.json()["cuotas_totales"] == 3
 
     c_check2 = client.get(f"/api/v1/cuentas/{cuenta_id}").json()
     assert c_check2["saldo_actual"] == 170000.0
@@ -207,5 +209,60 @@ def test_auth_con_contrasena_alfanumerica(client):
         "password": "miClaveSegura2026"
     })
     assert res_not_found.status_code == 404
+
+
+def test_registrar_corte_y_pago_tarjeta_credito(client):
+    # 1. Crear tarjeta con 500k de deuda y 2M cupo total
+    tc_res = client.post("/api/v1/cuentas", json={
+        "nombre": "Nu Corte Test",
+        "tipo": "CREDITO",
+        "cupo_total": 2000000.0,
+        "cupo_disponible": 1500000.0
+    })
+    assert tc_res.status_code == 201
+    tc_id = tc_res.json()["id"]
+    assert tc_res.json()["saldo_actual"] == 500000.0
+
+    # 2. Registrar fecha de corte manual
+    corte_res = client.post(f"/api/v1/cuentas/{tc_id}/corte")
+    assert corte_res.status_code == 200
+    tc_corte = corte_res.json()
+    assert tc_corte["saldo_al_corte"] == 500000.0
+    assert tc_corte["estado_corte"] == "PENDIENTE_PAGO"
+    assert tc_corte["fecha_ultimo_corte"] is not None
+
+    # 3. Obtener cuenta de débito para pagar (Bancolombia Principal con 1M)
+    cuentas = client.get("/api/v1/cuentas").json()
+    banco = next(c for c in cuentas if c["nombre"] == "Bancolombia Principal")
+    banco_id = banco["id"]
+    saldo_banco_antes = banco["saldo_actual"]
+
+    # 4. Registrar pago parcial de 300.000 COP a la tarjeta desde Bancolombia
+    pago_res = client.post(f"/api/v1/cuentas/{tc_id}/pagar", json={
+        "monto": 300000.0,
+        "cuenta_origen_id": banco_id
+    })
+    assert pago_res.status_code == 200
+    data_pago = pago_res.json()
+    assert data_pago["status"] == "exitoso"
+    assert data_pago["monto_pagado"] == 300000.0
+    assert data_pago["saldo_deuda_restante"] == 200000.0
+    assert data_pago["saldo_al_corte_restante"] == 200000.0
+    assert data_pago["estado_corte"] == "PENDIENTE_PAGO"
+
+    # Verificar que Bancolombia se debitó
+    banco_despues = client.get(f"/api/v1/cuentas/{banco_id}").json()
+    assert banco_despues["saldo_actual"] == saldo_banco_antes - 300000.0
+
+    # 5. Registrar pago del saldo restante (200.000 COP)
+    pago_fin = client.post(f"/api/v1/cuentas/{tc_id}/pagar", json={
+        "monto": 200000.0,
+        "cuenta_origen_id": banco_id
+    })
+    assert pago_fin.status_code == 200
+    assert pago_fin.json()["saldo_deuda_restante"] == 0.0
+    assert pago_fin.json()["saldo_al_corte_restante"] == 0.0
+    assert pago_fin.json()["estado_corte"] == "AL_DIA"
+
 
 
