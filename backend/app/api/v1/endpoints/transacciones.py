@@ -195,13 +195,15 @@ async def registrar_gasto_ia_rapida(
     else:
         cuenta = None
 
+    monto_texto = f"{int(monto):,}".replace(",", ".") + " pesos"
+
     # Si no se detectó cuenta, preguntar al usuario
     if not cuenta_detectada_id:
         pregunta = "¿A qué cuenta ingresó el dinero?" if tipo == "INGRESO" else "¿De qué cuenta lo pagaste?"
         texto_tipo = "un ingreso" if tipo == "INGRESO" else "un gasto"
         return {
             "status": "requiere_cuenta",
-            "mensaje": f"Se detectó {texto_tipo} de ${monto:,.0f} COP en '{comercio}'. {pregunta}",
+            "mensaje": f"Se detectó {texto_tipo} de {monto_texto} en '{comercio}'. {pregunta}",
             "monto": monto,
             "comercio": comercio,
             "tipo": tipo,
@@ -242,7 +244,7 @@ async def registrar_gasto_ia_rapida(
 
     return {
         "status": "registrado",
-        "mensaje": f"¡Listo! Registrado {tipo.lower()} de ${monto:,.0f} COP en '{comercio}' con {cuenta.nombre}.",
+        "mensaje": f"¡Listo! Registrado {tipo.lower()} de {monto_texto} en '{comercio}' con {cuenta.nombre}.",
         "transaccion_id": tx.id,
         "monto": monto,
         "comercio": comercio,

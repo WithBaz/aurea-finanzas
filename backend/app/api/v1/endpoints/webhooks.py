@@ -125,9 +125,10 @@ def procesar_atajo_ios(
         db.commit()
         db.refresh(transaccion)
 
+        monto_pesos = f"{int(monto):,}".replace(",", ".") + " pesos"
         return WebhookIngestResponse(
             status="exitoso",
-            mensaje=f"Pago Apple Pay de ${monto:,.0f} COP registrado en {comercio}",
+            mensaje=f"Pago Apple Pay de {monto_pesos} registrado en {comercio}",
             transaccion_id=transaccion.id,
             tipo_detectado="EGRESO",
             monto_cop=monto,
@@ -209,9 +210,10 @@ def procesar_atajo_ios(
         db.commit()
         db.refresh(transaccion)
 
+        monto_pesos = f"{int(monto):,}".replace(",", ".") + " pesos"
         return WebhookIngestResponse(
             status="exitoso",
-            mensaje=f"Retiro de ${monto:,.0f} COP transferido a Billetera Efectivo sin duplicar gasto",
+            mensaje=f"Retiro de {monto_pesos} transferido a Billetera Efectivo sin duplicar gasto",
             transaccion_id=transaccion.id,
             tipo_detectado="TRANSFERENCIA_INTERNA",
             monto_cop=monto,
@@ -255,9 +257,10 @@ def procesar_atajo_ios(
         db.commit()
         db.refresh(transaccion)
 
+        monto_pesos = f"{int(monto):,}".replace(",", ".") + " pesos"
         return WebhookIngestResponse(
             status="exitoso",
-            mensaje=f"Compra de ${monto:,.0f} COP en {comercio} registrada por SMS",
+            mensaje=f"Compra de {monto_pesos} en {comercio} registrada por SMS",
             transaccion_id=transaccion.id,
             tipo_detectado="EGRESO",
             monto_cop=monto,
@@ -288,9 +291,10 @@ def procesar_atajo_ios(
     db.commit()
     db.refresh(transaccion)
 
+    monto_pesos = f"{int(monto):,}".replace(",", ".") + " pesos"
     return WebhookIngestResponse(
         status="exitoso",
-        mensaje=f"Ingreso de ${monto:,.0f} COP registrado por SMS",
+        mensaje=f"Ingreso de {monto_pesos} registrado por SMS",
         transaccion_id=transaccion.id,
         tipo_detectado="INGRESO",
         monto_cop=monto,
