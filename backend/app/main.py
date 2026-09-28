@@ -283,15 +283,6 @@ def mobile_dashboard_preview():
                     <span class="text-xs font-bold tracking-widest text-[#8E8E93] uppercase">AUREA</span>
                     <span id="badge-db" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#1C1C1E] text-slate-300 border border-white/10">...</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="cerrarSesion()" class="px-2.5 py-1 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center gap-1.5 text-[11px] font-semibold text-rose-400 hover:text-rose-300 active:scale-90 transition" title="Cerrar Sesión">
-                        <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
-                        <span>Salir</span>
-                    </button>
-                    <button onclick="bloquearApp()" class="w-8 h-8 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center text-white/80 hover:text-white active:scale-90 transition text-xs" title="Bloquear App">
-                        <i class="fa-solid fa-lock"></i>
-                    </button>
-                </div>
             </div>
 
             <h1 class="text-3xl font-extrabold text-white tracking-tight mb-4" id="header-titulo">Billetera</h1>
@@ -492,32 +483,35 @@ def mobile_dashboard_preview():
             <!-- ========================================== -->
             <!-- VISTA 4: AJUSTES, NÓMINA Y SEGURIDAD -->
             <!-- ========================================== -->
+            <!-- ========================================== -->
+            <!-- VISTA 4: AJUSTES Y AUTOMATIZACIONES -->
+            <!-- ========================================== -->
             <div id="view-ajustes" class="tab-view hidden pb-24">
                 <div class="mb-4">
-                    <span class="text-[11px] font-bold text-[#8E8E93] uppercase tracking-wider">Configuración Personal</span>
-                    <p class="text-[11px] text-[#8E8E93]">Seguridad, ciclo de nómina y automatización de Apple Pay</p>
+                    <span class="text-[11px] font-bold text-[#8E8E93] uppercase tracking-wider">Ajustes Generales</span>
+                    <p class="text-[11px] text-[#8E8E93]">Seguridad de cuenta y automatizaciones de Apple Pay / SMS</p>
                 </div>
 
-                <!-- Card 1: Seguridad y Acceso -->
+                <!-- Card 1: Cuenta y Seguridad -->
                 <div class="ios-card rounded-3xl p-5 mb-4 border border-white/10 bg-[#1C1C1E]">
                     <div class="flex items-center gap-2 mb-3">
                         <div class="w-7 h-7 rounded-lg bg-blue-500/20 text-[#0A84FF] flex items-center justify-center text-xs">
                             <i class="fa-solid fa-shield-halved"></i>
                         </div>
-                        <h3 class="text-sm font-bold text-white">Seguridad y Acceso</h3>
+                        <h3 class="text-sm font-bold text-white">Cuenta y Seguridad</h3>
                     </div>
                     <div class="space-y-3 text-xs">
                         <div class="flex justify-between items-center py-2 border-b border-white/5">
                             <div>
-                                <span class="font-bold text-white block">Credenciales de Cuenta</span>
-                                <span class="text-[11px] text-[#8E8E93]" id="ajustes-seguridad-username">Protegido con contraseña</span>
+                                <span class="font-bold text-white block" id="ajustes-seguridad-username">Usuario</span>
+                                <span class="text-[11px] text-[#8E8E93]">Protegido con contraseña</span>
                             </div>
                             <button onclick="abrirModalCambiarPin()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition">
                                 Cambiar Clave
                             </button>
                         </div>
-                        <div class="pt-1 flex gap-2">
-                            <button onclick="cerrarSesion()" class="w-full py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-bold text-xs transition flex items-center justify-center gap-2">
+                        <div class="pt-2">
+                            <button onclick="cerrarSesion()" class="w-full py-3 rounded-2xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 font-bold text-xs transition flex items-center justify-center gap-2 active:scale-95">
                                 <i class="fa-solid fa-arrow-right-from-bracket text-[11px]"></i>
                                 <span>Cerrar Sesión</span>
                             </button>
@@ -525,103 +519,60 @@ def mobile_dashboard_preview():
                     </div>
                 </div>
 
-                <!-- Card 2: Mi Nómina -->
-                <div class="ios-card rounded-3xl p-5 mb-4 border border-white/10 bg-[#1C1C1E]">
-                    <div class="flex items-center gap-2 mb-3">
-                        <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-[#30D158] flex items-center justify-center text-xs">
-                            <i class="fa-solid fa-money-check-dollar"></i>
-                        </div>
-                        <h3 class="text-sm font-bold text-white">Mi Nómina y Finanzas</h3>
-                    </div>
-                    <div class="space-y-3">
-                        <div>
-                            <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Ingreso Mensual Estimado ($)</label>
-                            <input type="number" id="perfil-ingreso" placeholder="Ej: 4500000" class="w-full bg-[#000000] border border-white/10 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Día de Cobro Mensual (1-31)</label>
-                            <input type="number" id="perfil-dia" min="1" max="31" placeholder="Ej: 1" class="w-full bg-[#000000] border border-white/10 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Meta de Ahorro Mensual (%)</label>
-                            <input type="number" id="perfil-ahorro" min="0" max="100" placeholder="15" class="w-full bg-[#000000] border border-white/10 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
-                        </div>
-                        <button onclick="guardarPerfilReal()" class="w-full py-2.5 rounded-xl bg-[#0A84FF] hover:bg-blue-600 text-white text-xs font-black shadow-md shadow-blue-500/20 active:scale-95 transition">
-                            Guardar Ajustes de Nómina
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Card 3: Apple Pay & Atajos de iOS (Guía Paso a Paso) -->
-                <div class="ios-card rounded-3xl p-5 mb-4 border border-white/10 bg-[#1C1C1E]">
+                <!-- Card 2: Automatizaciones de iOS (Apple Pay y Consignaciones / SMS) -->
+                <div class="ios-card rounded-3xl p-5 mb-6 border border-white/10 bg-[#1C1C1E]">
                     <div class="flex items-center gap-2 mb-3">
                         <div class="w-7 h-7 rounded-lg bg-white/10 text-white flex items-center justify-center text-xs">
                             <i class="fa-brands fa-apple"></i>
                         </div>
-                        <h3 class="text-sm font-bold text-white">Apple Pay Automático (Wallet)</h3>
+                        <h3 class="text-sm font-bold text-white">Automatizaciones de iOS</h3>
                     </div>
                     
                     <div class="space-y-3 text-xs">
                         <p class="text-[11px] text-[#8E8E93] leading-relaxed">
-                            Configura esta automatización en tu iPhone para que cada pago con Apple Pay se registre solo:
+                            Conecta tu iPhone para registrar automáticamente pagos con <strong>Apple Pay</strong> y consignaciones/transferencias por <strong>SMS bancario</strong>:
                         </p>
+                        
                         <div class="p-3 rounded-2xl bg-[#000000] border border-white/5 space-y-2">
+                            <span class="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">Tu URL Webhook para Atajos</span>
                             <div class="flex items-center gap-2">
-                                <span class="w-4 h-4 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold">1</span>
-                                <span class="text-[11px] text-white font-semibold">Abre la app <strong>Atajos</strong> en tu iPhone</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-4 h-4 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold">2</span>
-                                <span class="text-[11px] text-white font-semibold">Toca <strong>Automatización</strong> -> (+) -> <strong>Transacción de Wallet</strong></span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-4 h-4 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold">3</span>
-                                <span class="text-[11px] text-white font-semibold">Elige "Cualquier tarjeta" y marca "Ejecutar inmediatamente"</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-4 h-4 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold">4</span>
-                                <span class="text-[11px] text-white font-semibold">Agrega acción: <strong>Obtener contenido de URL</strong> (POST a esta URL):</span>
-                            </div>
-                            <div class="flex items-center gap-2 pt-1">
-                                <input type="text" id="url-webhook-endpoint" readonly class="w-full bg-[#1C1C1E] border border-white/10 rounded-xl px-2.5 py-1.5 text-[10px] text-blue-400 font-mono select-all">
-                                <button onclick="copiarUrlWebhook()" class="px-3 py-1.5 rounded-xl bg-[#0A84FF] text-white font-bold text-[10px] shrink-0 active:scale-95 transition">
+                                <input type="text" id="url-webhook-endpoint" readonly class="w-full bg-[#1C1C1E] border border-white/10 rounded-xl px-2.5 py-2 text-[10px] text-blue-400 font-mono select-all">
+                                <button onclick="copiarUrlWebhook()" class="px-3.5 py-2 rounded-xl bg-[#0A84FF] text-white font-bold text-xs shrink-0 active:scale-95 transition">
                                     Copiar
                                 </button>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Card 4: Espacios y Sesión Personal (Multi-Cuenta) -->
-                <div class="ios-card rounded-3xl p-5 mb-6 border border-white/10 bg-[#1C1C1E]">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-2">
-                            <div class="w-7 h-7 rounded-lg bg-blue-500/20 text-[#0A84FF] flex items-center justify-center text-xs">
-                                <i class="fa-solid fa-users"></i>
+                        <!-- Guías de Configuración -->
+                        <div class="space-y-2.5 pt-1">
+                            <!-- Apple Pay -->
+                            <div class="p-3 rounded-2xl bg-[#000000]/60 border border-white/5 space-y-1.5">
+                                <div class="flex items-center gap-2 text-white font-bold text-xs">
+                                    <i class="fa-solid fa-credit-card text-[#0A84FF]"></i>
+                                    <span>Apple Pay (Wallet)</span>
+                                </div>
+                                <ol class="text-[11px] text-[#8E8E93] space-y-1 list-decimal list-inside pl-1">
+                                    <li>En tu iPhone, abre la app <strong>Atajos</strong> &rarr; <strong>Automatización</strong> &rarr; (+).</li>
+                                    <li>Selecciona <strong>Transacción</strong> (Apple Pay / Wallet).</li>
+                                    <li>Elige tus tarjetas y marca <strong>"Ejecutar de inmediato"</strong>.</li>
+                                    <li>Agrega la acción <strong>"Obtener contenido de URL"</strong> en método <strong>POST</strong> hacia la URL de arriba con formato JSON: <code class="text-blue-400 font-mono">{"medio": "APPLE_PAY", "monto": Monto, "comercio": Comercio}</code>.</li>
+                                </ol>
                             </div>
-                            <div>
-                                <h3 class="text-sm font-bold text-white">Espacio y Sesión</h3>
-                                <span class="text-[10px] text-[#8E8E93]" id="ajustes-usuario-label">Conectado</span>
+
+                            <!-- Consignaciones y SMS -->
+                            <div class="p-3 rounded-2xl bg-[#000000]/60 border border-white/5 space-y-1.5">
+                                <div class="flex items-center gap-2 text-white font-bold text-xs">
+                                    <i class="fa-solid fa-comments-dollar text-emerald-400"></i>
+                                    <span>Consignaciones y Transferencias (SMS)</span>
+                                </div>
+                                <ol class="text-[11px] text-[#8E8E93] space-y-1 list-decimal list-inside pl-1">
+                                    <li>En la app <strong>Atajos</strong> &rarr; Nueva Automatización &rarr; <strong>Mensaje</strong>.</li>
+                                    <li>Remitente: Bancolombia (85432), Nequi o Daviplata.</li>
+                                    <li>Marca <strong>"Ejecutar inmediatamente"</strong>.</li>
+                                    <li>Agrega la acción <strong>"Obtener contenido de URL"</strong> (POST) enviando: <code class="text-emerald-400 font-mono">{"medio": "SMS", "texto_sms": Texto del mensaje}</code>. AUREA detectará automáticamente si es consignación recibida, pago o retiro.</li>
+                                </ol>
                             </div>
                         </div>
-                        <span class="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                            Activo
-                        </span>
-                    </div>
-
-                    <p class="text-[11px] text-[#8E8E93] leading-relaxed mb-3.5">
-                        Puedes cambiar de cuenta, compartir la app con un amigo en este o en otro dispositivo con datos 100% aislados.
-                    </p>
-
-                    <div class="space-y-2">
-                        <button onclick="mostrarSelectorCuentasModal()" class="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition">
-                            <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
-                            <span>Cambiar de Cuenta / Nuevo Usuario</span>
-                        </button>
-                        <button onclick="cerrarSesion()" class="w-full py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition">
-                            <i class="fa-solid fa-arrow-right-from-bracket text-[11px]"></i>
-                            <span>Cerrar Sesión</span>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -2111,23 +2062,15 @@ def mobile_dashboard_preview():
                 }
             }
 
-            async function cargarDatosPerfilAjustes() {
+            function cargarDatosPerfilAjustes() {
                 try {
-                    const res = await fetch('/api/v1/metricas/perfil');
-                    if (res.ok) {
-                        const perfil = await res.json();
-                        const elIngreso = document.getElementById('perfil-ingreso');
-                        const elDia = document.getElementById('perfil-dia');
-                        const elAhorro = document.getElementById('perfil-ahorro');
-                        if(elIngreso && perfil.ingreso_mensual_estimado) elIngreso.value = perfil.ingreso_mensual_estimado;
-                        if(elDia && perfil.dia_pago_mensual) elDia.value = perfil.dia_pago_mensual;
-                        if(elAhorro && perfil.porcentaje_ahorro_meta) elAhorro.value = perfil.porcentaje_ahorro_meta;
-                    }
                     const origin = window.location.origin;
                     const elWebhook = document.getElementById('url-webhook-endpoint');
                     if(elWebhook) elWebhook.value = origin + '/api/v1/webhooks/ios-shortcut';
+                    const segUser = document.getElementById('ajustes-seguridad-username');
+                    if(segUser) segUser.innerText = `Conectado como ${usuarioActual || 'Usuario'}`;
                 } catch(e) {
-                    console.error("Error al cargar perfil:", e);
+                    console.error("Error al cargar ajustes:", e);
                 }
             }
 
