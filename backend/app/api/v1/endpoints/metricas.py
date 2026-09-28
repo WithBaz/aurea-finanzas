@@ -220,3 +220,24 @@ def obtener_estado_db(db: Session = Depends(get_db)):
         )
     }
 
+
+@router.get("/migrar-esquema")
+def ejecutar_migracion_esquema(db: Session = Depends(get_db)):
+    """
+    Ejecuta bajo demanda la migración de columnas y tablas, y reporta las columnas existentes.
+    """
+    from backend.app.database import migrar_esquema_multi_usuario
+    from sqlalchemy import inspect
+    migrar_esquema_multi_usuario(db.bind)
+    inspector = inspect(db.bind)
+    columnas = {}
+    for table in ["usuarios", "cuentas", "transacciones", "gastos_fijos", "perfil_financiero"]:
+        if table in inspector.get_table_names():
+            columnas[table] = [c["name"] for c in inspector.get_columns(table)]
+    return {
+        "status": "migracion_ejecutada",
+        "motor": db.bind.dialect.name,
+        "columnas": columnas
+    }
+
+

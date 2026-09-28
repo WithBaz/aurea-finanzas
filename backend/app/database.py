@@ -57,53 +57,91 @@ def get_db():
 
 def migrar_esquema_multi_usuario(eng=engine):
     """
-    Garantiza que la tabla de usuarios y las columnas usuario_id existan
-    en SQLite local o PostgreSQL en la nube de forma segura e idempotente.
+    Garantiza que la tabla de usuarios y todas las columnas requeridas existan
+    en SQLite local o PostgreSQL en la nube de forma segura, granular e idempotente.
     """
     from sqlalchemy import text, inspect
+    import logging
     try:
-        # Asegurar creación de tablas
+        # Asegurar creación de tablas base
         Base.metadata.create_all(bind=eng)
 
         inspector = inspect(eng)
         dialect_name = eng.dialect.name
-        tables_to_update = ['cuentas', 'transacciones', 'gastos_fijos', 'perfil_financiero', 'metas_ahorro', 'usuarios']
+        is_pg = (dialect_name == "postgresql")
+        time_type = "TIMESTAMP" if is_pg else "DATETIME"
+        float_type = "FLOAT"
+        int_type = "INTEGER"
+        bool_type = "BOOLEAN"
 
-        with eng.begin() as conn:
-            existing_tables = inspector.get_table_names()
-            for table in tables_to_update:
-                if table in existing_tables:
-                    existing_cols = [c['name'] for c in inspector.get_columns(table)]
-                    if table != 'usuarios' and 'usuario_id' not in existing_cols:
-                        if dialect_name == 'sqlite':
-                            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN usuario_id INTEGER;"))
-                        else:
-                            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS usuario_id INTEGER;"))
-                    if table == 'usuarios' and 'biometric_token' not in existing_cols:
-                        if dialect_name == 'sqlite':
-                            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN biometric_token VARCHAR(256);"))
-                        else:
-                            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS biometric_token VARCHAR(256);"))
-                    if table == 'cuentas':
-                        if 'saldo_al_corte' not in existing_cols:
-                            conn.execute(text(f"ALTER TABLE cuentas ADD COLUMN saldo_al_corte FLOAT DEFAULT 0.0;"))
-                        if 'fecha_ultimo_corte' not in existing_cols:
-                            conn.execute(text(f"ALTER TABLE cuentas ADD COLUMN fecha_ultimo_corte DATETIME;"))
-                        if 'fecha_ultimo_pago' not in existing_cols:
-                            conn.execute(text(f"ALTER TABLE cuentas ADD COLUMN fecha_ultimo_pago DATETIME;"))
-                        if 'estado_corte' not in existing_cols:
-                            conn.execute(text(f"ALTER TABLE cuentas ADD COLUMN estado_corte VARCHAR(30) DEFAULT 'AL_DIA';"))
+        columnas_por_tabla = {
+            "usuarios": [
+                ("biometric_token", "VARCHAR(256)"),
+                ("face_id_credential_id", "TEXT"),
+            ],
+            "cuentas": [
+                ("usuario_id", int_type),
+                ("cupo_total", f"{float_type} DEFAULT 0.0"),
+                ("saldo_al_corte", f"{float_type} DEFAULT 0.0"),
+                ("fecha_ultimo_corte", time_type),
+                ("fecha_ultimo_pago", time_type),
+                ("estado_corte", "VARCHAR(30) DEFAULT 'AL_DIA'"),
+                ("tasa_ea", f"{float_type} DEFAULT 0.0"),
+                ("dia_corte", int_type),
+                ("dia_limite_pago", int_type),
+            ],
+            "transacciones": [
+                ("usuario_id", int_type),
+                ("cuotas_totales", f"{int_type} DEFAULT 1"),
+                ("cuota_actual", f"{int_type} DEFAULT 1"),
+                ("es_gasto_hormiga", f"{bool_type} DEFAULT FALSE"),
+            ],
+            "gastos_fijos": [
+                ("usuario_id", int_type),
+                ("pagado_este_mes", f"{bool_type} DEFAULT FALSE"),
+            ],
+            "perfil_financiero": [
+                ("usuario_id", int_type),
+            ],
+            "metas_ahorro": [
+                ("usuario_id", int_type),
+            ],
+        }
 
-            # Si ya existen usuarios, asociar registros huérfanos anteriores al primer usuario
-            if 'usuarios' in existing_tables:
-                first_user_res = conn.execute(text("SELECT id FROM usuarios ORDER BY id ASC LIMIT 1;")).fetchone()
-                if first_user_res:
-                    first_uid = first_user_res[0]
-                    for table in ['cuentas', 'transacciones', 'gastos_fijos', 'perfil_financiero', 'metas_ahorro']:
-                        if table in existing_tables:
-                            conn.execute(text(f"UPDATE {table} SET usuario_id = :uid WHERE usuario_id IS NULL;"), {"uid": first_uid})
+        existing_tables = inspector.get_table_names()
+        for table, cols in columnas_por_tabla.items():
+            if table not in existing_tables:
+                continue
+            existing_cols = [c["name"] for c in inspector.get_columns(table)]
+            for col_name, col_def in cols:
+                if col_name not in existing_cols:
+                    try:
+                        with eng.begin() as conn:
+                            if is_pg:
+                                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col_name} {col_def};"))
+                            else:
+                                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_def};"))
+                    except Exception as err_col:
+                        logging.warning(f"Aviso migración {table}.{col_name}: {err_col}")
+
+        # Si ya existen usuarios, asociar registros huérfanos anteriores al primer usuario
+        if "usuarios" in existing_tables:
+            try:
+                with eng.begin() as conn:
+                    first_user_res = conn.execute(text("SELECT id FROM usuarios ORDER BY id ASC LIMIT 1;")).fetchone()
+                    if first_user_res:
+                        first_uid = first_user_res[0]
+                        for table in ["cuentas", "transacciones", "gastos_fijos", "perfil_financiero", "metas_ahorro"]:
+                            if table in existing_tables:
+                                try:
+                                    conn.execute(text(f"UPDATE {table} SET usuario_id = :uid WHERE usuario_id IS NULL;"), {"uid": first_uid})
+                                except Exception:
+                                    pass
+            except Exception as err_orphan:
+                logging.warning(f"Aviso asociar huérfanos: {err_orphan}")
+
     except Exception as e:
-        import logging
-        logging.warning(f"Nota de migración esquema: {e}")
+        logging.warning(f"Nota de migración esquema general: {e}")
+
 
 
