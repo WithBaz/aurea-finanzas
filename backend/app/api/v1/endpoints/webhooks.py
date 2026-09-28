@@ -16,7 +16,7 @@ from backend.app.schemas import (
     SMSWebhookPayload,
     WebhookIngestResponse,
 )
-from backend.app.services.sms_parser import SMSParser
+from backend.app.services.sms_parser import SMSParser, limpiar_monto
 from backend.app.services.categorizer import CategorizadorComercios
 
 router = APIRouter()
@@ -41,7 +41,14 @@ def procesar_atajo_ios(
 
     # 1. Rama Apple Pay
     if medio_raw == "APPLE_PAY":
-        monto = float(payload.get("monto", 0.0))
+        monto_raw = payload.get("monto", 0.0)
+        try:
+            if isinstance(monto_raw, str):
+                monto = limpiar_monto(monto_raw)
+            else:
+                monto = float(monto_raw or 0.0)
+        except Exception:
+            monto = 0.0
         comercio = str(payload.get("comercio", "Comercio Apple Pay")).strip()
         tarjeta_nombre = payload.get("tarjeta")
 
