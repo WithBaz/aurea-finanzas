@@ -629,7 +629,7 @@ def mobile_dashboard_preview():
                 <div class="space-y-3 text-xs">
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Monto ($)</label>
-                        <input type="number" id="dtx-monto" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white font-extrabold text-lg focus:border-blue-500 outline-none">
+                        <input type="text" inputmode="numeric" id="dtx-monto" oninput="formatearInputMoneda(this)" placeholder="$ 0" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white font-extrabold text-lg focus:border-blue-500 outline-none">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Comercio / Detalle</label>
@@ -682,7 +682,7 @@ def mobile_dashboard_preview():
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Monto ($)</label>
-                        <input type="number" id="input-monto" placeholder="Ej: 35000" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white font-extrabold text-lg focus:border-blue-500 outline-none">
+                        <input type="text" inputmode="numeric" id="input-monto" oninput="formatearInputMoneda(this)" placeholder="$ 0" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white font-extrabold text-lg focus:border-blue-500 outline-none">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Comercio / Detalle</label>
@@ -729,11 +729,11 @@ def mobile_dashboard_preview():
                     <div id="campos-tc" class="space-y-3">
                         <div>
                             <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Cupo Total Otorgado ($)</label>
-                            <input type="number" id="nueva-cuenta-cupo-total" oninput="actualizarPrevisualizacionDeuda()" placeholder="Ej: 5000000" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
+                            <input type="text" inputmode="numeric" id="nueva-cuenta-cupo-total" oninput="formatearInputMoneda(this); actualizarPrevisualizacionDeuda()" placeholder="Ej: $ 5.000.000" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
                         </div>
                         <div>
                             <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Cupo Disponible en este momento ($)</label>
-                            <input type="number" id="nueva-cuenta-cupo-disponible" oninput="actualizarPrevisualizacionDeuda()" placeholder="Ej: 3500000" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
+                            <input type="text" inputmode="numeric" id="nueva-cuenta-cupo-disponible" oninput="formatearInputMoneda(this); actualizarPrevisualizacionDeuda()" placeholder="Ej: $ 3.500.000" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
                         </div>
                         <div class="p-2.5 rounded-xl bg-[#000000] border border-white/5 text-[11px] text-[#8E8E93]" id="tc-deuda-preview">
                             Deuda actual calculada: <strong class="text-rose-400">$ 0</strong>
@@ -743,7 +743,7 @@ def mobile_dashboard_preview():
                     <!-- Campo estándar de Saldo para Cuentas Líquidas -->
                     <div id="campos-saldo-estandar" class="hidden">
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Saldo Actual Real ($)</label>
-                        <input type="number" id="nueva-cuenta-saldo" placeholder="Ej: 1500000" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
+                        <input type="text" inputmode="numeric" id="nueva-cuenta-saldo" oninput="formatearInputMoneda(this)" placeholder="Ej: $ 1.500.000" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
                     </div>
 
                     <div class="pt-2 flex gap-2">
@@ -773,16 +773,16 @@ def mobile_dashboard_preview():
                     </div>
                     <div id="edit-container-saldo">
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1" id="edit-saldo-label">Saldo Actual Real ($)</label>
-                        <input type="number" id="edit-saldo" placeholder="0" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white font-bold text-lg focus:border-blue-500 outline-none">
+                        <input type="text" inputmode="numeric" id="edit-saldo" oninput="formatearInputMoneda(this)" placeholder="$ 0" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white font-bold text-lg focus:border-blue-500 outline-none">
                     </div>
                     <div id="edit-container-cupo" class="space-y-3 hidden">
                         <div>
                             <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Cupo Total ($)</label>
-                            <input type="number" id="edit-cupo-total" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
+                            <input type="text" inputmode="numeric" id="edit-cupo-total" oninput="formatearInputMoneda(this)" placeholder="$ 0" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
                         </div>
                         <div>
                             <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Cupo Disponible Actual ($)</label>
-                            <input type="number" id="edit-cupo-disponible" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
+                            <input type="text" inputmode="numeric" id="edit-cupo-disponible" oninput="formatearInputMoneda(this)" placeholder="$ 0" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
                         </div>
                     </div>
                     <div class="pt-2 flex gap-2">
@@ -808,7 +808,7 @@ def mobile_dashboard_preview():
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Monto Mensual ($)</label>
-                        <input type="number" id="nuevo-fijo-monto" placeholder="Ej: 1200000" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
+                        <input type="text" inputmode="numeric" id="nuevo-fijo-monto" oninput="formatearInputMoneda(this)" placeholder="Ej: $ 1.200.000" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Día Habitual de Pago (1 - 31)</label>
@@ -1231,6 +1231,44 @@ def mobile_dashboard_preview():
                 return '$ ' + Math.round(monto || 0).toLocaleString('es-CO');
             }
 
+            // Utilidades para formateo de inputs numéricos en Pesos Colombianos (COP)
+            function formatearInputMoneda(input) {
+                if(!input) return;
+                const cursorPos = input.selectionStart;
+                const lenAntes = input.value.length;
+                const rawDigits = input.value.replace(/[^0-9]/g, '');
+                if (!rawDigits) {
+                    input.value = '';
+                    return;
+                }
+                const num = parseInt(rawDigits, 10);
+                input.value = '$ ' + num.toLocaleString('es-CO');
+                const lenDespues = input.value.length;
+                const diff = lenDespues - lenAntes;
+                const nuevaPos = Math.max(2, (cursorPos || 0) + diff);
+                try {
+                    input.setSelectionRange(nuevaPos, nuevaPos);
+                } catch(e) {}
+            }
+
+            function obtenerValorMoneda(inputOrId) {
+                const el = typeof inputOrId === 'string' ? document.getElementById(inputOrId) : inputOrId;
+                if (!el || !el.value) return 0;
+                const cleanDigits = el.value.toString().replace(/[^0-9]/g, '');
+                return cleanDigits ? parseFloat(cleanDigits) : 0;
+            }
+
+            function fijarValorMoneda(inputOrId, valor) {
+                const el = typeof inputOrId === 'string' ? document.getElementById(inputOrId) : inputOrId;
+                if (!el) return;
+                if (valor === undefined || valor === null || valor === '' || isNaN(valor)) {
+                    el.value = '';
+                    return;
+                }
+                const num = Math.round(Number(valor));
+                el.value = '$ ' + num.toLocaleString('es-CO');
+            }
+
             // ==========================================
             // RENDERIZADO DEL DASHBOARD APPLE HIG
             // ==========================================
@@ -1618,7 +1656,7 @@ def mobile_dashboard_preview():
                     document.getElementById('dtx-id').value = tx.id;
                     document.getElementById('dtx-comercio-titulo').innerText = tx.comercio;
                     document.getElementById('dtx-comercio').value = tx.comercio;
-                    document.getElementById('dtx-monto').value = tx.monto;
+                    fijarValorMoneda('dtx-monto', tx.monto);
                     
                     const fechaObj = tx.fecha ? new Date(tx.fecha) : new Date();
                     document.getElementById('dtx-fecha-hora').innerText = fechaObj.toLocaleString('es-CO', {
@@ -1664,7 +1702,7 @@ def mobile_dashboard_preview():
 
             async function guardarCambiosDetalleMovimiento() {
                 const txId = document.getElementById('dtx-id').value;
-                const monto = parseFloat(document.getElementById('dtx-monto').value);
+                const monto = obtenerValorMoneda('dtx-monto');
                 const comercio = document.getElementById('dtx-comercio').value.trim();
                 const cuentaId = parseInt(document.getElementById('dtx-cuenta').value);
 
@@ -1729,8 +1767,8 @@ def mobile_dashboard_preview():
             }
 
             function actualizarPrevisualizacionDeuda() {
-                const total = parseFloat(document.getElementById('nueva-cuenta-cupo-total').value) || 0;
-                const disp = parseFloat(document.getElementById('nueva-cuenta-cupo-disponible').value) || 0;
+                const total = obtenerValorMoneda('nueva-cuenta-cupo-total');
+                const disp = obtenerValorMoneda('nueva-cuenta-cupo-disponible');
                 const deuda = Math.max(0, total - disp);
                 const elPrev = document.getElementById('tc-deuda-preview');
                 if(elPrev) {
@@ -1792,12 +1830,12 @@ def mobile_dashboard_preview():
 
                 let payload = { nombre: nombre, tipo: tipo };
                 if(tipo === 'CREDITO') {
-                    const cupoTot = parseFloat(document.getElementById('nueva-cuenta-cupo-total').value) || 0;
-                    const cupoDisp = parseFloat(document.getElementById('nueva-cuenta-cupo-disponible').value) || 0;
+                    const cupoTot = obtenerValorMoneda('nueva-cuenta-cupo-total');
+                    const cupoDisp = obtenerValorMoneda('nueva-cuenta-cupo-disponible');
                     payload.cupo_total = cupoTot;
                     payload.cupo_disponible = cupoDisp;
                 } else {
-                    payload.saldo_actual = parseFloat(document.getElementById('nueva-cuenta-saldo').value) || 0;
+                    payload.saldo_actual = obtenerValorMoneda('nueva-cuenta-saldo');
                     payload.tasa_ea = (tipo === 'ALTO_RENDIMIENTO') ? 12.5 : 0;
                 }
 
@@ -1833,12 +1871,12 @@ def mobile_dashboard_preview():
                 if(c.tipo === 'CREDITO') {
                     contSaldo.classList.add('hidden');
                     contCupo.classList.remove('hidden');
-                    document.getElementById('edit-cupo-total').value = c.cupo_total || 0;
-                    document.getElementById('edit-cupo-disponible').value = c.cupo_disponible !== undefined ? c.cupo_disponible : Math.max(0, (c.cupo_total || 0) - (c.saldo_actual || 0));
+                    fijarValorMoneda('edit-cupo-total', c.cupo_total || 0);
+                    fijarValorMoneda('edit-cupo-disponible', c.cupo_disponible !== undefined ? c.cupo_disponible : Math.max(0, (c.cupo_total || 0) - (c.saldo_actual || 0)));
                 } else {
                     contSaldo.classList.remove('hidden');
                     contCupo.classList.add('hidden');
-                    document.getElementById('edit-saldo').value = c.saldo_actual || 0;
+                    fijarValorMoneda('edit-saldo', c.saldo_actual || 0);
                 }
 
                 document.getElementById('modal-editar-cuenta').classList.remove('hidden');
@@ -1856,10 +1894,10 @@ def mobile_dashboard_preview():
                 let payload = { nombre: nuevoNombre || undefined };
 
                 if(c.tipo === 'CREDITO') {
-                    payload.cupo_total = parseFloat(document.getElementById('edit-cupo-total').value) || 0;
-                    payload.cupo_disponible = parseFloat(document.getElementById('edit-cupo-disponible').value) || 0;
+                    payload.cupo_total = obtenerValorMoneda('edit-cupo-total');
+                    payload.cupo_disponible = obtenerValorMoneda('edit-cupo-disponible');
                 } else {
-                    payload.saldo_actual = parseFloat(document.getElementById('edit-saldo').value) || 0;
+                    payload.saldo_actual = obtenerValorMoneda('edit-saldo');
                 }
 
                 try {
@@ -1920,10 +1958,10 @@ def mobile_dashboard_preview():
 
             async function guardarNuevoGastoFijo() {
                 const nombre = document.getElementById('nuevo-fijo-nombre').value.trim();
-                const monto = parseFloat(document.getElementById('nuevo-fijo-monto').value);
+                const monto = obtenerValorMoneda('nuevo-fijo-monto');
                 const diaPago = parseInt(document.getElementById('nuevo-fijo-dia').value) || 5;
 
-                if(!nombre || !monto || isNaN(monto)) {
+                if(!nombre || !monto || isNaN(monto) || monto <= 0) {
                     alert('Por favor ingresa un concepto y monto válido.');
                     return;
                 }
@@ -1994,7 +2032,7 @@ def mobile_dashboard_preview():
             }
 
             async function guardarMovimientoManual() {
-                const monto = parseFloat(document.getElementById('input-monto').value);
+                const monto = obtenerValorMoneda('input-monto');
                 const comercio = document.getElementById('input-comercio').value.trim();
                 const cuentaId = parseInt(document.getElementById('select-cuenta').value);
 
