@@ -165,3 +165,33 @@ def test_api_asignar_cuenta_a_transaccion(client):
     assert banco_upd.saldo_actual == 1000000.0
     assert efectivo_upd.saldo_actual == 30000.0  # 50.000 - 20.000
     db.close()
+
+
+def test_interpretar_nequi_y_daviplata_voz():
+    db = TestingSessionLocal()
+    # Crear cuenta Nequi si no existe
+    nequi = db.query(Cuenta).filter(Cuenta.nombre.ilike("%nequi%")).first()
+    if not nequi:
+        nequi = Cuenta(nombre="Billetera Nequi", tipo=TipoCuenta.DEBITO, saldo_actual=150000.0)
+        db.add(nequi)
+        db.commit()
+
+    # 1. Ingreso por Nequi
+    res_ingreso = NLPSmartExpenseParser.interpretar_texto_gasto("Me pasaron 80 mil a Nequi de Carlos", db)
+    assert res_ingreso["monto"] == 80000.0
+    assert res_ingreso["tipo"] == "INGRESO"
+    assert "nequi" in res_ingreso["cuenta_nombre"].lower()
+
+    # 2. Egreso por Nequi
+    res_egreso = NLPSmartExpenseParser.interpretar_texto_gasto("Pagué 20 mil de almuerzo en Nequi", db)
+    assert res_egreso["monto"] == 20000.0
+    assert res_egreso["tipo"] == "EGRESO"
+    assert "nequi" in res_egreso["cuenta_nombre"].lower()
+
+    # 3. Egreso explícito "mandé" o "envié"
+    res_envio = NLPSmartExpenseParser.interpretar_texto_gasto("Envié 35 mil con Nequi", db)
+    assert res_envio["monto"] == 35000.0
+    assert res_envio["tipo"] == "EGRESO"
+
+    db.close()
+

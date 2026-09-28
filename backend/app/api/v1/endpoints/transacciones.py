@@ -160,7 +160,14 @@ async def registrar_gasto_ia_rapida(
     if not texto_final:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo 'texto' es requerido")
 
-    interpretacion = NLPSmartExpenseParser.interpretar_texto_gasto(texto_final, db)
+    current_uid = None
+    uid_header = request.headers.get("X-Usuario-Id")
+    if uid_header and uid_header.isdigit():
+        current_uid = int(uid_header)
+    elif request.query_params.get("usuario_id") and request.query_params.get("usuario_id").isdigit():
+        current_uid = int(request.query_params.get("usuario_id"))
+
+    interpretacion = NLPSmartExpenseParser.interpretar_texto_gasto(texto_final, db, usuario_id=current_uid)
     monto = interpretacion["monto"]
     comercio = interpretacion["comercio"]
     
@@ -222,11 +229,12 @@ async def registrar_gasto_ia_rapida(
         medio=MedioCaptura.MANUAL,
         fecha=datetime.now(timezone.utc),
         comercio=comercio,
-        descripcion=f"Registrado con Apple Intelligence: '{texto_final}'",
+        descripcion=f"Registrado con voz / NLP: '{texto_final}'",
         cuenta_origen_id=cuenta.id,
         categoria_id=interpretacion["categoria_id"],
         es_gasto_hormiga=es_hormiga,
-        raw_payload=texto_final
+        raw_payload=texto_final,
+        usuario_id=cuenta.usuario_id if (cuenta and cuenta.usuario_id) else current_uid
     )
     db.add(tx)
     db.commit()

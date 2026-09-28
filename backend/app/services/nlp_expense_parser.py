@@ -166,36 +166,133 @@ class NLPSmartExpenseParser:
         return 0.0
 
     @classmethod
-    def _detectar_cuenta(cls, texto: str, db: Optional[Session] = None) -> Tuple[Optional[int], Optional[str]]:
-        palabras_efectivo = ["efectivo", "en cash", "plata en mano", "billetes"]
-        palabras_bancolombia = ["bancolombia", "banco", "débito", "debito"]
-        palabras_nu = ["nu", "nubank", "cajita", "cuenta nu"]
-        palabras_credito = ["crédito", "credito", "tarjeta de crédito", "tarjeta credito", "visa", "mastercard"]
+    def interpretar_texto_gasto(cls, texto: str, db: Optional[Session] = None, usuario_id: Optional[int] = None) -> Dict[str, Any]:
+        t = texto.strip().lower()
 
-        cuenta_detectada_tipo = None
-        if any(p in texto for p in palabras_efectivo):
-            cuenta_detectada_tipo = TipoCuenta.EFECTIVO
-        elif any(p in texto for p in palabras_credito):
-            cuenta_detectada_tipo = TipoCuenta.CREDITO
-        elif any(p in texto for p in palabras_nu):
-            cuenta_detectada_tipo = TipoCuenta.ALTO_RENDIMIENTO
-        elif any(p in texto for p in palabras_bancolombia):
-            cuenta_detectada_tipo = TipoCuenta.DEBITO
+        # 1. Extraer Monto
+        monto = cls._extraer_monto(t)
 
-        if db and cuenta_detectada_tipo:
-            cuenta = db.query(Cuenta).filter(Cuenta.tipo == cuenta_detectada_tipo, Cuenta.activa == True).first()
-            if cuenta:
-                return cuenta.id, cuenta.nombre
+        # 2. Detectar Cuenta
+        cuenta_id, cuenta_nombre = cls._detectar_cuenta(t, db, usuario_id=usuario_id)
 
-        # Si no se detectó tipo específico, buscar por nombre exacto de la cuenta en la DB
-        if db:
+        # 3. Detectar Tipo (Ingreso vs Egreso)
+        palabras_egreso_fuertes = [
+            "pagué", "pague", "gasté", "gaste", "compré", "compre",
+            "mandé", "mande", "envié", "envie", "pasé", "pase",
+            "le pasé", "le pase", "le mandé", "le mande", "le transferí", "le transferi",
+            "retiré", "retire", "saqué", "saque"
+        ]
+        es_egreso_explicito = any(p in t for p in palabras_egreso_fuertes)
+
+        palabras_ingreso = [
+            "ingreso", "ingresos", "me pagaron", "pagaron", "recibí", "recibi",
+            "consignaron", "me consignaron", "consignación", "consignacion", "consigne", "consigné",
+            "transfirieron", "me transfirieron", "transferencia recibida", "transfirio", "transfirió",
+            "me pasaron", "pasaron", "me enviaron", "enviaron", "me mandaron", "mandaron",
+            "me llegaron", "llegaron", "recargué", "recargue", "metí", "meti",
+            "sueldo", "nómina", "nomina", "quincena", "abono", "abonaron", "me abonaron", "honorarios",
+            "gané", "gane", "ganancia", "me entró", "me entro", "cobré", "cobre",
+            "depósito", "deposito", "depositaron", "me depositaron", "me giraron",
+            "giraron", "reembolso", "devolución", "devolucion", "freelance"
+        ]
+        es_ingreso = not es_egreso_explicito and any(palabra in t for palabra in palabras_ingreso)
+        tipo = "INGRESO" if es_ingreso else "EGRESO"
+
+        # En Colombia ningún ingreso (nómina, sueldo, transferencia, honorarios) es menor a $1.000 COP ($0.25 USD).
+        # Si se detectó ingreso y el monto es menor a 1.000, auto-escalar a miles (ej. 500 -> 500.000 COP).
+        if es_ingreso and 0 < monto < 1000:
+            monto *= 1000.0
+
+        # 4. Extraer Comercio / Concepto
+        comercio = cls._extraer_concepto(t, es_ingreso=es_ingreso)
+
+        # 5. Categoría
+        categoria_nombre, categoria_id = CategorizadorComercios.sugerir_categoria(comercio, db)
+        if es_ingreso and not categoria_id and db:
+            from backend.app.models import Categoria
+            cat_nom = db.query(Categoria).filter(Categoria.nombre.ilike("%nómina%")).first()
+            if cat_nom:
+                categoria_nombre = cat_nom.nombre
+                categoria_id = cat_nom.id
+
+        return {
+            "monto": monto,
+            "tipo": tipo,
+            "comercio": comercio,
+            "cuenta_id": cuenta_id,
+            "cuenta_nombre": cuenta_nombre,
+            "categoria_nombre": categoria_nombre,
+            "categoria_id": categoria_id,
+            "requiere_confirmar_cuenta": cuenta_id is None,
+            "texto_original": texto
+        }
+
+    @classmethod
+    def _detectar_cuenta(cls, texto: str, db: Optional[Session] = None, usuario_id: Optional[int] = None) -> Tuple[Optional[int], Optional[str]]:
+        if not db:
+            return None, None
+
+        t = texto.lower()
+        query = db.query(Cuenta).filter(Cuenta.activa == True)
+        if usuario_id:
+            query = query.filter(Cuenta.usuario_id == usuario_id)
+        cuentas = query.all()
+        if not cuentas:
             cuentas = db.query(Cuenta).filter(Cuenta.activa == True).all()
-            for c in cuentas:
-                if c.nombre.lower() in texto:
-                    return c.id, c.nombre
-            # Si solo existe una cuenta activa configurada, asumirla por defecto
-            if len(cuentas) == 1:
-                return cuentas[0].id, cuentas[0].nombre
+
+        if not cuentas:
+            return None, None
+
+        # 1. Búsqueda por entidades financieras / instrumentos colombianos
+        keywords_map = {
+            "nequi": ["nequi"],
+            "daviplata": ["daviplata", "davi"],
+            "bancolombia": ["bancolombia", "banco", "débito", "debito"],
+            "davivienda": ["davivienda"],
+            "nu": ["nu", "nubank", "cajita", "cuenta nu"],
+            "efectivo": ["efectivo", "en cash", "plata en mano", "billetes", "cash"],
+            "credito": ["crédito", "credito", "tarjeta", "tc", "visa", "mastercard", "amex"],
+            "lulo": ["lulo", "lulobank"],
+            "rappi": ["rappi", "rappipay", "rappi pay"],
+            "falabella": ["falabella"],
+            "bbva": ["bbva"],
+            "scotia": ["colpatria", "scotiabank"],
+            "bogota": ["banco de bogota", "banco bogota", "bogota"]
+        }
+
+        for key, tokens in keywords_map.items():
+            if any(token in t for token in tokens):
+                # Primero buscar cuenta de la base de datos cuyo nombre contenga el banco
+                for c in cuentas:
+                    nom_c = c.nombre.lower()
+                    if any(token in nom_c for token in tokens):
+                        return c.id, c.nombre
+                # Si no hay por coincidencia de nombre, mapear a tipo
+                if key == "efectivo":
+                    c_ef = next((c for c in cuentas if c.tipo == TipoCuenta.EFECTIVO), None)
+                    if c_ef: return c_ef.id, c_ef.nombre
+                elif key == "credito":
+                    c_cr = next((c for c in cuentas if c.tipo == TipoCuenta.CREDITO), None)
+                    if c_cr: return c_cr.id, c_cr.nombre
+                elif key == "nu":
+                    c_nu = next((c for c in cuentas if c.tipo == TipoCuenta.ALTO_RENDIMIENTO), None)
+                    if c_nu: return c_nu.id, c_nu.nombre
+                elif key in ["bancolombia", "nequi", "daviplata", "davivienda"]:
+                    c_deb = next((c for c in cuentas if c.tipo == TipoCuenta.DEBITO), None)
+                    if c_deb: return c_deb.id, c_deb.nombre
+
+        # 2. Búsqueda directa por el nombre de las cuentas del usuario
+        for c in cuentas:
+            nom_c = c.nombre.lower()
+            if nom_c in t:
+                return c.id, c.nombre
+            palabras_c = [w for w in re.findall(r"\w+", nom_c) if len(w) >= 4 and w not in ["cuenta", "tarjeta", "billetera", "banco"]]
+            if palabras_c and any(w in t for w in palabras_c):
+                return c.id, c.nombre
+
+        # 3. Si el usuario solo tiene una cuenta activa en su sistema, asignarla automáticamente
+        if len(cuentas) == 1:
+            return cuentas[0].id, cuentas[0].nombre
 
         return None, None
 
@@ -203,11 +300,12 @@ class NLPSmartExpenseParser:
     def _extraer_concepto(cls, texto: str, es_ingreso: bool = False) -> str:
         stop_words = (
             r"\b(pagué|pague|gasté|gaste|compré|compre|me|pagaron|recibí|recibi|consignaron|"
-            r"transfirieron|giraron|depositaron|entró|entro|cobré|cobre|de|en|con|por|un|una|"
-            r"unos|unas|la|el|los|las|mil|k|pesos|cop|efectivo|tarjeta|crédito|credito|debito|"
-            r"débito|bancolombia|nu|nequi|daviplata)\b"
+            r"transfirieron|giraron|depositaron|entró|entro|cobré|cobre|mandé|mande|envié|envie|"
+            r"pasé|pase|enviaron|mandaron|pasaron|de|en|con|por|un|una|unos|unas|la|el|los|las|"
+            r"mil|k|pesos|cop|efectivo|tarjeta|crédito|credito|debito|débito|bancolombia|nu|nequi|"
+            r"daviplata|davivienda|bbva|rappi|lulo|cajita|cajero|cuenta)\b"
         )
-        limpio = re.sub(stop_words, "", texto)
+        limpio = re.sub(stop_words, "", texto, flags=re.IGNORECASE)
         limpio = re.sub(r"\$?\s*\d+(?:[.,]\d+)?", "", limpio)
         limpio = " ".join(limpio.split()).capitalize()
         if len(limpio) >= 2:
