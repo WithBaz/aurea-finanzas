@@ -354,9 +354,11 @@ def test_aislamiento_navegacion_y_centrado_login(client):
 def test_alineacion_cursor_y_placeholder_usuario(client):
     """
     Verifica que:
-    1. El placeholder del campo de usuario sea exactamente 'Ingresa tu usuario' sin texto por default secundario como '(ej: Jorge)'.
-    2. La clase .glass-input cuente con line-height: normal y caret-color: #0A84FF para perfecta alineación vertical del cursor.
-    3. El campo de usuario y contraseña tengan altura estándar de 50px e icono centrado con w-11 y pointer-events-none.
+    1. El placeholder del campo de usuario sea exactamente 'Ingresa tu usuario'.
+    2. El CSS de .glass-input use selectores de alta especificidad (ID) para ganarle a Tailwind.
+    3. El padding, height y line-height estén definidos nativamente en CSS, no en clases Tailwind.
+    4. El autofill de WebKit esté anulado con -webkit-box-shadow inset.
+    5. Defensas contra foco fantasma: pageshow, visibilitychange y requestAnimationFrame.
     """
     res = client.get("/")
     assert res.status_code == 200
@@ -366,21 +368,30 @@ def test_alineacion_cursor_y_placeholder_usuario(client):
     assert 'id="login-input-username" name="username" placeholder="Ingresa tu usuario"' in html
     assert '(ej: Jorge)' not in html
 
-    # 2. Alineación de cursor en CSS
+    # 2. Alineación de cursor en CSS con alta especificidad
     assert "caret-color: #0A84FF !important;" in html
-    assert "line-height: normal !important;" in html
-    assert "height: 3.125rem !important;" in html
+    assert "line-height: 50px !important;" in html
+    assert "height: 50px !important;" in html
+    assert "padding: 0 16px !important;" in html
 
-    # 3. Dimensiones, alineación limpia px-4 y despeje para teclado virtual
-    assert 'class="w-full h-[50px] glass-input px-4 text-white font-medium text-base outline-none transition"' in html
-    assert 'class="w-full h-[50px] glass-input pl-4 pr-11 text-white font-medium text-base outline-none transition"' in html
+    # 3. Selectores de alta especificidad sobre ID en CSS
+    assert 'input[id="login-input-username"]' in html
+    assert 'input[id="login-input-password"]' in html
+    assert "padding-right: 44px !important;" in html
+
+    # 4. Autofill WebKit anulado con -webkit-box-shadow
+    assert "-webkit-box-shadow: 0 0 0 100px rgba(0, 0, 0, 0.5) inset !important;" in html
+    assert "-webkit-text-fill-color: #FFFFFF !important;" in html
+
+    # 5. Defensas contra foco fantasma en Safari iOS
+    assert "pageshow" in html
+    assert "requestAnimationFrame" in html
     assert "padding-bottom: calc(var(--sab) + 140px) !important;" in html
     assert "centrarCampoVisible" in html
 
-    # 4. Padding estático síncrono y control de foco en WebKit / Safari iOS
-    assert "padding-left: 1rem !important;" in html
-    assert "#login-input-password, #reg-input-password" in html
-    assert "pageshow" in html
+    # 6. Inputs de login usan clases simplificadas sin padding conflictivo de Tailwind
+    assert 'class="glass-input outline-none"' in html
+
 
 
 
