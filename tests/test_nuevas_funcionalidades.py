@@ -351,6 +351,32 @@ def test_aislamiento_navegacion_y_centrado_login(client):
     assert "if (!sesionAutenticada) return;" in html
 
 
+def test_alineacion_cursor_y_placeholder_usuario(client):
+    """
+    Verifica que:
+    1. El placeholder del campo de usuario sea exactamente 'Ingresa tu usuario' sin texto por default secundario como '(ej: Jorge)'.
+    2. La clase .glass-input cuente con line-height: normal y caret-color: #0A84FF para perfecta alineación vertical del cursor.
+    3. El campo de usuario y contraseña tengan altura estándar de 50px e icono centrado con w-11 y pointer-events-none.
+    """
+    res = client.get("/")
+    assert res.status_code == 200
+    html = res.text
+
+    # 1. Placeholder limpio sin '(ej: Jorge)'
+    assert 'id="login-input-username" name="username" placeholder="Ingresa tu usuario"' in html
+    assert '(ej: Jorge)' not in html
+
+    # 2. Alineación de cursor en CSS
+    assert "caret-color: #0A84FF !important;" in html
+    assert "line-height: normal !important;" in html
+    assert "height: 3.125rem !important;" in html
+
+    # 3. Dimensiones y centrado de contenedor e icono
+    assert 'class="w-full h-[50px] glass-input pl-11' in html
+    assert 'class="absolute left-0 inset-y-0 w-11 flex items-center justify-center text-[#8E8E93] pointer-events-none"' in html
+
+
+
 
 
 

@@ -303,18 +303,29 @@ def mobile_dashboard_preview():
                 transition: all 0.25s ease !important;
             }
             .glass-input {
+                height: 3.125rem !important; /* 50px Apple HIG */
+                line-height: normal !important; /* Elimina desalineación vertical del cursor parpadeante en WebKit/iOS */
+                caret-color: #0A84FF !important; /* Cursor azul Apple alineado */
                 background: rgba(0, 0, 0, 0.35) !important;
                 backdrop-filter: blur(20px) !important;
                 -webkit-backdrop-filter: blur(20px) !important;
                 border: 1px solid rgba(255, 255, 255, 0.12) !important;
                 border-radius: 1rem !important;
                 color: #FFFFFF !important;
+                font-size: 1rem !important; /* 16px para evitar auto-zoom indeseado en Safari iOS */
                 transition: all 0.2s ease !important;
+                box-sizing: border-box !important;
             }
             .glass-input:focus {
                 border-color: #0A84FF !important;
                 background: rgba(0, 0, 0, 0.5) !important;
                 box-shadow: 0 0 16px rgba(10, 132, 255, 0.3) !important;
+            }
+            .glass-input::placeholder {
+                color: #8E8E93 !important;
+                opacity: 0.8 !important;
+                font-size: 0.9375rem !important;
+                font-weight: 500 !important;
             }
 
             /* REGLAS MODO CLARO (Apple HIG Theme) */
@@ -434,6 +445,10 @@ def mobile_dashboard_preview():
                 background: #FFFFFF !important;
                 box-shadow: 0 0 16px rgba(0, 122, 255, 0.25) !important;
             }
+            html.theme-light .glass-input::placeholder {
+                color: #8E8E93 !important;
+                opacity: 0.9 !important;
+            }
             html.theme-light [id^="modal-"] > div:not(.bg-black\/80) {
                 background-color: #FFFFFF !important;
                 border-color: rgba(0, 0, 0, 0.1) !important;
@@ -507,13 +522,13 @@ def mobile_dashboard_preview():
                             <!-- Campo Usuario -->
                             <div>
                                 <label for="login-input-username" class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1.5">Tu Usuario</label>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#8E8E93]">
+                                <div class="relative flex items-center">
+                                    <span class="absolute left-0 inset-y-0 w-11 flex items-center justify-center text-[#8E8E93] pointer-events-none">
                                         <i class="fa-solid fa-user text-xs"></i>
                                     </span>
-                                    <input type="text" id="login-input-username" name="username" placeholder="Ingresa tu usuario (ej: Jorge)"
+                                    <input type="text" id="login-input-username" name="username" placeholder="Ingresa tu usuario"
                                         autocomplete="username webauthn" autocapitalize="none" autocorrect="off" spellcheck="false"
-                                        class="w-full glass-input pl-10 pr-4 py-3.5 text-white font-bold text-sm outline-none transition"
+                                        class="w-full h-[50px] glass-input pl-11 pr-4 text-white font-medium text-base outline-none transition"
                                         required>
                                 </div>
                             </div>
@@ -527,15 +542,15 @@ def mobile_dashboard_preview():
                                         <span>Face ID</span>
                                     </span>
                                 </div>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#8E8E93]">
+                                <div class="relative flex items-center">
+                                    <span class="absolute left-0 inset-y-0 w-11 flex items-center justify-center text-[#8E8E93] pointer-events-none">
                                         <i class="fa-solid fa-lock text-xs"></i>
                                     </span>
                                     <input type="password" id="login-input-password" name="password" placeholder="Ingresa tu contraseña"
                                         autocomplete="current-password"
-                                        class="w-full glass-input pl-10 pr-10 py-3.5 text-white font-bold text-sm outline-none transition"
+                                        class="w-full h-[50px] glass-input pl-11 pr-11 text-white font-medium text-base outline-none transition"
                                         required>
-                                    <button type="button" onclick="toggleVerPassword('login-input-password', 'login-ojo-icon')" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#8E8E93] hover:text-white" tabindex="-1">
+                                    <button type="button" onclick="toggleVerPassword('login-input-password', 'login-ojo-icon')" class="absolute right-0 inset-y-0 w-11 flex items-center justify-center text-[#8E8E93] hover:text-white transition active:scale-90" tabindex="-1">
                                         <i class="fa-solid fa-eye text-xs" id="login-ojo-icon"></i>
                                     </button>
                                 </div>
@@ -571,16 +586,16 @@ def mobile_dashboard_preview():
                         <div class="space-y-3.5">
                             <div>
                                 <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1">Nombre de Usuario</label>
-                                <input type="text" id="reg-input-username" placeholder="Ej: Jorge o Carlos" autocomplete="username"
-                                    class="w-full glass-input px-4 py-3 text-white font-bold text-sm outline-none transition">
+                                <input type="text" id="reg-input-username" placeholder="Ingresa tu usuario" autocomplete="username"
+                                    class="w-full h-[50px] glass-input px-4 text-white font-medium text-base outline-none transition">
                             </div>
 
                             <div>
                                 <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1">Contraseña (Mínimo 4 caracteres)</label>
-                                <div class="relative">
+                                <div class="relative flex items-center">
                                     <input type="password" id="reg-input-password" placeholder="Tu contraseña privada" autocomplete="new-password"
-                                        class="w-full glass-input pl-4 pr-10 py-3 text-white font-bold text-sm outline-none transition">
-                                    <button type="button" onclick="toggleVerPassword('reg-input-password', 'reg-ojo-icon')" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#8E8E93] hover:text-white">
+                                        class="w-full h-[50px] glass-input pl-4 pr-11 text-white font-medium text-base outline-none transition">
+                                    <button type="button" onclick="toggleVerPassword('reg-input-password', 'reg-ojo-icon')" class="absolute right-0 inset-y-0 w-11 flex items-center justify-center text-[#8E8E93] hover:text-white">
                                         <i class="fa-solid fa-eye text-xs" id="reg-ojo-icon"></i>
                                     </button>
                                 </div>
@@ -589,7 +604,7 @@ def mobile_dashboard_preview():
                             <div>
                                 <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1">Confirmar Contraseña</label>
                                 <input type="password" id="reg-input-confirm" placeholder="Repite tu contraseña" autocomplete="new-password"
-                                    class="w-full glass-input px-4 py-3 text-white font-bold text-sm outline-none transition"
+                                    class="w-full h-[50px] glass-input px-4 text-white font-medium text-base outline-none transition"
                                     onkeydown="if(event.key === 'Enter') ejecutarRegistro()">
                             </div>
 
