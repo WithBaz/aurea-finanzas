@@ -208,18 +208,13 @@ def mobile_dashboard_preview():
             .animate-scanLaser {
                 animation: scanLaser 1.5s ease-in-out infinite;
             }
-            /* Estilos críticos para despliegue instantáneo del Acceso (0ms delay) */
-            #pantalla-auth {
-                position: fixed;
-                inset: 0;
-                z-index: 50;
-                background-color: #000000;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-                align-items: center;
-                padding: 2rem 1.5rem;
-                overflow-y: auto;
+            /* Reglas estrictas para asegurar que pantallas inactivas nunca bloqueen clics */
+            #pantalla-auth.hidden,
+            #overlay-login-animacion.hidden,
+            .hidden {
+                display: none !important;
+                pointer-events: none !important;
+                visibility: hidden !important;
             }
             #vista-login, #vista-registro {
                 background-color: #1C1C1E;
@@ -374,7 +369,7 @@ def mobile_dashboard_preview():
         <!-- ========================================== -->
         <!-- OVERLAY DE ANIMACIÓN Y VERIFICACIÓN LOGIN (Apple Liquid Glass) -->
         <!-- ========================================== -->
-        <div id="overlay-login-animacion" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-2xl flex flex-col items-center justify-center px-6 transition-all duration-300 opacity-0 pointer-events-none hidden">
+        <div id="overlay-login-animacion" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-2xl flex flex-col items-center justify-center px-6 transition-all duration-300 opacity-0 pointer-events-none hidden" style="display: none; pointer-events: none; visibility: hidden;">
             <div id="login-anim-card" class="w-full max-w-xs rounded-3xl p-7 bg-[#1C1C1E]/95 border border-white/15 shadow-2xl flex flex-col items-center text-center relative overflow-hidden backdrop-blur-3xl transform transition-all duration-300 scale-95">
                 
                 <!-- Aura circular con brillo dinámico -->
@@ -1219,6 +1214,9 @@ def mobile_dashboard_preview():
                 if (badgeDot) badgeDot.className = 'w-2 h-2 rounded-full bg-[#0A84FF] animate-ping';
                 if (badgeText) { badgeText.innerText = 'Cifrado Biométrico'; badgeText.className = 'text-[10px] font-bold text-blue-400 uppercase tracking-wider'; }
 
+                overlay.style.pointerEvents = 'auto';
+                overlay.style.display = 'flex';
+                overlay.style.visibility = 'visible';
                 overlay.classList.remove('hidden');
                 void overlay.offsetWidth; // Forzar reflow para animación suave
                 overlay.classList.remove('opacity-0', 'pointer-events-none');
@@ -1261,6 +1259,7 @@ def mobile_dashboard_preview():
                 const overlay = document.getElementById('overlay-login-animacion');
                 const card = document.getElementById('login-anim-card');
                 if (!overlay) return;
+                overlay.style.pointerEvents = 'none';
                 overlay.classList.add('opacity-0', 'pointer-events-none');
                 if (card) {
                     card.classList.remove('scale-100');
@@ -1268,6 +1267,8 @@ def mobile_dashboard_preview():
                 }
                 setTimeout(() => {
                     overlay.classList.add('hidden');
+                    overlay.style.display = 'none';
+                    overlay.style.visibility = 'hidden';
                     if (card) card.style.borderColor = '';
                 }, 300);
             }
@@ -1453,11 +1454,18 @@ def mobile_dashboard_preview():
                 sessionStorage.setItem('aurea_sesion_activa', 'true');
                 const pantalla = document.getElementById('pantalla-auth');
                 if(pantalla) {
+                    pantalla.style.pointerEvents = 'none';
                     if (animar) {
                         pantalla.style.opacity = '0';
-                        setTimeout(() => pantalla.classList.add('hidden'), 250);
+                        setTimeout(() => {
+                            pantalla.classList.add('hidden');
+                            pantalla.style.display = 'none';
+                            pantalla.style.visibility = 'hidden';
+                        }, 250);
                     } else {
                         pantalla.classList.add('hidden');
+                        pantalla.style.display = 'none';
+                        pantalla.style.visibility = 'hidden';
                     }
                 }
                 const labelAjustes = document.getElementById('ajustes-usuario-label');
@@ -1478,7 +1486,10 @@ def mobile_dashboard_preview():
                 const pantalla = document.getElementById('pantalla-auth');
                 if(pantalla) {
                     pantalla.classList.remove('hidden');
+                    pantalla.style.display = 'flex';
+                    pantalla.style.visibility = 'visible';
                     pantalla.style.opacity = '1';
+                    pantalla.style.pointerEvents = 'auto';
                 }
                 mostrarVistaLogin(true, false);
             }
@@ -1513,7 +1524,10 @@ def mobile_dashboard_preview():
                 const pantalla = document.getElementById('pantalla-auth');
                 if(pantalla) {
                     pantalla.classList.remove('hidden');
+                    pantalla.style.display = 'flex';
+                    pantalla.style.visibility = 'visible';
                     pantalla.style.opacity = '1';
+                    pantalla.style.pointerEvents = 'auto';
                 }
                 mostrarVistaLogin(false, false);
             }
