@@ -265,4 +265,35 @@ def test_registrar_corte_y_pago_tarjeta_credito(client):
     assert pago_fin.json()["estado_corte"] == "AL_DIA"
 
 
+def test_modo_claro_oscuro_y_animacion_face_id(client):
+    """
+    Verifica que la interfaz web de Aurea incluya:
+    1. Soporte y selector de Modo Claro / Oscuro (CSS variables, selector en Ajustes, botón en Header).
+    2. Pantalla de carga con animación biométrica moderna Apple Face ID HUD (SVG viewfinder, láser, radar, checkmark).
+    """
+    res = client.get("/")
+    assert res.status_code == 200
+    html = res.text
+
+    # 1. Verificación de Modo Claro / Oscuro
+    assert "theme-light" in html
+    assert "--system-bg: #F2F2F7;" in html
+    assert "--card-bg: #FFFFFF;" in html
+    assert "btn-theme-toggle" in html
+    assert "theme-opt-dark" in html
+    assert "theme-opt-light" in html
+    assert "theme-opt-auto" in html
+    assert "aurea_theme" in html
+
+    # 2. Verificación de Animación Apple Face ID HUD
+    assert "overlay-login-animacion" in html
+    assert "faceid-svg" in html
+    assert "faceid-brackets" in html
+    assert "faceid-radar" in html
+    assert "faceid-mesh" in html
+    assert "faceid-checkmark" in html
+    assert "animate-laserScanHUD" in html
+
+
+
 

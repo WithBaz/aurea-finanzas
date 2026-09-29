@@ -98,7 +98,7 @@ def mobile_dashboard_preview():
     autenticación con PIN de 4 dígitos y Face ID estilo Bancolombia, múltiples tarjetas de crédito
     estilo Apple Wallet con cupo total y disponible, detalle y edición de movimientos, y Apple Pay.
     """
-    html_content = """
+    html_content = r"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
@@ -121,6 +121,23 @@ def mobile_dashboard_preview():
         <link rel="apple-touch-startup-image" href="/apple-touch-icon.png">
 
         <title>AUREA • Finanzas Personales</title>
+        <!-- Inicializador ultra-temprano de tema para evitar parpadeos visuales -->
+        <script>
+            (function() {
+                try {
+                    const saved = localStorage.getItem('aurea_theme') || 'dark';
+                    let isLight = false;
+                    if (saved === 'light') {
+                        isLight = true;
+                    } else if (saved === 'auto') {
+                        isLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+                    }
+                    if (isLight) {
+                        document.documentElement.classList.add('theme-light');
+                    }
+                } catch(e) {}
+            })();
+        </script>
         <!-- Recursos locales para carga ultrarrápida sin bloqueo de CDN externa -->
         <script src="/static/tailwind.js"></script>
         <link href="/static/fa.min.css" rel="stylesheet">
@@ -131,6 +148,17 @@ def mobile_dashboard_preview():
                 --system-bg: #000000;
                 --card-bg: #1C1C1E;
                 --card-secondary: #2C2C2E;
+                --card-inner: #0B0B0C;
+                --text-primary: #FFFFFF;
+                --text-secondary: #8E8E93;
+                --text-muted: #636366;
+                --border-subtle: rgba(255, 255, 255, 0.1);
+                --border-highlight: rgba(255, 255, 255, 0.16);
+                --nav-bg: rgba(18, 18, 22, 0.78);
+                --nav-border: rgba(255, 255, 255, 0.14);
+                --nav-shadow: 0 -8px 30px rgba(0, 0, 0, 0.5);
+                --input-bg: #000000;
+                --input-border: rgba(255, 255, 255, 0.15);
                 --separator: rgba(255, 255, 255, 0.08);
                 --apple-green: #30D158;
                 --apple-blue: #0A84FF;
@@ -138,9 +166,26 @@ def mobile_dashboard_preview():
                 --apple-orange: #FF9F0A;
                 --apple-gray: #8E8E93;
             }
+            html.theme-light {
+                --system-bg: #F2F2F7;
+                --card-bg: #FFFFFF;
+                --card-secondary: #E5E5EA;
+                --card-inner: #F2F2F7;
+                --text-primary: #000000;
+                --text-secondary: #6C6C70;
+                --text-muted: #8E8E93;
+                --border-subtle: rgba(0, 0, 0, 0.08);
+                --border-highlight: rgba(0, 0, 0, 0.12);
+                --nav-bg: rgba(255, 255, 255, 0.85);
+                --nav-border: rgba(0, 0, 0, 0.1);
+                --nav-shadow: 0 -4px 25px rgba(0, 0, 0, 0.06);
+                --input-bg: #F2F2F7;
+                --input-border: rgba(0, 0, 0, 0.12);
+                --separator: rgba(0, 0, 0, 0.06);
+            }
             body {
-                background: #000000;
-                color: #FFFFFF;
+                background: var(--system-bg);
+                color: var(--text-primary);
                 font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
                 -webkit-font-smoothing: antialiased;
                 -webkit-tap-highlight-color: transparent;
@@ -148,16 +193,18 @@ def mobile_dashboard_preview():
                 padding-bottom: 0px;
                 user-select: none;
                 min-height: 100vh;
+                transition: background-color 0.2s ease, color 0.2s ease;
             }
             .ios-card {
-                background: #1C1C1E;
-                border: 1px solid rgba(255, 255, 255, 0.08);
+                background: var(--card-bg);
+                border: 1px solid var(--border-subtle);
+                transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
             }
             .ios-card-glass {
                 background: rgba(28, 28, 30, 0.85);
                 backdrop-filter: blur(25px);
                 -webkit-backdrop-filter: blur(25px);
-                border: 1px solid rgba(255, 255, 255, 0.08);
+                border: 1px solid var(--border-subtle);
             }
             .apple-wallet-card {
                 background: linear-gradient(135deg, #1C1C1E 0%, #2A2A2E 50%, #171719 100%);
@@ -174,13 +221,14 @@ def mobile_dashboard_preview():
             }
             /* Panel Inferior Liquid Glass Estilo WhatsApp / Apple iOS */
             .liquid-glass-nav {
-                background: rgba(18, 18, 22, 0.75);
+                background: var(--nav-bg);
                 backdrop-filter: blur(32px) saturate(210%);
                 -webkit-backdrop-filter: blur(32px) saturate(210%);
-                border-top: 0.5px solid rgba(255, 255, 255, 0.14);
-                box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.5), inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
+                border-top: 0.5px solid var(--nav-border);
+                box-shadow: var(--nav-shadow), inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
                 padding-top: 8px;
                 padding-bottom: calc(var(--sab) + 4px);
+                transition: background-color 0.2s ease, border-color 0.2s ease;
             }
             .keypad-btn {
                 transition: transform 0.1s ease, background-color 0.1s ease;
@@ -199,14 +247,14 @@ def mobile_dashboard_preview():
                 animation-name: onAutoFillStart;
                 animation-duration: 0.001s;
             }
-            /* Animación de escaneo biométrico Face ID */
-            @keyframes scanLaser {
-                0% { top: 12%; opacity: 0.2; }
+            /* Animación de escaneo biométrico Face ID Apple HUD */
+            @keyframes scanLaserHUD {
+                0% { top: 12%; opacity: 0.25; }
                 50% { top: 82%; opacity: 1; }
-                100% { top: 12%; opacity: 0.2; }
+                100% { top: 12%; opacity: 0.25; }
             }
-            .animate-scanLaser {
-                animation: scanLaser 1.5s ease-in-out infinite;
+            .animate-laserScanHUD {
+                animation: scanLaserHUD 1.4s ease-in-out infinite;
             }
             /* Reglas estrictas para asegurar que pantallas inactivas nunca bloqueen clics */
             #pantalla-auth.hidden,
@@ -217,11 +265,140 @@ def mobile_dashboard_preview():
                 visibility: hidden !important;
             }
             #vista-login, #vista-registro {
-                background-color: #1C1C1E;
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                background-color: var(--card-bg);
+                border: 1px solid var(--border-subtle);
                 border-radius: 1.5rem;
                 padding: 1.5rem;
                 box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+                transition: background-color 0.2s ease, border-color 0.2s ease;
+            }
+
+            /* REGLAS MODO CLARO (Apple HIG Theme) */
+            html.theme-light {
+                color-scheme: light;
+            }
+            html.theme-light body {
+                background-color: var(--system-bg) !important;
+                color: var(--text-primary) !important;
+            }
+            html.theme-light #pantalla-auth {
+                background-color: var(--system-bg) !important;
+            }
+            html.theme-light .bg-\[\#000000\] {
+                background-color: var(--system-bg) !important;
+            }
+            html.theme-light .bg-\[\#000000\]\/40,
+            html.theme-light .bg-\[\#000000\]\/50,
+            html.theme-light .bg-\[\#000000\]\/60,
+            html.theme-light .bg-\[\#000000\]\/70 {
+                background-color: rgba(0, 0, 0, 0.04) !important;
+            }
+            html.theme-light .bg-\[\#1C1C1E\] {
+                background-color: var(--card-bg) !important;
+            }
+            html.theme-light .bg-\[\#2C2C2E\] {
+                background-color: var(--card-secondary) !important;
+                color: var(--text-primary) !important;
+            }
+            html.theme-light .ios-card {
+                background-color: var(--card-bg) !important;
+                border-color: var(--border-subtle) !important;
+                box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
+            }
+            html.theme-light .ios-card-glass {
+                background: rgba(255, 255, 255, 0.88) !important;
+                border-color: var(--border-subtle) !important;
+            }
+            html.theme-light .apple-wallet-card {
+                background: linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 50%, #EDEEF2 100%) !important;
+                border-color: var(--border-subtle) !important;
+                box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.1) !important;
+            }
+            html.theme-light .liquid-glass-nav {
+                background: var(--nav-bg) !important;
+                border-top: 0.5px solid var(--nav-border) !important;
+                box-shadow: var(--nav-shadow), inset 0 0.5px 0 rgba(255, 255, 255, 0.8) !important;
+            }
+            html.theme-light .liquid-glass-nav button[onclick="abrirModalGasto()"] {
+                border-color: rgba(255, 255, 255, 0.95) !important;
+                box-shadow: 0 4px 15px rgba(147, 51, 234, 0.35) !important;
+            }
+            html.theme-light .liquid-glass-nav button:not([onclick="abrirModalGasto()"]):hover {
+                color: #000000 !important;
+            }
+            html.theme-light .text-white {
+                color: var(--text-primary) !important;
+            }
+            html.theme-light .text-white\/90,
+            html.theme-light .text-white\/80 {
+                color: #1C1C1E !important;
+            }
+            html.theme-light .text-slate-200,
+            html.theme-light .text-slate-300 {
+                color: #1C1C1E !important;
+            }
+            html.theme-light .text-slate-400 {
+                color: #48484A !important;
+            }
+            html.theme-light .border-white\/5,
+            html.theme-light .border-white\/10,
+            html.theme-light .border-white\/15,
+            html.theme-light .border-white\/20 {
+                border-color: var(--border-subtle) !important;
+            }
+            html.theme-light input,
+            html.theme-light select,
+            html.theme-light textarea {
+                background-color: var(--input-bg) !important;
+                color: var(--text-primary) !important;
+                border-color: var(--input-border) !important;
+            }
+            html.theme-light input::placeholder,
+            html.theme-light textarea::placeholder {
+                color: #8E8E93 !important;
+            }
+            html.theme-light .bg-white\/5,
+            html.theme-light .bg-white\/10 {
+                background-color: rgba(0, 0, 0, 0.05) !important;
+            }
+            html.theme-light .bg-white\/15 {
+                background-color: rgba(0, 0, 0, 0.08) !important;
+            }
+            html.theme-light .hover\:bg-white\/15:hover {
+                background-color: rgba(0, 0, 0, 0.1) !important;
+            }
+            html.theme-light .hover\:bg-white\/20:hover {
+                background-color: rgba(0, 0, 0, 0.12) !important;
+            }
+            html.theme-light #vista-login,
+            html.theme-light #vista-registro {
+                background-color: #FFFFFF !important;
+                border-color: rgba(0, 0, 0, 0.08) !important;
+                box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.08) !important;
+            }
+            html.theme-light [id^="modal-"] > div:not(.bg-black\/80) {
+                background-color: #FFFFFF !important;
+                border-color: rgba(0, 0, 0, 0.1) !important;
+            }
+            html.theme-light .keypad-btn {
+                background-color: #E5E5EA !important;
+                color: #000000 !important;
+            }
+            html.theme-light .keypad-btn:active {
+                background-color: #D1D1D6 !important;
+            }
+            html.theme-light #login-anim-card {
+                background-color: rgba(255, 255, 255, 0.95) !important;
+                border-color: rgba(0, 0, 0, 0.1) !important;
+                box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.2) !important;
+            }
+            html.theme-light #overlay-login-animacion {
+                background-color: rgba(242, 242, 247, 0.85) !important;
+            }
+            html.theme-light pre,
+            html.theme-light code {
+                background-color: #E5E5EA !important;
+                color: #1C1C1E !important;
             }
         </style>
     </head>
@@ -230,8 +407,15 @@ def mobile_dashboard_preview():
         <!-- ========================================== -->
         <!-- PANTALLA DE ACCESO NATIVA (Login & Registro) -->
         <!-- ========================================== -->
-        <div id="pantalla-auth" class="fixed inset-0 z-50 bg-[#000000] flex flex-col justify-between items-center px-6 py-8 transition-all duration-300 overflow-y-auto">
+        <div id="pantalla-auth" class="fixed inset-0 z-50 bg-[#000000] flex flex-col justify-between items-center px-6 py-6 transition-all duration-300 overflow-y-auto">
             
+            <!-- Selector Rápido de Tema en Pantalla de Acceso -->
+            <div class="w-full max-w-sm flex justify-end items-center pt-1">
+                <button type="button" onclick="alternarTema()" class="w-8 h-8 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center text-[#8E8E93] hover:text-white transition active:scale-90" title="Cambiar tema">
+                    <i class="auth-theme-icon fa-solid fa-moon text-xs"></i>
+                </button>
+            </div>
+
             <!-- Header Marca AUREA -->
             <div class="text-center pt-4 w-full max-w-sm mx-auto">
                 <div class="w-16 h-16 rounded-3xl bg-[#1C1C1E] border border-white/10 flex items-center justify-center mx-auto mb-3 shadow-xl shadow-black/60 overflow-hidden">
@@ -367,25 +551,62 @@ def mobile_dashboard_preview():
         </div>
 
         <!-- ========================================== -->
-        <!-- OVERLAY DE ANIMACIÓN Y VERIFICACIÓN LOGIN (Apple Liquid Glass) -->
+        <!-- OVERLAY DE ANIMACIÓN Y VERIFICACIÓN LOGIN (Apple Liquid Glass Biometric HUD) -->
         <!-- ========================================== -->
         <div id="overlay-login-animacion" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-2xl flex flex-col items-center justify-center px-6 transition-all duration-300 opacity-0 pointer-events-none hidden" style="display: none; pointer-events: none; visibility: hidden;">
             <div id="login-anim-card" class="w-full max-w-xs rounded-3xl p-7 bg-[#1C1C1E]/95 border border-white/15 shadow-2xl flex flex-col items-center text-center relative overflow-hidden backdrop-blur-3xl transform transition-all duration-300 scale-95">
                 
-                <!-- Aura circular con brillo dinámico -->
-                <div class="relative w-20 h-20 mb-3 flex items-center justify-center">
+                <!-- Aura circular con brillo dinámico y pulso biométrico -->
+                <div class="relative w-24 h-24 mb-3 flex items-center justify-center">
                     <div id="login-anim-aura" class="absolute inset-0 rounded-full bg-gradient-to-tr from-[#5E5CE6]/35 to-[#0A84FF]/35 blur-xl animate-pulse"></div>
                     
-                    <!-- Caja de icono biométrico con escáner láser -->
-                    <div id="login-anim-iconbox" class="relative w-16 h-16 rounded-2xl bg-[#0A84FF]/10 border border-[#0A84FF]/30 flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden transition-all duration-300">
-                        <div id="login-scan-bar" class="absolute inset-x-1 h-0.5 bg-gradient-to-r from-transparent via-[#0A84FF] to-transparent shadow-[0_0_8px_#0A84FF] animate-scanLaser"></div>
-                        <i id="login-anim-icon" class="fa-solid fa-face-smile text-3xl text-[#0A84FF] transition-all duration-300"></i>
+                    <!-- Caja de visor biométrico Face ID estilo Apple HIG -->
+                    <div id="login-anim-iconbox" class="relative w-20 h-20 rounded-3xl bg-[#0A84FF]/10 border border-[#0A84FF]/30 flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden transition-all duration-300">
+                        <!-- Láser holográfico de escaneo vertical -->
+                        <div id="login-scan-bar" class="absolute inset-x-2 h-[2.5px] bg-gradient-to-r from-transparent via-[#0A84FF] to-transparent shadow-[0_0_12px_#0A84FF] animate-laserScanHUD z-20 pointer-events-none"></div>
+
+                        <!-- Gráfico SVG Biométrico Apple Face ID -->
+                        <svg id="faceid-svg" class="w-14 h-14 transition-all duration-300 relative z-10" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <!-- 4 Esquinas del Visor Face ID (Corner Brackets) -->
+                            <g id="faceid-brackets" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="text-[#0A84FF] transition-all duration-300">
+                                <!-- Superior Izquierda -->
+                                <path d="M 17 9 L 13 9 C 10 9 8 11 8 14 L 8 18" />
+                                <!-- Superior Derecha -->
+                                <path d="M 47 9 L 51 9 C 54 9 56 11 56 14 L 56 18" />
+                                <!-- Inferior Izquierda -->
+                                <path d="M 17 55 L 13 55 C 10 55 8 53 8 50 L 8 46" />
+                                <!-- Inferior Derecha -->
+                                <path d="M 47 55 L 51 55 C 54 55 56 53 56 50 L 56 46" />
+                            </g>
+
+                            <!-- Anillo Radar HUD Rotatorio -->
+                            <circle id="faceid-radar" cx="32" cy="32" r="23" stroke="#0A84FF" stroke-width="1.2" stroke-dasharray="3 6" opacity="0.4" class="animate-spin" style="animation-duration: 7s; transform-origin: 32px 32px;" />
+
+                            <!-- Contorno Facial Biométrico Face ID -->
+                            <g id="faceid-mesh" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-[#0A84FF] transition-all duration-300">
+                                <!-- Ojo Izquierdo -->
+                                <line x1="24" y1="26" x2="24" y2="28" />
+                                <!-- Ojo Derecho -->
+                                <line x1="40" y1="26" x2="40" y2="28" />
+                                <!-- Nariz -->
+                                <path d="M 32 24 L 32 34 L 35 34" />
+                                <!-- Sonrisa -->
+                                <path d="M 25 41 C 29 45, 35 45, 39 41" fill="none" />
+                                <!-- Nodos de Referencia Óptica -->
+                                <circle cx="20" cy="32" r="1" fill="#0A84FF" opacity="0.6" />
+                                <circle cx="44" cy="32" r="1" fill="#0A84FF" opacity="0.6" />
+                                <circle cx="32" cy="18" r="1" fill="#0A84FF" opacity="0.6" />
+                            </g>
+
+                            <!-- Checkmark de Aprobación Apple (Dibujado con animación stroke) -->
+                            <path id="faceid-checkmark" d="M 20 33 L 28 41 L 44 24" fill="none" stroke="#30D158" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="transition-all duration-300 opacity-0" style="stroke-dasharray: 44; stroke-dashoffset: 44;" />
+                        </svg>
                     </div>
                 </div>
 
                 <!-- Textos dinámicos -->
-                <h3 id="login-anim-title" class="text-base font-extrabold text-white mt-2 tracking-tight transition-all duration-200">Verificando Acceso</h3>
-                <p id="login-anim-subtitle" class="text-xs text-[#8E8E93] mt-1 transition-all duration-200">Autenticando credenciales seguras...</p>
+                <h3 id="login-anim-title" class="text-base font-extrabold text-white mt-2 tracking-tight transition-all duration-200">Face ID</h3>
+                <p id="login-anim-subtitle" class="text-xs text-[#8E8E93] mt-1 transition-all duration-200">Escaneando Enclave Seguro...</p>
 
                 <!-- Micro-badge de estado criptográfico -->
                 <div id="login-anim-badge" class="mt-4 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/25 flex items-center gap-2 transition-all duration-300">
@@ -407,7 +628,13 @@ def mobile_dashboard_preview():
                     <span class="text-xs font-bold tracking-widest text-[#8E8E93] uppercase">AUREA</span>
                     <span id="badge-db" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#1C1C1E] text-slate-300 border border-white/10">...</span>
                 </div>
-                <div id="header-action-container"></div>
+                <div class="flex items-center gap-2">
+                    <!-- Botón Rápido de Cambio de Tema (Sol / Luna) -->
+                    <button id="btn-theme-toggle" onclick="alternarTema()" class="w-7 h-7 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center text-[#8E8E93] hover:text-white transition active:scale-90" title="Cambiar Tema (Claro / Oscuro)">
+                        <i id="theme-toggle-icon" class="fa-solid fa-moon text-xs"></i>
+                    </button>
+                    <div id="header-action-container"></div>
+                </div>
             </div>
 
             <!-- Page Title and Subtitle uniform across all tabs -->
@@ -595,6 +822,35 @@ def mobile_dashboard_preview():
             <!-- VISTA 4: AJUSTES Y AUTOMATIZACIONES -->
             <!-- ========================================== -->
             <div id="view-ajustes" class="tab-view hidden">
+                <!-- Card Apariencia: Modo Claro / Oscuro (Segmented Control Apple HIG) -->
+                <div class="ios-card rounded-3xl p-5 mb-4 border border-white/10 bg-[#1C1C1E]">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-circle-half-stroke"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-white">Apariencia</h3>
+                            <p class="text-[10px] text-[#8E8E93]">Elige el modo visual de la aplicación</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Segmented Control Estilo Apple HIG -->
+                    <div class="p-1 rounded-2xl bg-[#000000] border border-white/10 flex items-center gap-1">
+                        <button type="button" id="theme-opt-dark" onclick="aplicarTema('dark')" class="flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-moon text-[11px]"></i>
+                            <span>Oscuro</span>
+                        </button>
+                        <button type="button" id="theme-opt-light" onclick="aplicarTema('light')" class="flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-sun text-[11px]"></i>
+                            <span>Claro</span>
+                        </button>
+                        <button type="button" id="theme-opt-auto" onclick="aplicarTema('auto')" class="flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-wand-magic-sparkles text-[11px]"></i>
+                            <span>Sistema</span>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Card 1: Cuenta y Seguridad -->
                 <div class="ios-card rounded-3xl p-5 mb-4 border border-white/10 bg-[#1C1C1E]">
                     <div class="flex items-center gap-2 mb-3">
@@ -1186,33 +1442,147 @@ def mobile_dashboard_preview():
             }
 
             // ==========================================
-            // CONTROL DE ANIMACIÓN DE ACCESO NATIVO APPLE
+            // GESTIÓN DE TEMA NATIVO (MODO CLARO / OSCURO APPLE)
+            // ==========================================
+            let temaActualConfig = localStorage.getItem('aurea_theme') || 'dark';
+
+            function aplicarTema(modo, persistir = true) {
+                if (persistir) {
+                    try { localStorage.setItem('aurea_theme', modo); } catch(e) {}
+                }
+                temaActualConfig = modo;
+
+                const htmlEl = document.documentElement;
+                let esOscuro = true;
+
+                if (modo === 'light') {
+                    esOscuro = false;
+                } else if (modo === 'dark') {
+                    esOscuro = true;
+                } else { // auto
+                    try {
+                        esOscuro = !(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+                    } catch(e) {
+                        esOscuro = true;
+                    }
+                }
+
+                if (esOscuro) {
+                    htmlEl.classList.remove('theme-light');
+                    htmlEl.classList.add('theme-dark');
+                } else {
+                    htmlEl.classList.remove('theme-dark');
+                    htmlEl.classList.add('theme-light');
+                }
+
+                // Sincronizar theme-color de iOS Status Bar
+                const metaTheme = document.querySelector('meta[name="theme-color"]');
+                if (metaTheme) {
+                    metaTheme.setAttribute('content', esOscuro ? '#000000' : '#F2F2F7');
+                }
+
+                // Sincronizar iconos de botones de cabecera y login
+                const iconBtnHeader = document.getElementById('theme-toggle-icon');
+                if (iconBtnHeader) {
+                    iconBtnHeader.className = esOscuro ? 'fa-solid fa-moon text-xs' : 'fa-solid fa-sun text-xs text-amber-500';
+                }
+                const iconsAuth = document.querySelectorAll('.auth-theme-icon');
+                iconsAuth.forEach(ic => {
+                    ic.className = esOscuro ? 'auth-theme-icon fa-solid fa-moon text-xs' : 'auth-theme-icon fa-solid fa-sun text-xs text-amber-500';
+                });
+
+                // Sincronizar selector segmentado en Ajustes
+                actualizarSelectorTemaAjustes(modo);
+            }
+
+            function alternarTema() {
+                const esClaro = document.documentElement.classList.contains('theme-light');
+                aplicarTema(esClaro ? 'dark' : 'light');
+            }
+
+            function actualizarSelectorTemaAjustes(modo) {
+                const btns = {
+                    'dark': document.getElementById('theme-opt-dark'),
+                    'light': document.getElementById('theme-opt-light'),
+                    'auto': document.getElementById('theme-opt-auto')
+                };
+                Object.keys(btns).forEach(k => {
+                    const btn = btns[k];
+                    if (!btn) return;
+                    if (k === modo) {
+                        btn.className = "flex-1 py-2 px-2.5 rounded-xl bg-blue-500/20 text-[#0A84FF] font-bold text-xs flex items-center justify-center gap-1.5 border border-blue-500/30 transition shadow-sm";
+                    } else {
+                        btn.className = "flex-1 py-2 px-2.5 rounded-xl text-[#8E8E93] hover:text-white font-medium text-xs flex items-center justify-center gap-1.5 transition";
+                    }
+                });
+            }
+
+            try {
+                if (window.matchMedia) {
+                    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+                        if (localStorage.getItem('aurea_theme') === 'auto') {
+                            aplicarTema('auto', false);
+                        }
+                    });
+                }
+            } catch(e) {}
+
+            // ==========================================
+            // CONTROL DE ANIMACIÓN DE ACCESO NATIVO APPLE (Face ID HUD)
             // ==========================================
             function mostrarOverlayLoginAnimacion(username) {
                 const overlay = document.getElementById('overlay-login-animacion');
                 const card = document.getElementById('login-anim-card');
-                const icon = document.getElementById('login-anim-icon');
-                const iconBox = document.getElementById('login-anim-iconbox');
                 const aura = document.getElementById('login-anim-aura');
+                const iconBox = document.getElementById('login-anim-iconbox');
+                const scanBar = document.getElementById('login-scan-bar');
+                const brackets = document.getElementById('faceid-brackets');
+                const radar = document.getElementById('faceid-radar');
+                const mesh = document.getElementById('faceid-mesh');
+                const checkmark = document.getElementById('faceid-checkmark');
                 const title = document.getElementById('login-anim-title');
                 const subtitle = document.getElementById('login-anim-subtitle');
                 const badge = document.getElementById('login-anim-badge');
                 const badgeDot = document.getElementById('login-anim-badgedot');
                 const badgeText = document.getElementById('login-anim-status');
-                const scanBar = document.getElementById('login-scan-bar');
 
                 if (!overlay) return;
 
+                // Estado inicial: escaneo activo
                 if (scanBar) scanBar.classList.remove('hidden');
-                if (icon) icon.className = 'fa-solid fa-face-smile text-3xl text-[#0A84FF] transition-all duration-300';
-                if (iconBox) iconBox.className = 'relative w-16 h-16 rounded-2xl bg-[#0A84FF]/10 border border-[#0A84FF]/30 flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden transition-all duration-300';
-                if (aura) aura.className = 'absolute inset-0 rounded-full bg-gradient-to-tr from-[#5E5CE6]/35 to-[#0A84FF]/35 blur-xl animate-pulse';
-                if (card) { card.style.borderColor = 'rgba(255, 255, 255, 0.15)'; }
-                if (title) title.innerText = 'Verificando Acceso';
-                if (subtitle) subtitle.innerText = `Autenticando credenciales para ${username || 'tu cuenta'}...`;
+                if (brackets) {
+                    brackets.className = 'text-[#0A84FF] transition-all duration-300';
+                    brackets.style.transform = 'scale(1)';
+                }
+                if (radar) {
+                    radar.style.display = 'block';
+                    radar.style.opacity = '0.4';
+                }
+                if (mesh) {
+                    mesh.style.opacity = '1';
+                    mesh.className = 'text-[#0A84FF] transition-all duration-300';
+                }
+                if (checkmark) {
+                    checkmark.classList.add('opacity-0');
+                    checkmark.style.strokeDashoffset = '44';
+                }
+                if (iconBox) {
+                    iconBox.className = 'relative w-20 h-20 rounded-3xl bg-[#0A84FF]/10 border border-[#0A84FF]/30 flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden transition-all duration-300';
+                }
+                if (aura) {
+                    aura.className = 'absolute inset-0 rounded-full bg-gradient-to-tr from-[#5E5CE6]/35 to-[#0A84FF]/35 blur-xl animate-pulse';
+                }
+                if (card) {
+                    card.style.borderColor = '';
+                }
+                if (title) title.innerText = 'Face ID';
+                if (subtitle) subtitle.innerText = `Autenticando enclave para ${username || 'tu cuenta'}...`;
                 if (badge) badge.className = 'mt-4 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/25 flex items-center gap-2 transition-all duration-300';
                 if (badgeDot) badgeDot.className = 'w-2 h-2 rounded-full bg-[#0A84FF] animate-ping';
-                if (badgeText) { badgeText.innerText = 'Cifrado Biométrico'; badgeText.className = 'text-[10px] font-bold text-blue-400 uppercase tracking-wider'; }
+                if (badgeText) {
+                    badgeText.innerText = 'Cifrado Biométrico';
+                    badgeText.className = 'text-[10px] font-bold text-blue-400 uppercase tracking-wider';
+                }
 
                 overlay.style.pointerEvents = 'auto';
                 overlay.style.display = 'flex';
@@ -1228,27 +1598,59 @@ def mobile_dashboard_preview():
             }
 
             function marcarExitoLoginAnimacion(username) {
-                const icon = document.getElementById('login-anim-icon');
                 const iconBox = document.getElementById('login-anim-iconbox');
                 const aura = document.getElementById('login-anim-aura');
+                const scanBar = document.getElementById('login-scan-bar');
+                const brackets = document.getElementById('faceid-brackets');
+                const radar = document.getElementById('faceid-radar');
+                const mesh = document.getElementById('faceid-mesh');
+                const checkmark = document.getElementById('faceid-checkmark');
                 const title = document.getElementById('login-anim-title');
                 const subtitle = document.getElementById('login-anim-subtitle');
                 const badge = document.getElementById('login-anim-badge');
                 const badgeDot = document.getElementById('login-anim-badgedot');
                 const badgeText = document.getElementById('login-anim-status');
-                const scanBar = document.getElementById('login-scan-bar');
                 const card = document.getElementById('login-anim-card');
 
+                // Detener escáner láser
                 if (scanBar) scanBar.classList.add('hidden');
-                if (icon) icon.className = 'fa-solid fa-check text-3xl text-[#30D158] transition-all duration-300 transform scale-110';
-                if (iconBox) iconBox.className = 'relative w-16 h-16 rounded-2xl bg-[#30D158]/15 border border-[#30D158]/40 flex items-center justify-center shadow-xl shadow-emerald-500/30 overflow-hidden transition-all duration-300';
-                if (aura) aura.className = 'absolute inset-0 rounded-full bg-gradient-to-tr from-[#30D158]/35 to-[#0A84FF]/25 blur-xl animate-none';
-                if (card) card.style.borderColor = 'rgba(48, 209, 88, 0.4)';
+
+                // Desvanecer contorno facial y radar
+                if (mesh) mesh.style.opacity = '0';
+                if (radar) radar.style.opacity = '0';
+
+                // Bloqueo de visor en verde esmeralda y contracción de enfoque
+                if (brackets) {
+                    brackets.className = 'text-[#30D158] transition-all duration-300';
+                    brackets.style.transform = 'scale(0.94)';
+                    brackets.style.transformOrigin = '32px 32px';
+                }
+
+                // Dibujar checkmark animado en SVG
+                if (checkmark) {
+                    checkmark.classList.remove('opacity-0');
+                    checkmark.style.transition = 'stroke-dashoffset 0.38s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease';
+                    checkmark.style.strokeDashoffset = '0';
+                }
+
+                if (iconBox) {
+                    iconBox.className = 'relative w-20 h-20 rounded-3xl bg-[#30D158]/15 border border-[#30D158]/40 flex items-center justify-center shadow-xl shadow-emerald-500/25 overflow-hidden transition-all duration-300';
+                }
+                if (aura) {
+                    aura.className = 'absolute inset-0 rounded-full bg-gradient-to-tr from-[#30D158]/35 to-[#0A84FF]/20 blur-xl animate-none';
+                }
+                if (card) {
+                    card.style.borderColor = 'rgba(48, 209, 88, 0.4)';
+                }
+
                 if (title) title.innerText = '¡Acceso Concedido!';
                 if (subtitle) subtitle.innerText = `¡Bienvenido de vuelta, ${username || 'Usuario'}!`;
                 if (badge) badge.className = 'mt-4 px-3.5 py-1.5 rounded-full bg-[#30D158]/15 border border-[#30D158]/35 flex items-center gap-2 transition-all duration-300';
                 if (badgeDot) badgeDot.className = 'w-2 h-2 rounded-full bg-[#30D158]';
-                if (badgeText) { badgeText.innerText = 'Identidad Verificada'; badgeText.className = 'text-[10px] font-bold text-[#30D158] uppercase tracking-wider'; }
+                if (badgeText) {
+                    badgeText.innerText = 'Identidad Verificada';
+                    badgeText.className = 'text-[10px] font-bold text-[#30D158] uppercase tracking-wider';
+                }
 
                 try {
                     if (navigator.vibrate) navigator.vibrate([15, 30, 15]);
@@ -2667,6 +3069,7 @@ def mobile_dashboard_preview():
                     if(elWebhook) elWebhook.value = origin + '/api/v1/webhooks/ios-shortcut';
                     const segUser = document.getElementById('ajustes-seguridad-username');
                     if(segUser) segUser.innerText = `Conectado como ${usuarioActual || 'Usuario'}`;
+                    actualizarSelectorTemaAjustes(temaActualConfig);
                 } catch(e) {
                     console.error("Error al cargar ajustes:", e);
                 }
@@ -2734,6 +3137,7 @@ def mobile_dashboard_preview():
 
             inicializarSeguridad();
             configurarAutoFillFaceId();
+            aplicarTema(temaActualConfig, false);
             cargarDatosPerfilAjustes();
             setInterval(() => { if(sesionAutenticada) fetchDashboard(); }, 8000);
 
