@@ -3,6 +3,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from backend.app.database import engine, Base
@@ -31,6 +32,9 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan
 )
+
+# Compresión Gzip para acelerar el transporte de HTML y estáticos a iPhone
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Habilitar CORS para conexión con la app móvil Expo en iPhone
 app.add_middleware(
@@ -114,13 +118,12 @@ def mobile_dashboard_preview():
         <link rel="shortcut icon" href="/favicon.ico">
         <link rel="manifest" href="/manifest.json">
 
-        <!-- Preconnect para acelerar descarga de recursos externos -->
-        <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
-        <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+        <link rel="apple-touch-startup-image" href="/apple-touch-icon.png">
 
         <title>AUREA • Finanzas Personales</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <!-- Recursos locales para carga ultrarrápida sin bloqueo de CDN externa -->
+        <script src="/static/tailwind.js"></script>
+        <link href="/static/fa.min.css" rel="stylesheet">
         <style>
             :root {
                 --sat: env(safe-area-inset-top, 20px);
@@ -196,15 +199,7 @@ def mobile_dashboard_preview():
                 animation-name: onAutoFillStart;
                 animation-duration: 0.001s;
             }
-            /* Animaciones Apple Splash Screen & Biometría Face ID */
-            @keyframes splashAura {
-                0% { opacity: 0.35; transform: scale(0.95); }
-                100% { opacity: 0.85; transform: scale(1.08); }
-            }
-            @keyframes splashSpin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
+            /* Animación de escaneo biométrico Face ID */
             @keyframes scanLaser {
                 0% { top: 12%; opacity: 0.2; }
                 50% { top: 82%; opacity: 1; }
@@ -213,31 +208,29 @@ def mobile_dashboard_preview():
             .animate-scanLaser {
                 animation: scanLaser 1.5s ease-in-out infinite;
             }
+            /* Estilos críticos para despliegue instantáneo del Acceso (0ms delay) */
+            #pantalla-auth {
+                position: fixed;
+                inset: 0;
+                z-index: 50;
+                background-color: #000000;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                align-items: center;
+                padding: 2rem 1.5rem;
+                overflow-y: auto;
+            }
+            #vista-login, #vista-registro {
+                background-color: #1C1C1E;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 1.5rem;
+                padding: 1.5rem;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            }
         </style>
     </head>
     <body class="selection:bg-blue-600 selection:text-white">
-
-        <!-- ========================================== -->
-        <!-- SPLASH SCREEN INSTANTÁNEO NATIVO APPLE HIG -->
-        <!-- Renderizado ultrarrápido de 0ms con estilos inline (sin bloqueo de CDN) -->
-        <!-- ========================================== -->
-        <div id="app-splash-screen" style="position:fixed;inset:0;z-index:99999;background:#000000;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.35s ease, transform 0.35s ease;">
-            <!-- Aura luminosa y logotipo AUREA -->
-            <div style="position:relative;width:84px;height:84px;margin-bottom:22px;display:flex;align-items:center;justify-content:center;">
-                <div style="position:absolute;inset:-10px;border-radius:30px;background:linear-gradient(135deg, rgba(94,92,230,0.5), rgba(10,132,255,0.45));filter:blur(16px);animation:splashAura 2s ease-in-out infinite alternate;"></div>
-                <div style="position:relative;width:76px;height:76px;border-radius:22px;background:#1C1C1E;border:1px solid rgba(255,255,255,0.18);overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;">
-                    <img src="/apple-touch-icon.png" alt="AUREA" style="width:100%;height:100%;object-fit:cover;display:block;">
-                </div>
-            </div>
-            <!-- Tipografía de Marca Apple -->
-            <h1 style="color:#ffffff;font-size:24px;font-weight:900;letter-spacing:-0.5px;margin:0 0 6px 0;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;">AUREA</h1>
-            <p style="color:#8E8E93;font-size:12px;font-weight:500;margin:0 0 28px 0;letter-spacing:0.2px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;">Gestión Financiera Personal</p>
-            <!-- Micro-indicador de Carga Apple -->
-            <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.06);padding:6px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.08);">
-                <div style="width:16px;height:16px;border:2px solid rgba(255,255,255,0.15);border-top-color:#0A84FF;border-right-color:#5E5CE6;border-radius:50%;animation:splashSpin 0.75s linear infinite;"></div>
-                <span style="color:#AEAEB2;font-size:11px;font-weight:600;letter-spacing:0.3px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;">Iniciando sistema seguro...</span>
-            </div>
-        </div>
 
         <!-- ========================================== -->
         <!-- PANTALLA DE ACCESO NATIVA (Login & Registro) -->
@@ -1043,44 +1036,31 @@ def mobile_dashboard_preview():
                 return _origFetch(url, options);
             };
 
-            // Ocultar Splash Screen inicial de carga
-            function ocultarSplashInicial() {
-                const splash = document.getElementById('app-splash-screen');
-                if (splash && splash.style.display !== 'none') {
-                    splash.style.opacity = '0';
-                    splash.style.transform = 'scale(1.04)';
-                    splash.style.pointerEvents = 'none';
-                    setTimeout(() => {
-                        splash.style.display = 'none';
-                    }, 350);
-                }
-            }
-
             // Inicializar sesión y comprobar autenticación
             async function inicializarSeguridad() {
                 // Si la sesión ya fue desbloqueada en esta navegación, mantener abierta
                 if (sessionStorage.getItem('aurea_sesion_activa') === 'true' && usuarioActualId) {
                     desbloquearApp(false);
-                    setTimeout(ocultarSplashInicial, 60);
                     return;
                 }
 
                 // Mostrar pantalla de inicio de sesión
                 bloquearApp();
-                setTimeout(ocultarSplashInicial, 80);
             }
 
             // Cambiar entre vista de Login y vista de Registro
-            function mostrarVistaLogin() {
+            function mostrarVistaLogin(restaurarUsuario = false, ponerFoco = false) {
                 document.getElementById('vista-login')?.classList.remove('hidden');
                 document.getElementById('vista-registro')?.classList.add('hidden');
                 limpiarMensajesAuth();
                 const userInp = document.getElementById('login-input-username');
                 if (userInp) {
-                    if (!userInp.value && usuarioActual) {
+                    if (restaurarUsuario && !userInp.value && usuarioActual) {
                         userInp.value = usuarioActual;
                     }
-                    userInp.focus();
+                    if (ponerFoco) {
+                        userInp.focus();
+                    }
                 }
                 configurarAutoFillFaceId();
             }
@@ -1111,9 +1091,10 @@ def mobile_dashboard_preview():
             // AUTOFILL & FACE ID INSTANTÁNEO
             // ==========================================
             let loginEnProceso = false;
+            let autoLoginPausado = false;
 
             function verificarYAutologin(motivo = 'autofill') {
-                if (loginEnProceso) return;
+                if (loginEnProceso || autoLoginPausado) return;
                 const userEl = document.getElementById('login-input-username');
                 const passEl = document.getElementById('login-input-password');
                 if (!userEl || !passEl) return;
@@ -1128,10 +1109,9 @@ def mobile_dashboard_preview():
                         btnSubmit.disabled = true;
                         btnSubmit.innerHTML = '<i class="fa-solid fa-face-smile text-xs animate-bounce text-[#0A84FF]"></i><span class="ml-2 font-bold">Face ID Verificado... Entrando</span>';
                     }
-                    // Micro-pausa de 100ms para permitir que WebKit asiente los datos en el DOM
                     setTimeout(() => {
                         ejecutarLogin();
-                    }, 100);
+                    }, 80);
                 }
             }
 
@@ -1141,11 +1121,22 @@ def mobile_dashboard_preview():
                 const passEl = document.getElementById('login-input-password');
                 if (!userEl || !passEl) return;
 
+                // Reanudar detección cuando el usuario interactúe físicamente
+                const reactivarAutoLogin = () => { autoLoginPausado = false; };
+                userEl.addEventListener('pointerdown', reactivarAutoLogin);
+                passEl.addEventListener('pointerdown', reactivarAutoLogin);
+                userEl.addEventListener('touchstart', reactivarAutoLogin, { passive: true });
+                passEl.addEventListener('touchstart', reactivarAutoLogin, { passive: true });
+                userEl.addEventListener('keydown', reactivarAutoLogin);
+                passEl.addEventListener('keydown', reactivarAutoLogin);
+                userEl.addEventListener('focus', reactivarAutoLogin);
+
                 if (autofillListenersConfigurados) return;
                 autofillListenersConfigurados = true;
 
                 // 1. Detección instantánea por animación CSS de WebKit (Safari iOS AutoFill trigger nativo)
                 const handleAnimationStart = (e) => {
+                    if (autoLoginPausado) return;
                     if (e.animationName === 'onAutoFillStart') {
                         setTimeout(() => {
                             verificarYAutologin('css-animation-autofill');
@@ -1157,19 +1148,15 @@ def mobile_dashboard_preview():
 
                 // 2. Detección en evento 'input' y 'change'
                 const handleInput = (e) => {
+                    if (autoLoginPausado) return;
                     const u = userEl.value.trim();
                     const p = passEl.value;
                     if (!u || !p) return;
 
                     // Señales definitivas de autocompletado en iOS:
-                    // A) Pseudo-clase de WebKit activa
                     const isAutofillPseudo = (passEl.matches && passEl.matches(':-webkit-autofill')) ||
                                              (userEl.matches && userEl.matches(':-webkit-autofill'));
-
-                    // B) La contraseña fue inyectada mientras el foco está en el campo de usuario (comportamiento típico de Face ID Keychain)
                     const passFilledWhileUserFocused = (document.activeElement === userEl && p.length >= 4);
-
-                    // C) Inserción masiva de caracteres por gestor de contraseñas de iOS
                     const isBulkInsert = (e.inputType !== 'insertText' && e.inputType !== 'deleteContentBackward' && e.inputType !== 'insertFromPaste' && p.length >= 4);
 
                     if (isAutofillPseudo || passFilledWhileUserFocused || isBulkInsert) {
@@ -1184,6 +1171,7 @@ def mobile_dashboard_preview():
 
                 // 3. Si el usuario toca el campo de usuario y ya existen credenciales guardadas en el navegador
                 userEl.addEventListener('focus', () => {
+                    if (autoLoginPausado) return;
                     setTimeout(() => {
                         const u = userEl.value.trim();
                         const p = passEl.value;
@@ -1492,28 +1480,42 @@ def mobile_dashboard_preview():
                     pantalla.classList.remove('hidden');
                     pantalla.style.opacity = '1';
                 }
-                mostrarVistaLogin();
-                const userInput = document.getElementById('login-input-username');
-                if (userInput) {
-                    userInput.value = usuarioActual || '';
-                    userInput.focus();
-                }
+                mostrarVistaLogin(true, false);
             }
 
             function cerrarSesion() {
                 sesionAutenticada = false;
+                usuarioActual = null;
+                usuarioActualId = null;
+                usuarioActualToken = null;
                 sessionStorage.removeItem('aurea_sesion_activa');
+                localStorage.removeItem('aurea_usuario_actual_nombre');
+                localStorage.removeItem('aurea_usuario_actual_id');
+                localStorage.removeItem('aurea_usuario_actual_token');
+
+                // Pausar autologin inmediato para evitar bucle infinito tras cerrar sesión
+                autoLoginPausado = true;
+                loginEnProceso = false;
+
+                // Limpiar de inmediato los campos de usuario y contraseña y resetear formulario
+                const formLogin = document.getElementById('form-login');
+                if (formLogin) {
+                    try { formLogin.reset(); } catch(e) {}
+                }
+                const userInput = document.getElementById('login-input-username');
+                const passInput = document.getElementById('login-input-password');
+                if (userInput) userInput.value = '';
+                if (passInput) passInput.value = '';
+
+                limpiarMensajesAuth();
+                ocultarOverlayLoginAnimacion();
+
                 const pantalla = document.getElementById('pantalla-auth');
                 if(pantalla) {
                     pantalla.classList.remove('hidden');
                     pantalla.style.opacity = '1';
                 }
-                mostrarVistaLogin();
-                const userInput = document.getElementById('login-input-username');
-                if (userInput) {
-                    userInput.value = usuarioActual || '';
-                    userInput.focus();
-                }
+                mostrarVistaLogin(false, false);
             }
 
             function mostrarSelectorCuentasModal() {
@@ -2720,14 +2722,6 @@ def mobile_dashboard_preview():
             configurarAutoFillFaceId();
             cargarDatosPerfilAjustes();
             setInterval(() => { if(sesionAutenticada) fetchDashboard(); }, 8000);
-
-            // Garantizar desaparición fluida del splash inicial de carga
-            window.addEventListener('DOMContentLoaded', () => {
-                setTimeout(ocultarSplashInicial, 600);
-            });
-            window.addEventListener('load', () => {
-                setTimeout(ocultarSplashInicial, 200);
-            });
 
             document.addEventListener('visibilitychange', () => {
                 if (!document.hidden && sesionAutenticada) fetchDashboard();
