@@ -265,7 +265,7 @@ def mobile_dashboard_preview():
                 visibility: hidden !important;
             }
 
-            /* Contenedor maestro de autenticación (fijo, centrado, a salvo de notch / dynamic island y teclado virtual) */
+            /* Contenedor maestro de autenticación (fijo, centrado, a salvo de notch / dynamic island) */
             #pantalla-auth {
                 position: fixed !important;
                 top: 0 !important;
@@ -280,12 +280,12 @@ def mobile_dashboard_preview():
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                justify-content: flex-start !important;
+                justify-content: center !important;
                 overflow-x: hidden !important;
                 overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch;
                 padding-top: calc(var(--sat) + 12px) !important;
-                padding-bottom: calc(var(--sab) + 140px) !important;
+                padding-bottom: calc(var(--sab) + 12px) !important;
                 padding-left: 1.5rem !important;
                 padding-right: 1.5rem !important;
             }
@@ -302,102 +302,19 @@ def mobile_dashboard_preview():
                             inset 0 -1px 1px 0 rgba(0, 0, 0, 0.35) !important;
                 transition: all 0.25s ease !important;
             }
-            /* -------------------------------------------------------
-               GLASS INPUT — Alta especificidad para ganar a Tailwind
-               Los selectores de ID (#login-input-*) tienen prioridad
-               máxima sin recurrir a JS extra
-            ------------------------------------------------------- */
-            .glass-input,
-            input[id="login-input-username"],
-            input[id="login-input-password"],
-            input[id="reg-input-username"],
-            input[id="reg-input-password"],
-            input[id="reg-input-confirm"] {
-                display: block !important;
-                width: 100% !important;
-                height: 50px !important;
-                min-height: 50px !important;
-                max-height: 50px !important;
-                /* Padding crítico: definido aquí con !important para anular px-4 / pl-4 / pl-11 de Tailwind */
-                padding: 0 16px !important;
-                margin: 0 !important;
-                /* Tipografía: SF Pro alineado ANTES de que Tailwind inyecte fuentes */
-                font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif !important;
-                font-size: 16px !important;   /* 16px: previene auto-zoom iOS */
-                font-weight: 500 !important;
-                line-height: 50px !important; /* igual a height: cursor centrado verticalmente */
-                letter-spacing: -0.01em !important;
-                /* Cursor parpadeante */
-                caret-color: #0A84FF !important;
-                caret-shape: auto !important;
-                /* Colores */
-                color: #FFFFFF !important;
-                /* Fondo y borde */
+            .glass-input {
                 background: rgba(0, 0, 0, 0.35) !important;
                 backdrop-filter: blur(20px) !important;
                 -webkit-backdrop-filter: blur(20px) !important;
                 border: 1px solid rgba(255, 255, 255, 0.12) !important;
-                border-radius: 16px !important;
-                outline: none !important;
-                box-sizing: border-box !important;
-                /* Elimina sombra interna, bisel y relleno amarillo nativos de iOS */
-                -webkit-appearance: none !important;
-                appearance: none !important;
-                -webkit-text-fill-color: #FFFFFF !important;
-                vertical-align: top !important;
-                text-indent: 0 !important;
-                transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
+                border-radius: 1rem !important;
+                color: #FFFFFF !important;
+                transition: all 0.2s ease !important;
             }
-            /* Contraseña: espacio extra a la derecha para el botón de ojo */
-            input[id="login-input-password"],
-            input[id="reg-input-password"] {
-                padding-right: 44px !important;
-            }
-            /* Estado de foco */
-            .glass-input:focus,
-            input[id="login-input-username"]:focus,
-            input[id="login-input-password"]:focus,
-            input[id="reg-input-username"]:focus,
-            input[id="reg-input-password"]:focus,
-            input[id="reg-input-confirm"]:focus {
+            .glass-input:focus {
                 border-color: #0A84FF !important;
                 background: rgba(0, 0, 0, 0.5) !important;
                 box-shadow: 0 0 16px rgba(10, 132, 255, 0.3) !important;
-                outline: none !important;
-            }
-            /* Placeholder: alineado al centro vertical del field */
-            .glass-input::placeholder,
-            input[id="login-input-username"]::placeholder,
-            input[id="login-input-password"]::placeholder,
-            input[id="reg-input-username"]::placeholder,
-            input[id="reg-input-password"]::placeholder,
-            input[id="reg-input-confirm"]::placeholder,
-            .glass-input::-webkit-input-placeholder,
-            input[id="login-input-username"]::-webkit-input-placeholder,
-            input[id="login-input-password"]::-webkit-input-placeholder {
-                color: rgba(142, 142, 147, 0.85) !important;
-                -webkit-text-fill-color: rgba(142, 142, 147, 0.85) !important;
-                font-size: 15px !important;
-                font-weight: 500 !important;
-                line-height: 50px !important;
-                opacity: 1 !important;
-            }
-            /* AutoFill de Safari/WebKit: anular fondo amarillo y mantener color de texto */
-            input:-webkit-autofill,
-            input:-webkit-autofill:hover,
-            input:-webkit-autofill:focus,
-            input:-webkit-autofill:active {
-                -webkit-box-shadow: 0 0 0 100px rgba(0, 0, 0, 0.5) inset !important;
-                -webkit-text-fill-color: #FFFFFF !important;
-                caret-color: #0A84FF !important;
-                border-color: rgba(255, 255, 255, 0.12) !important;
-                font-size: 16px !important;
-                line-height: 50px !important;
-                padding: 0 16px !important;
-            }
-            input[id="login-input-password"]:-webkit-autofill,
-            input[id="reg-input-password"]:-webkit-autofill {
-                padding-right: 44px !important;
             }
 
             /* REGLAS MODO CLARO (Apple HIG Theme) */
@@ -507,41 +424,15 @@ def mobile_dashboard_preview():
                             inset 0 1px 1px 0 rgba(255, 255, 255, 0.95),
                             inset 0 -1px 1px 0 rgba(0, 0, 0, 0.04) !important;
             }
-            html.theme-light .glass-input,
-            html.theme-light input[id="login-input-username"],
-            html.theme-light input[id="login-input-password"],
-            html.theme-light input[id="reg-input-username"],
-            html.theme-light input[id="reg-input-password"],
-            html.theme-light input[id="reg-input-confirm"] {
+            html.theme-light .glass-input {
                 background: rgba(242, 242, 247, 0.8) !important;
                 border: 1px solid rgba(0, 0, 0, 0.1) !important;
                 color: #000000 !important;
-                -webkit-text-fill-color: #000000 !important;
             }
-            html.theme-light .glass-input:focus,
-            html.theme-light input[id="login-input-username"]:focus,
-            html.theme-light input[id="login-input-password"]:focus,
-            html.theme-light input[id="reg-input-username"]:focus,
-            html.theme-light input[id="reg-input-password"]:focus,
-            html.theme-light input[id="reg-input-confirm"]:focus {
+            html.theme-light .glass-input:focus {
                 border-color: #007AFF !important;
                 background: #FFFFFF !important;
                 box-shadow: 0 0 16px rgba(0, 122, 255, 0.25) !important;
-            }
-            html.theme-light .glass-input::placeholder,
-            html.theme-light input[id="login-input-username"]::placeholder,
-            html.theme-light input[id="login-input-password"]::placeholder,
-            html.theme-light .glass-input::-webkit-input-placeholder,
-            html.theme-light input[id="login-input-username"]::-webkit-input-placeholder {
-                color: #8E8E93 !important;
-                -webkit-text-fill-color: rgba(142, 142, 147, 0.85) !important;
-                opacity: 1 !important;
-                line-height: 50px !important;
-            }
-            html.theme-light input:-webkit-autofill,
-            html.theme-light input:-webkit-autofill:focus {
-                -webkit-box-shadow: 0 0 0 100px #F2F2F7 inset !important;
-                -webkit-text-fill-color: #000000 !important;
             }
             html.theme-light [id^="modal-"] > div:not(.bg-black\/80) {
                 background-color: #FFFFFF !important;
@@ -616,10 +507,15 @@ def mobile_dashboard_preview():
                             <!-- Campo Usuario -->
                             <div>
                                 <label for="login-input-username" class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1.5">Tu Usuario</label>
-                                <input type="text" id="login-input-username" name="username" placeholder="Ingresa tu usuario"
-                                    autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"
-                                    class="glass-input outline-none"
-                                    required>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#8E8E93]">
+                                        <i class="fa-solid fa-user text-xs"></i>
+                                    </span>
+                                    <input type="text" id="login-input-username" name="username" placeholder="Ingresa tu usuario (ej: Jorge)"
+                                        autocomplete="username webauthn" autocapitalize="none" autocorrect="off" spellcheck="false"
+                                        class="w-full glass-input pl-10 pr-4 py-3.5 text-white font-bold text-sm outline-none transition"
+                                        required>
+                                </div>
                             </div>
 
                             <!-- Campo Contraseña -->
@@ -631,12 +527,15 @@ def mobile_dashboard_preview():
                                         <span>Face ID</span>
                                     </span>
                                 </div>
-                                <div class="relative flex items-center">
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#8E8E93]">
+                                        <i class="fa-solid fa-lock text-xs"></i>
+                                    </span>
                                     <input type="password" id="login-input-password" name="password" placeholder="Ingresa tu contraseña"
                                         autocomplete="current-password"
-                                        class="glass-input w-full outline-none"
+                                        class="w-full glass-input pl-10 pr-10 py-3.5 text-white font-bold text-sm outline-none transition"
                                         required>
-                                    <button type="button" onclick="toggleVerPassword('login-input-password', 'login-ojo-icon')" class="absolute right-0 inset-y-0 w-11 flex items-center justify-center text-[#8E8E93] hover:text-white transition active:scale-90" tabindex="-1">
+                                    <button type="button" onclick="toggleVerPassword('login-input-password', 'login-ojo-icon')" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#8E8E93] hover:text-white" tabindex="-1">
                                         <i class="fa-solid fa-eye text-xs" id="login-ojo-icon"></i>
                                     </button>
                                 </div>
@@ -672,16 +571,16 @@ def mobile_dashboard_preview():
                         <div class="space-y-3.5">
                             <div>
                                 <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1">Nombre de Usuario</label>
-                                <input type="text" id="reg-input-username" placeholder="Ingresa tu usuario" autocomplete="username"
-                                    class="glass-input outline-none">
+                                <input type="text" id="reg-input-username" placeholder="Ej: Jorge o Carlos" autocomplete="username"
+                                    class="w-full glass-input px-4 py-3 text-white font-bold text-sm outline-none transition">
                             </div>
 
                             <div>
                                 <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1">Contraseña (Mínimo 4 caracteres)</label>
-                                <div class="relative flex items-center">
+                                <div class="relative">
                                     <input type="password" id="reg-input-password" placeholder="Tu contraseña privada" autocomplete="new-password"
-                                        class="glass-input w-full outline-none">
-                                    <button type="button" onclick="toggleVerPassword('reg-input-password', 'reg-ojo-icon')" class="absolute right-0 inset-y-0 w-11 flex items-center justify-center text-[#8E8E93] hover:text-white">
+                                        class="w-full glass-input pl-4 pr-10 py-3 text-white font-bold text-sm outline-none transition">
+                                    <button type="button" onclick="toggleVerPassword('reg-input-password', 'reg-ojo-icon')" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#8E8E93] hover:text-white">
                                         <i class="fa-solid fa-eye text-xs" id="reg-ojo-icon"></i>
                                     </button>
                                 </div>
@@ -690,7 +589,7 @@ def mobile_dashboard_preview():
                             <div>
                                 <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1">Confirmar Contraseña</label>
                                 <input type="password" id="reg-input-confirm" placeholder="Repite tu contraseña" autocomplete="new-password"
-                                    class="glass-input outline-none"
+                                    class="w-full glass-input px-4 py-3 text-white font-bold text-sm outline-none transition"
                                     onkeydown="if(event.key === 'Enter') ejecutarRegistro()">
                             </div>
 
@@ -1486,9 +1385,6 @@ def mobile_dashboard_preview():
                     }
                     if (ponerFoco) {
                         userInp.focus();
-                    } else if (document.activeElement === userInp) {
-                        // Desenfocar si Safari restauró foco residual al reabrir para prevenir cursor desfasado o teclado abierto
-                        userInp.blur();
                     }
                 }
                 configurarAutoFillFaceId();
@@ -1602,16 +1498,7 @@ def mobile_dashboard_preview():
                 userEl.addEventListener('change', handleInput);
                 passEl.addEventListener('change', handleInput);
 
-                // 3. Centrar campo en pantalla al enfocar para que no quede tapado por el teclado
-                const centrarCampoVisible = (el) => {
-                    setTimeout(() => {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 300);
-                };
-                userEl.addEventListener('focus', () => centrarCampoVisible(userEl));
-                passEl.addEventListener('focus', () => centrarCampoVisible(passEl));
-
-                // 4. Si el usuario toca el campo de usuario y ya existen credenciales guardadas en el navegador
+                // 3. Si el usuario toca el campo de usuario y ya existen credenciales guardadas en el navegador
                 userEl.addEventListener('focus', () => {
                     if (autoLoginPausado) return;
                     setTimeout(() => {
@@ -2083,9 +1970,6 @@ def mobile_dashboard_preview():
                 // Ocultar navegación y app principal de inmediato
                 document.getElementById('nav-inferior')?.classList.add('hidden');
                 document.getElementById('app-principal')?.classList.add('hidden');
-                if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
-                    try { document.activeElement.blur(); } catch(e) {}
-                }
                 const pantalla = document.getElementById('pantalla-auth');
                 if(pantalla) {
                     pantalla.classList.remove('hidden');
@@ -3347,64 +3231,14 @@ def mobile_dashboard_preview():
                 try { aplicarDatosDashboard(JSON.parse(cacheInicial)); } catch(e) {}
             }
 
-            // Desactivar foco fantasma o restauración automática de WebKit/Safari al abrir la app
-            if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
-                try { document.activeElement.blur(); } catch(e) {}
-            }
-
             inicializarSeguridad();
             configurarAutoFillFaceId();
             aplicarTema(temaActualConfig, false);
             cargarDatosPerfilAjustes();
             setInterval(() => { if(sesionAutenticada) fetchDashboard(); }, 8000);
 
-            // Reflujo sincronizado con el primer frame de pintura del navegador:
-            // Fuerza a WebKit a recalcular el layout de los inputs con los estilos !important
-            // ya aplicados, antes de que el usuario interactúe.
-            requestAnimationFrame(() => {
-                ['login-input-username', 'login-input-password', 'reg-input-username', 'reg-input-password', 'reg-input-confirm'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) {
-                        // Lectura de offsetHeight fuerza un reflow completo en WebKit
-                        const _ = el.offsetHeight;
-                        // Garantizar que el input no esté activo accidentalmente
-                        if (document.activeElement === el && !sesionAutenticada) {
-                            try { el.blur(); } catch(e) {}
-                        }
-                    }
-                });
-            });
-
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) {
-                    if (sesionAutenticada) {
-                        fetchDashboard();
-                    } else {
-                        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
-                            try { document.activeElement.blur(); } catch(e) {}
-                        }
-                        // Forzar reflujo también en reapertura de pestaña
-                        requestAnimationFrame(() => {
-                            ['login-input-username', 'login-input-password'].forEach(id => {
-                                const el = document.getElementById(id);
-                                if (el) { const _ = el.offsetHeight; }
-                            });
-                        });
-                    }
-                }
-            });
-            window.addEventListener('pageshow', () => {
-                if (!sesionAutenticada) {
-                    if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
-                        try { document.activeElement.blur(); } catch(e) {}
-                    }
-                    requestAnimationFrame(() => {
-                        ['login-input-username', 'login-input-password'].forEach(id => {
-                            const el = document.getElementById(id);
-                            if (el) { const _ = el.offsetHeight; }
-                        });
-                    });
-                }
+                if (!document.hidden && sesionAutenticada) fetchDashboard();
             });
             window.addEventListener('focus', () => {
                 if(sesionAutenticada) fetchDashboard();

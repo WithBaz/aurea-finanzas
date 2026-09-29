@@ -337,7 +337,7 @@ def test_aislamiento_navegacion_y_centrado_login(client):
     assert "#nav-inferior.hidden" in html
     assert "#app-principal.hidden" in html
     assert "padding-top: calc(var(--sat) + 12px) !important;" in html
-    assert "padding-bottom: calc(var(--sab) + 140px) !important;" in html
+    assert "padding-bottom: calc(var(--sab) + 12px) !important;" in html
     assert "position: fixed !important;" in html
     assert "z-index: 80 !important;" in html
 
@@ -349,50 +349,6 @@ def test_aislamiento_navegacion_y_centrado_login(client):
 
     # 4. Guardas de autenticación
     assert "if (!sesionAutenticada) return;" in html
-
-
-def test_alineacion_cursor_y_placeholder_usuario(client):
-    """
-    Verifica que:
-    1. El placeholder del campo de usuario sea exactamente 'Ingresa tu usuario'.
-    2. El CSS de .glass-input use selectores de alta especificidad (ID) para ganarle a Tailwind.
-    3. El padding, height y line-height estén definidos nativamente en CSS, no en clases Tailwind.
-    4. El autofill de WebKit esté anulado con -webkit-box-shadow inset.
-    5. Defensas contra foco fantasma: pageshow, visibilitychange y requestAnimationFrame.
-    """
-    res = client.get("/")
-    assert res.status_code == 200
-    html = res.text
-
-    # 1. Placeholder limpio sin '(ej: Jorge)'
-    assert 'id="login-input-username" name="username" placeholder="Ingresa tu usuario"' in html
-    assert '(ej: Jorge)' not in html
-
-    # 2. Alineación de cursor en CSS con alta especificidad
-    assert "caret-color: #0A84FF !important;" in html
-    assert "line-height: 50px !important;" in html
-    assert "height: 50px !important;" in html
-    assert "padding: 0 16px !important;" in html
-
-    # 3. Selectores de alta especificidad sobre ID en CSS
-    assert 'input[id="login-input-username"]' in html
-    assert 'input[id="login-input-password"]' in html
-    assert "padding-right: 44px !important;" in html
-
-    # 4. Autofill WebKit anulado con -webkit-box-shadow
-    assert "-webkit-box-shadow: 0 0 0 100px rgba(0, 0, 0, 0.5) inset !important;" in html
-    assert "-webkit-text-fill-color: #FFFFFF !important;" in html
-
-    # 5. Defensas contra foco fantasma en Safari iOS
-    assert "pageshow" in html
-    assert "requestAnimationFrame" in html
-    assert "padding-bottom: calc(var(--sab) + 140px) !important;" in html
-    assert "centrarCampoVisible" in html
-
-    # 6. Inputs de login usan clases simplificadas sin padding conflictivo de Tailwind
-    assert 'class="glass-input outline-none"' in html
-
-
 
 
 
