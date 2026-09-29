@@ -276,3 +276,209 @@ def test_seguridad_cambiar_pin_tiempo_constante(client):
     assert client.post("/api/v1/auth/login", json={"username": "usuario_pin", "pin": "9876"}).status_code == 401
     assert client.post("/api/v1/auth/login", json={"username": "usuario_pin", "pin": "4321"}).status_code == 200
 
+
+def test_estricto_rechazo_peticiones_anonimas_cuando_hay_usuarios(client):
+    """
+    Verifica que, una vez que existen usuarios registrados, ninguna petición anónima
+    (sin token de autenticación) pueda consultar o manipular cuentas, gastos, transacciones o métricas.
+    """
+    # 1. Registrar usuario
+    res = client.post("/api/v1/auth/registro", json={"username": "usuario_privado", "pin": "7777"})
+    assert res.status_code == 201
+
+    # 2. Atacante anónimo intenta acceder a información confidencial
+    assert client.get("/api/v1/cuentas").status_code == 401
+    assert client.post("/api/v1/cuentas", json={"nombre": "Hacked", "tipo": "DEBITO", "saldo_actual": 100}).status_code == 401
+    assert client.get("/api/v1/transacciones").status_code == 401
+    assert client.post("/api/v1/transacciones", json={"monto": 10000, "tipo": "EGRESO", "comercio": "X", "cuenta_origen_id": 1}).status_code == 401
+    assert client.get("/api/v1/metricas/dashboard").status_code == 401
+    assert client.get("/api/v1/metricas/semaforo").status_code == 401
+    assert client.get("/api/v1/gastos-fijos").status_code == 401
+    assert client.get("/api/v1/metas").status_code == 401
+
+
+def test_estricto_rechazo_header_spoofing_x_usuario_id(client):
+    """
+    Verifica que enviar únicamente el encabezado X-Usuario-Id sin un Bearer Token válido
+    sea rechazado (anti-header-spoofing).
+    Además, si se envía un token válido de Bob pero con X-Usuario-Id de Alice,
+    se rechace con 403 Forbidden por discrepancia de identidad.
+    """
+    # 1. Registrar Alice (ID 1 aprox) y Bob (ID 2 aprox)
+    res_a = client.post("/api/v1/auth/registro", json={"username": "alice_hs", "pin": "1111"}).json()
+    res_b = client.post("/api/v1/auth/registro", json={"username": "bob_hs", "pin": "2222"}).json()
+
+    # 2. Atacante envía X-Usuario-Id sin token
+    spoofed = client.get("/api/v1/cuentas", headers={"X-Usuario-Id": str(res_a["usuario_id"])})
+    assert spoofed.status_code == 401
+
+    # 3. Bob intenta autenticarse con su token pero suplantando el X-Usuario-Id de Alice
+    mismatch = client.get(
+        "/api/v1/cuentas",
+        headers={
+            "Authorization": f"Bearer {res_b['biometric_token']}",
+            "X-Usuario-Id": str(res_a["usuario_id"])
+        }
+    )
+    assert mismatch.status_code == 403
+    assert "discrepancia" in mismatch.json()["detail"].lower()
+
+
+def test_estricto_anti_idor_ia_rapida_debitar_cuenta_ajena(client):
+    """
+    Verifica que el endpoint /ia-rapida no permita que un usuario debite de cuentas ajenas
+    especificando el ID de cuenta de otra persona.
+    """
+    # 1. Alice crea cuenta con 3.000.000 COP
+    res_a = client.post("/api/v1/auth/registro", json={"username": "alice_ia", "pin": "1111"}).json()
+    auth_a = {"Authorization": f"Bearer {res_a['biometric_token']}"}
+    c_a = client.post("/api/v1/cuentas", json={"nombre": "Bancolombia Alice", "tipo": "DEBITO", "saldo_actual": 3000000.0}, headers=auth_a).json()
+
+    # 2. Bob se registra
+    res_b = client.post("/api/v1/auth/registro", json={"username": "bob_ia", "pin": "2222"}).json()
+    auth_b = {"Authorization": f"Bearer {res_b['biometric_token']}"}
+
+    # 3. Bob intenta debitar de la cuenta de Alice usando ia-rapida
+    res_hack = client.post(
+        f"/api/v1/transacciones/ia-rapida?texto=Mercado 200000&cuenta_id={c_a['id']}",
+        headers=auth_b
+    )
+    assert res_hack.status_code == 403
+    assert "permiso" in res_hack.json()["detail"].lower()
+
+    # 4. Validar que el saldo de Alice sigue intacto
+    check_a = client.get(f"/api/v1/cuentas/{c_a['id']}", headers=auth_a).json()
+    assert check_a["saldo_actual"] == 3000000.0
+
+    # 5. Petición anónima a ia-rapida debe ser rechazada con 401
+    assert client.post("/api/v1/transacciones/ia-rapida", json={"texto": "taxi 15000"}).status_code == 401
+
+
+def test_estricto_seguridad_webhooks_aislamiento_y_anti_spoofing(client):
+    """
+    Verifica que los webhooks de Atajos iOS:
+    1. Rechacen peticiones sin token cuando existen usuarios en el sistema.
+    2. Rechacen intentos de suplantar el usuario_id ajeno en el payload.
+    3. Al procesar Apple Pay o SMS, solo afecten las cuentas del usuario autenticado por el token.
+    """
+    # 1. Alice y Bob tienen cuentas bancarias
+    res_a = client.post("/api/v1/auth/registro", json={"username": "alice_wh", "pin": "1111"}).json()
+    auth_a = {"Authorization": f"Bearer {res_a['biometric_token']}"}
+    c_a = client.post("/api/v1/cuentas", json={"nombre": "Bancolombia", "tipo": "DEBITO", "saldo_actual": 2000000.0}, headers=auth_a).json()
+
+    res_b = client.post("/api/v1/auth/registro", json={"username": "bob_wh", "pin": "2222"}).json()
+    auth_b = {"Authorization": f"Bearer {res_b['biometric_token']}"}
+    c_b = client.post("/api/v1/cuentas", json={"nombre": "Bancolombia", "tipo": "DEBITO", "saldo_actual": 500000.0}, headers=auth_b).json()
+
+    # Intento 1: Webhook sin token cuando hay usuarios en la base de datos -> 401
+    assert client.post("/api/v1/webhooks/ios-shortcut", json={"medio": "APPLE_PAY", "monto": 50000.0, "tarjeta": "Bancolombia"}).status_code == 401
+
+    # Intento 2: Bob envía su token pero especifica usuario_id de Alice en el JSON -> 403
+    payload_spoof = {
+        "medio": "APPLE_PAY",
+        "monto": 50000.0,
+        "tarjeta": "Bancolombia",
+        "usuario_id": res_a["usuario_id"]
+    }
+    assert client.post("/api/v1/webhooks/ios-shortcut", json=payload_spoof, headers=auth_b).status_code == 403
+
+    # Intento 3: Bob procesa un pago legítimo con su token
+    payload_ok = {
+        "medio": "APPLE_PAY",
+        "monto": 50000.0,
+        "comercio": "Restaurante",
+        "tarjeta": "Bancolombia"
+    }
+    res_pago = client.post("/api/v1/webhooks/ios-shortcut", json=payload_ok, headers=auth_b)
+    assert res_pago.status_code == 200
+
+    # Validar que se debitó la cuenta de BOB y NUNCA la cuenta de Alice (a pesar de tener el mismo nombre)
+    check_b = client.get(f"/api/v1/cuentas/{c_b['id']}", headers=auth_b).json()
+    assert check_b["saldo_actual"] == 500000.0 - 50000.0
+
+    check_a = client.get(f"/api/v1/cuentas/{c_a['id']}", headers=auth_a).json()
+    assert check_a["saldo_actual"] == 2000000.0  # Totalmente intacta
+
+
+def test_estricto_seguridad_face_id_bypass_prevenido(client):
+    """
+    Verifica que el login con Face ID no permita bypass:
+    1. Si Face ID está deshabilitado para el usuario, se rechace con 403 Forbidden.
+    2. Si se proporciona un biometric_token falso, se rechace con 401 Unauthorized.
+    3. Si un usuario autenticado intenta hacer face-id-login como otro usuario, se rechace con 403.
+    """
+    # 1. Registrar usuario con Face ID desactivado
+    res = client.post("/api/v1/auth/registro", json={"username": "user_no_face", "pin": "5555"}).json()
+    auth = {"Authorization": f"Bearer {res['biometric_token']}"}
+
+    # Desactivar Face ID explícitamente
+    client.post("/api/v1/auth/face-id", json={"enabled": False}, headers=auth)
+
+    # Intento de login por Face ID estando deshabilitado -> 403
+    res_face_fail = client.post("/api/v1/auth/face-id-login", json={"username": "user_no_face"})
+    assert res_face_fail.status_code == 403
+    assert "no está habilitado" in res_face_fail.json()["detail"].lower()
+
+    # 2. Habilitar Face ID
+    client.post("/api/v1/auth/face-id", json={"enabled": True}, headers=auth)
+
+    # Intento con token biométrico falso -> 401
+    res_fake_token = client.post("/api/v1/auth/face-id-login", json={
+        "username": "user_no_face",
+        "biometric_token": "token_biometrico_invalido_hacker"
+    })
+    assert res_fake_token.status_code == 401
+
+
+def test_estricto_anti_idor_sincronizar_cuentas(client):
+    """
+    Verifica que sincronizar cuentas no permita sobrescribir cuentas de otro usuario
+    con el mismo nombre de cuenta.
+    """
+    res_a = client.post("/api/v1/auth/registro", json={"username": "alice_sync", "pin": "1111"}).json()
+    auth_a = {"Authorization": f"Bearer {res_a['biometric_token']}"}
+    c_a = client.post("/api/v1/cuentas", json={"nombre": "Nequi Personal", "tipo": "DEBITO", "saldo_actual": 850000.0}, headers=auth_a).json()
+
+    res_b = client.post("/api/v1/auth/registro", json={"username": "bob_sync", "pin": "2222"}).json()
+    auth_b = {"Authorization": f"Bearer {res_b['biometric_token']}"}
+
+    # Bob intenta sincronizar una cuenta con el mismo nombre "Nequi Personal" y saldo 0.0
+    res_sync_bob = client.post("/api/v1/cuentas/sincronizar", json=[
+        {"nombre": "Nequi Personal", "tipo": "DEBITO", "saldo_actual": 0.0}
+    ], headers=auth_b)
+    assert res_sync_bob.status_code == 200
+
+    # La cuenta de Alice sigue con 850.000 COP intactos
+    check_a = client.get(f"/api/v1/cuentas/{c_a['id']}", headers=auth_a).json()
+    assert check_a["saldo_actual"] == 850000.0
+
+
+def test_estricto_rechazo_montos_invalidos_y_payloads_extremos(client):
+    """
+    Verifica que montos negativos, cero o contraseñas inválidas sean rechazados por validaciones estrictas.
+    """
+    res_u = client.post("/api/v1/auth/registro", json={"username": "val_user", "pin": "8888"}).json()
+    auth = {"Authorization": f"Bearer {res_u['biometric_token']}"}
+    c = client.post("/api/v1/cuentas", json={"nombre": "Cuenta Val", "tipo": "DEBITO", "saldo_actual": 100000.0}, headers=auth).json()
+
+    # Transacción con monto negativo o cero -> 422
+    assert client.post("/api/v1/transacciones", json={
+        "monto": -5000.0,
+        "tipo": "EGRESO",
+        "comercio": "Test",
+        "cuenta_origen_id": c["id"]
+    }, headers=auth).status_code == 422
+
+    assert client.post("/api/v1/transacciones", json={
+        "monto": 0.0,
+        "tipo": "EGRESO",
+        "comercio": "Test",
+        "cuenta_origen_id": c["id"]
+    }, headers=auth).status_code == 422
+
+    # Pago de tarjeta con monto cero o negativo -> 422 / 400
+    tc = client.post("/api/v1/cuentas", json={"nombre": "TC Val", "tipo": "CREDITO", "cupo_total": 500000.0}, headers=auth).json()
+    assert client.post(f"/api/v1/cuentas/{tc['id']}/pagar", json={"monto": 0.0}, headers=auth).status_code in [400, 422]
+    assert client.post(f"/api/v1/cuentas/{tc['id']}/pagar", json={"monto": -100.0}, headers=auth).status_code in [400, 422]
+
+

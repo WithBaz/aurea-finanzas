@@ -11,7 +11,7 @@ from backend.app.schemas import (
     PagoTarjetaRequest,
     PagoTarjetaResponse
 )
-from backend.app.api.deps import get_current_user_id
+from backend.app.api.deps import get_current_user_id, check_auth_if_users_exist
 
 router = APIRouter()
 
@@ -24,6 +24,7 @@ def listar_cuentas(
     """
     Lista todos los instrumentos financieros del usuario actual (Débito, Crédito, Alto Rendimiento, Efectivo).
     """
+    check_auth_if_users_exist(current_uid, db, "tus cuentas")
     query = db.query(Cuenta).filter(Cuenta.activa == True)
     if current_uid:
         query = query.filter((Cuenta.usuario_id == current_uid) | (Cuenta.usuario_id == None))
@@ -41,6 +42,7 @@ def crear_cuenta(
     Para tarjetas de crédito, si se especifica cupo_disponible y cupo_total,
     calcula la deuda inicial automáticamente: saldo_actual = max(0.0, cupo_total - cupo_disponible).
     """
+    check_auth_if_users_exist(current_uid, db, "crear cuentas")
     data = cuenta_in.model_dump()
     cupo_disp = data.pop("cupo_disponible", None)
 
@@ -64,6 +66,7 @@ def obtener_cuenta(
     current_uid: Optional[int] = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
+    check_auth_if_users_exist(current_uid, db, "esta cuenta")
     cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
     if not cuenta:
         raise HTTPException(
@@ -88,6 +91,7 @@ def actualizar_cuenta(
     """
     Actualiza el saldo o datos de una cuenta existente.
     """
+    check_auth_if_users_exist(current_uid, db, "modificar esta cuenta")
     cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
     if not cuenta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
@@ -120,6 +124,7 @@ def eliminar_cuenta(
     """
     Elimina una cuenta y sus transacciones asociadas.
     """
+    check_auth_if_users_exist(current_uid, db, "eliminar esta cuenta")
     cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
     if not cuenta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
@@ -149,11 +154,12 @@ def sincronizar_cuentas(
     Sincroniza y rehidrata cuentas desde la caché local del cliente cuando
     un contenedor efímero se reinicia o se conecta por primera vez.
     """
+    check_auth_if_users_exist(current_uid, db, "sincronizar cuentas")
     resultados = []
     for c_data in cuentas_in:
         query = db.query(Cuenta).filter(Cuenta.nombre == c_data.nombre, Cuenta.activa == True)
         if current_uid:
-            query = query.filter((Cuenta.usuario_id == current_uid) | (Cuenta.usuario_id == None))
+            query = query.filter(Cuenta.usuario_id == current_uid)
         existente = query.first()
         if existente:
             existente.saldo_actual = c_data.saldo_actual
@@ -185,6 +191,7 @@ def registrar_corte_tarjeta(
     Registra la fecha de corte para una tarjeta de crédito, fijando la deuda actual como
     el saldo facturado al corte (saldo_al_corte) y marcando el estado como PENDIENTE_PAGO.
     """
+    check_auth_if_users_exist(current_uid, db, "esta tarjeta")
     cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
     if not cuenta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
@@ -214,6 +221,7 @@ def registrar_pago_tarjeta(
     genera una transacción de TRANSFERENCIA_INTERNA (sin computar doble gasto en el presupuesto).
     Disminuye la deuda de la tarjeta y restablece su cupo disponible.
     """
+    check_auth_if_users_exist(current_uid, db, "pagar esta tarjeta")
     cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
     if not cuenta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")

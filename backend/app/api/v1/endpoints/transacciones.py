@@ -7,7 +7,7 @@ from backend.app.models import Cuenta, Transaccion, TipoCuenta, TipoTransaccion,
 from backend.app.schemas import TransaccionCreate, TransaccionResponse, TransaccionUpdate
 from backend.app.services.categorizer import CategorizadorComercios
 from backend.app.services.nlp_expense_parser import NLPSmartExpenseParser
-from backend.app.api.deps import get_current_user_id
+from backend.app.api.deps import get_current_user_id, check_auth_if_users_exist
 
 router = APIRouter()
 
@@ -24,6 +24,7 @@ def listar_transacciones(
     """
     Lista las transacciones históricas del usuario actual con filtros opcionales.
     """
+    check_auth_if_users_exist(current_uid, db, "tus transacciones")
     query = db.query(Transaccion)
     if current_uid:
         query = query.filter((Transaccion.usuario_id == current_uid) | (Transaccion.usuario_id == None))
@@ -45,6 +46,7 @@ def crear_transaccion_manual(
     """
     Registro manual de transacciones (especialmente útil para efectivo y ajustes rápidos).
     """
+    check_auth_if_users_exist(current_uid, db, "registrar transacciones")
     cuenta_origen = db.query(Cuenta).filter(Cuenta.id == tx_in.cuenta_origen_id).first()
     if not cuenta_origen:
         raise HTTPException(
@@ -170,12 +172,31 @@ async def registrar_gasto_ia_rapida(
     if not texto_final:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo 'texto' es requerido")
 
+    # Autenticación segura mediante Bearer token, X-Aurea-Token o query param token
+    auth_header = request.headers.get("Authorization")
+    aurea_header = request.headers.get("X-Aurea-Token")
+    token_param = request.query_params.get("token")
+
+    token_val = None
+    if auth_header and auth_header.lower().startswith("bearer "):
+        token_val = auth_header[7:].strip()
+    elif aurea_header:
+        token_val = aurea_header.strip()
+    elif token_param:
+        token_val = token_param.strip()
+
     current_uid = None
-    uid_header = request.headers.get("X-Usuario-Id")
-    if uid_header and uid_header.isdigit():
-        current_uid = int(uid_header)
-    elif request.query_params.get("usuario_id") and request.query_params.get("usuario_id").isdigit():
-        current_uid = int(request.query_params.get("usuario_id"))
+    if token_val:
+        from backend.app.models import Usuario
+        user = db.query(Usuario).filter(Usuario.biometric_token == token_val).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token de autorización inválido o expirado."
+            )
+        current_uid = user.id
+
+    check_auth_if_users_exist(current_uid, db, "registrar transacciones con IA")
 
     interpretacion = NLPSmartExpenseParser.interpretar_texto_gasto(texto_final, db, usuario_id=current_uid)
     monto = interpretacion["monto"]
@@ -201,6 +222,11 @@ async def registrar_gasto_ia_rapida(
     if cuenta_detectada_id:
         cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_detectada_id).first()
         if cuenta:
+            if current_uid is not None and cuenta.usuario_id is not None and cuenta.usuario_id != current_uid:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tienes permiso para operar con esta cuenta."
+                )
             interpretacion["cuenta_nombre"] = cuenta.nombre
     else:
         cuenta = None
@@ -224,6 +250,11 @@ async def registrar_gasto_ia_rapida(
     cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_detectada_id).first()
     if not cuenta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
+    if current_uid is not None and cuenta.usuario_id is not None and cuenta.usuario_id != current_uid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para operar con esta cuenta."
+        )
 
     if tipo == "EGRESO":
         if cuenta.tipo in [TipoCuenta.DEBITO, TipoCuenta.EFECTIVO]:
@@ -273,6 +304,7 @@ def reasignar_cuenta_transaccion(
     """
     Permite asignar o cambiar la cuenta de un gasto cuando el sistema preguntó de dónde fue.
     """
+    check_auth_if_users_exist(current_uid, db, "esta transacción")
     tx = db.query(Transaccion).filter(Transaccion.id == transaccion_id).first()
     if not tx:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
@@ -330,6 +362,7 @@ def obtener_detalle_transaccion(
     """
     Obtiene los detalles completos de una transacción específica.
     """
+    check_auth_if_users_exist(current_uid, db, "esta transacción")
     tx = db.query(Transaccion).filter(Transaccion.id == transaccion_id).first()
     if not tx:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
@@ -348,6 +381,7 @@ def actualizar_transaccion(
     """
     Actualiza el comercio, monto, tipo, cuenta o categoría de una transacción, reajustando saldos automáticamente.
     """
+    check_auth_if_users_exist(current_uid, db, "modificar esta transacción")
     tx = db.query(Transaccion).filter(Transaccion.id == transaccion_id).first()
     if not tx:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
@@ -404,6 +438,7 @@ def eliminar_transaccion(
     """
     Elimina una transacción y revierte su impacto financiero en la cuenta o tarjeta de origen.
     """
+    check_auth_if_users_exist(current_uid, db, "eliminar esta transacción")
     tx = db.query(Transaccion).filter(Transaccion.id == transaccion_id).first()
     if not tx:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")

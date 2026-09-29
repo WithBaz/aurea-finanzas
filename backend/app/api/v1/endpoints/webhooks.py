@@ -60,9 +60,27 @@ def procesar_atajo_ios(
                 detail="Token de atajo iOS inválido o no reconocido."
             )
 
+    total_usuarios = db.query(Usuario).count()
+    if total_usuarios > 0 and not user_from_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de autorización requerido para ejecutar atajos de iOS."
+        )
+
+    if user_from_token and payload.get("usuario_id") and int(payload.get("usuario_id")) != user_from_token.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para ejecutar atajos para otro usuario."
+        )
+
     target_user_id = user_from_token.id if user_from_token else payload.get("usuario_id")
     medio_raw = str(payload.get("medio", "SMS")).upper()
     fecha_movimiento = datetime.now(timezone.utc)
+
+    def _filtrar_cuenta(query):
+        if target_user_id:
+            return query.filter((Cuenta.usuario_id == target_user_id) | (Cuenta.usuario_id == None))
+        return query
 
     # 1. Rama Apple Pay
     if medio_raw == "APPLE_PAY":
@@ -89,11 +107,11 @@ def procesar_atajo_ios(
         if tarjeta_nombre:
             tarjeta_clean = str(tarjeta_nombre).strip()
             # 1. Búsqueda directa (ej: cuenta="Bancolombia Principal", Apple Pay="Bancolombia")
-            cuenta = db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{tarjeta_clean}%"), Cuenta.activa == True).first()
+            cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{tarjeta_clean}%"), Cuenta.activa == True)).first()
             
             # 2. Búsqueda inversa: el nombre de la cuenta está dentro del string de Apple Pay (ej: cuenta="Nu", Apple Pay="Nu Mastercard")
             if not cuenta:
-                cuentas_activas = db.query(Cuenta).filter(Cuenta.activa == True).all()
+                cuentas_activas = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.activa == True)).all()
                 for c in cuentas_activas:
                     c_nom = c.nombre.strip().lower()
                     if c_nom not in STOPWORDS_TARJETA and len(c_nom) >= 3 and c_nom in tarjeta_clean.lower():
@@ -104,19 +122,13 @@ def procesar_atajo_ios(
             if not cuenta:
                 palabras = [p for p in tarjeta_clean.split() if len(p) >= 3 and p.lower() not in STOPWORDS_TARJETA]
                 for p in palabras:
-                    c = db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{p}%"), Cuenta.activa == True).first()
+                    c = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{p}%"), Cuenta.activa == True)).first()
                     if c:
                         cuenta = c
                         break
 
             # 4. Si no existe ninguna coincidencia, crear la tarjeta de crédito automáticamente (Zero-Setup)
             if not cuenta and tarjeta_clean:
-                target_user_id = payload.get("usuario_id")
-                if not target_user_id:
-                    primera_c = db.query(Cuenta).filter(Cuenta.activa == True).first()
-                    if primera_c and primera_c.usuario_id:
-                        target_user_id = primera_c.usuario_id
-
                 cuenta = Cuenta(
                     nombre=tarjeta_clean,
                     tipo=TipoCuenta.CREDITO,
@@ -130,9 +142,9 @@ def procesar_atajo_ios(
                 db.refresh(cuenta)
 
         if not cuenta:
-            cuenta = db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.CREDITO, Cuenta.activa == True).first()
+            cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.CREDITO, Cuenta.activa == True)).first()
             if not cuenta:
-                cuenta = db.query(Cuenta).filter(Cuenta.tipo.in_([TipoCuenta.DEBITO, TipoCuenta.ALTO_RENDIMIENTO, TipoCuenta.EFECTIVO]), Cuenta.activa == True).first()
+                cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo.in_([TipoCuenta.DEBITO, TipoCuenta.ALTO_RENDIMIENTO, TipoCuenta.EFECTIVO]), Cuenta.activa == True)).first()
         
         if not cuenta:
             raise HTTPException(
@@ -234,14 +246,15 @@ def procesar_atajo_ios(
 
     # Caso Especial: Retiro en cajero -> Transferencia interna (Débito a Efectivo)
     if es_retiro or tipo_str == "TRANSFERENCIA_INTERNA":
-        cuenta_bancaria = db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.DEBITO, Cuenta.activa == True).first()
-        billetera_efectivo = db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.EFECTIVO, Cuenta.activa == True).first()
+        cuenta_bancaria = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.DEBITO, Cuenta.activa == True)).first()
+        billetera_efectivo = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.EFECTIVO, Cuenta.activa == True)).first()
 
         if not billetera_efectivo:
             billetera_efectivo = Cuenta(
                 nombre="Billetera Efectivo",
                 tipo=TipoCuenta.EFECTIVO,
-                saldo_actual=0.0
+                saldo_actual=0.0,
+                usuario_id=target_user_id
             )
             db.add(billetera_efectivo)
             db.commit()
@@ -263,7 +276,7 @@ def procesar_atajo_ios(
             es_gasto_hormiga=False,
             hash_idempotencia=hash_idemp,
             raw_payload=texto_sms,
-            usuario_id=cuenta_bancaria.usuario_id if (cuenta_bancaria and cuenta_bancaria.usuario_id) else target_user_id,
+            usuario_id=target_user_id,
         )
         db.add(transaccion)
         db.commit()
@@ -285,9 +298,9 @@ def procesar_atajo_ios(
     if tipo_str == "EGRESO":
         es_credito = resultado_parser.get("es_credito", False)
         tipo_filtro = TipoCuenta.CREDITO if es_credito else TipoCuenta.DEBITO
-        cuenta = db.query(Cuenta).filter(Cuenta.tipo == tipo_filtro, Cuenta.activa == True).first()
+        cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == tipo_filtro, Cuenta.activa == True)).first()
         if not cuenta:
-            cuenta = db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.DEBITO, Cuenta.activa == True).first()
+            cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.DEBITO, Cuenta.activa == True)).first()
 
         if cuenta:
             if cuenta.tipo == TipoCuenta.DEBITO:
@@ -310,7 +323,7 @@ def procesar_atajo_ios(
             es_gasto_hormiga=es_hormiga,
             hash_idempotencia=hash_idemp,
             raw_payload=texto_sms,
-            usuario_id=cuenta.usuario_id if (cuenta and cuenta.usuario_id) else target_user_id,
+            usuario_id=target_user_id,
         )
         db.add(transaccion)
         db.commit()

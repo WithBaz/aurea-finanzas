@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
-from backend.app.api.deps import get_current_user_id
+from backend.app.api.deps import get_current_user_id, check_auth_if_users_exist
 from backend.app.models import MetaAhorro
 from backend.app.schemas import MetaAhorroCreate, MetaAhorroResponse
 
@@ -17,6 +17,7 @@ def listar_metas(
     """
     Lista las metas de ahorro y su avance en COP.
     """
+    check_auth_if_users_exist(current_uid, db, "tus metas de ahorro")
     query = db.query(MetaAhorro)
     if current_uid:
         query = query.filter((MetaAhorro.usuario_id == current_uid) | (MetaAhorro.usuario_id == None))
@@ -29,6 +30,7 @@ def crear_meta(
     db: Session = Depends(get_db),
     current_uid: Optional[int] = Depends(get_current_user_id)
 ):
+    check_auth_if_users_exist(current_uid, db, "crear metas de ahorro")
     meta = MetaAhorro(usuario_id=current_uid, **meta_in.model_dump())
     db.add(meta)
     db.commit()

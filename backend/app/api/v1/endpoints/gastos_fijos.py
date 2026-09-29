@@ -2,7 +2,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
-from backend.app.api.deps import get_current_user_id
+from backend.app.api.deps import get_current_user_id, check_auth_if_users_exist
 from backend.app.models import GastoFijo, PerfilFinanciero
 from backend.app.schemas import (
     GastoFijoCreate,
@@ -24,6 +24,7 @@ def listar_gastos_fijos(
     """
     Obtiene el listado de compromisos fijos y el estado del ciclo salarial (apartados de nómina vs pendientes).
     """
+    check_auth_if_users_exist(current_uid, db, "tus gastos fijos")
     return FinancialEngine.obtener_resumen_gastos_fijos(db, usuario_id=current_uid)
 
 
@@ -37,6 +38,7 @@ def crear_gasto_fijo(
     """
     Crea un nuevo gasto fijo mensual (arriendo, servicios, suscripción, etc.).
     """
+    check_auth_if_users_exist(current_uid, db, "crear gastos fijos")
     nuevo = GastoFijo(
         nombre=gasto_in.nombre.strip(),
         monto=float(gasto_in.monto),
@@ -77,6 +79,7 @@ def toggle_pagado_gasto_fijo(
     """
     Alterna el estado de pagado este mes para un compromiso fijo.
     """
+    check_auth_if_users_exist(current_uid, db, "este gasto fijo")
     gasto_q = db.query(GastoFijo).filter(GastoFijo.id == gasto_id)
     if current_uid:
         gasto_q = gasto_q.filter((GastoFijo.usuario_id == current_uid) | (GastoFijo.usuario_id == None))
@@ -98,6 +101,7 @@ def eliminar_gasto_fijo(
     """
     Elimina un compromiso fijo y recalcula el total mensual.
     """
+    check_auth_if_users_exist(current_uid, db, "este gasto fijo")
     gasto_q = db.query(GastoFijo).filter(GastoFijo.id == gasto_id)
     if current_uid:
         gasto_q = gasto_q.filter((GastoFijo.usuario_id == current_uid) | (GastoFijo.usuario_id == None))

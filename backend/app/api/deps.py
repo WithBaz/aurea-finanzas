@@ -25,29 +25,30 @@ def get_current_user_id(
     if token:
         user = db.query(Usuario).filter(Usuario.biometric_token == token).first()
         if user:
+            # Si también se envía X-Usuario-Id, verificar que no haya discrepancia / suplantación
+            if x_usuario_id:
+                try:
+                    if int(x_usuario_id) != user.id:
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Discrepancia de seguridad: el token no corresponde al X-Usuario-Id especificado."
+                        )
+                except ValueError:
+                    pass
             return user.id
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token de sesión inválido o expirado."
         )
 
-    # 2. Si no hay token, pero se envía X-Usuario-Id (para desarrollo y compatibilidad):
-    if x_usuario_id:
-        try:
-            uid = int(x_usuario_id)
-            user = db.query(Usuario).filter(Usuario.id == uid).first()
-            if user:
-                return user.id
-        except ValueError:
-            pass
-
-    # 3. Fallback retrocompatible para tests unitarios base sin usuarios creados
+    # 2. Si no hay token, NO confiar jamás en X-Usuario-Id en solitario (previene Header Spoofing / Account Takeover)
     total_usuarios = db.query(Usuario).count()
     if total_usuarios == 0:
+        # Modo instalación / pre-autenticación / tests unitarios base sin usuarios
         return None
 
-    primer = db.query(Usuario).order_by(Usuario.id.asc()).first()
-    return primer.id if primer else None
+    # Si hay usuarios registrados y no se presentó token válido, el usuario NO está autenticado
+    return None
 
 
 def require_current_user_id(
@@ -64,4 +65,21 @@ def require_current_user_id(
             detail="Autenticación requerida para acceder a este recurso."
         )
     return current_uid
+
+
+def check_auth_if_users_exist(
+    current_uid: Optional[int],
+    db: Session,
+    recurso: str = "este recurso"
+):
+    """
+    Valida que, si existen usuarios en la base de datos, la petición esté debidamente autenticada.
+    Si no lo está, lanza 401 Unauthorized para evitar fugas de información o manipulación anónima.
+    """
+    total_usuarios = db.query(Usuario).count()
+    if total_usuarios > 0 and current_uid is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Autenticación requerida para acceder a {recurso}."
+        )
 

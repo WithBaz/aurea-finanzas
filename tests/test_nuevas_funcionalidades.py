@@ -123,11 +123,13 @@ def test_multi_usuario_aislamiento_de_datos(client):
     res_a = client.post("/api/v1/auth/registro", json={"username": "carlos", "pin": "4321"})
     assert res_a.status_code == 201
     uid_a = res_a.json()["usuario_id"]
+    token_a = res_a.json()["biometric_token"]
 
     # 2. Registrar Usuario B (Pedro / Amigo)
     res_b = client.post("/api/v1/auth/registro", json={"username": "pedro_amigo", "pin": "9876"})
     assert res_b.status_code == 201
     uid_b = res_b.json()["usuario_id"]
+    token_b = res_b.json()["biometric_token"]
 
     # 3. Listar perfiles en el selector multi-cuenta
     res_usuarios = client.get("/api/v1/auth/usuarios")
@@ -137,7 +139,7 @@ def test_multi_usuario_aislamiento_de_datos(client):
     assert "pedro_amigo" in nombres_usuarios
 
     # 4. Carlos crea una cuenta y un gasto fijo
-    header_a = {"X-Usuario-Id": str(uid_a)}
+    header_a = {"X-Usuario-Id": str(uid_a), "Authorization": f"Bearer {token_a}"}
     c_a = client.post("/api/v1/cuentas", json={"nombre": "Ahorros Carlos", "tipo": "DEBITO", "saldo_actual": 1200000.0}, headers=header_a)
     assert c_a.status_code == 201
     cuenta_a_id = c_a.json()["id"]
@@ -147,7 +149,7 @@ def test_multi_usuario_aislamiento_de_datos(client):
     gasto_a_id = gf_a.json()["id"]
 
     # 5. Pedro consulta su dashboard y cuentas: NO debe ver las cuentas ni gastos de Carlos
-    header_b = {"X-Usuario-Id": str(uid_b)}
+    header_b = {"X-Usuario-Id": str(uid_b), "Authorization": f"Bearer {token_b}"}
     cuentas_pedro = client.get("/api/v1/cuentas", headers=header_b).json()
     assert all(c["id"] != cuenta_a_id for c in cuentas_pedro)
 

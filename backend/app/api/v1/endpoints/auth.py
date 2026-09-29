@@ -207,6 +207,25 @@ def login_con_face_id(
             detail="No hay usuario registrado."
         )
 
+    if not usuario.face_id_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Face ID no está habilitado para esta cuenta. Inicia sesión con contraseña."
+        )
+
+    if current_uid and current_uid != usuario.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para acceder a la cuenta de otro usuario mediante Face ID."
+        )
+
+    if payload and payload.biometric_token:
+        if not secrets.compare_digest(usuario.biometric_token or "", payload.biometric_token):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Credencial biométrica no válida o expirada."
+            )
+
     if not usuario.biometric_token:
         usuario.biometric_token = secrets.token_hex(24)
         db.commit()

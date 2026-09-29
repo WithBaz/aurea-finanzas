@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
-from backend.app.api.deps import get_current_user_id, require_current_user_id
+from backend.app.api.deps import get_current_user_id, require_current_user_id, check_auth_if_users_exist
 from backend.app.schemas import (
     SemaforoResponse,
     RendimientoDiarioResponse,
@@ -23,6 +23,7 @@ def obtener_semaforo_mensual(
     """
     Calcula el estado del semáforo diario basado en el presupuesto mensual del usuario en COP.
     """
+    check_auth_if_users_exist(current_uid, db, "el semáforo financiero")
     return FinancialEngine.calcular_semaforo_mensual(db, usuario_id=current_uid)
 
 
@@ -34,6 +35,7 @@ def obtener_rendimientos_diarios(
     """
     Calcula los rendimientos generados hoy por cuentas remuneradas (Nu Colombia, Lulo, Pibank).
     """
+    check_auth_if_users_exist(current_uid, db, "los rendimientos")
     return FinancialEngine.calcular_rendimientos_diarios(db, usuario_id=current_uid)
 
 
@@ -45,6 +47,7 @@ def obtener_perfil(
     """
     Obtiene el perfil financiero y parámetros del ciclo de nómina del usuario.
     """
+    check_auth_if_users_exist(current_uid, db, "tu perfil financiero")
     perfil_q = db.query(PerfilFinanciero)
     if current_uid:
         perfil = perfil_q.filter((PerfilFinanciero.usuario_id == current_uid) | (PerfilFinanciero.usuario_id == None)).first()
@@ -75,6 +78,7 @@ def actualizar_perfil(
     """
     Actualiza ingresos reales, compromisos fijos y día de cobro de nómina.
     """
+    check_auth_if_users_exist(current_uid, db, "actualizar perfil")
     perfil_q = db.query(PerfilFinanciero)
     if current_uid:
         perfil = perfil_q.filter((PerfilFinanciero.usuario_id == current_uid) | (PerfilFinanciero.usuario_id == None)).first()
@@ -125,6 +129,7 @@ def obtener_resumen_dashboard(
     Consolida todo el estado del dashboard (cuentas, semáforo, rendimientos, gastos fijos y transacciones)
     en una sola petición HTTP ultra-rápida para el usuario actual.
     """
+    check_auth_if_users_exist(current_uid, db, "el dashboard")
     from backend.app.models import TipoCuenta
     semaforo = FinancialEngine.calcular_semaforo_mensual(db, usuario_id=current_uid)
     rendimientos = FinancialEngine.calcular_rendimientos_diarios(db, usuario_id=current_uid)
