@@ -1,7 +1,7 @@
 import hashlib
 from datetime import datetime, timezone
-from typing import Union, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Union, Dict, Any, Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Query
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import (
@@ -10,6 +10,7 @@ from backend.app.models import (
     TipoCuenta,
     TipoTransaccion,
     MedioCaptura,
+    Usuario,
 )
 from backend.app.schemas import (
     ApplePayWebhookPayload,
@@ -30,12 +31,36 @@ def calcular_hash_idempotencia(monto: float, comercio: str, fecha_str: str) -> s
 @router.post("/ios-shortcut", response_model=WebhookIngestResponse)
 def procesar_atajo_ios(
     payload: Dict[str, Any],
+    token: Optional[str] = Query(None),
+    authorization: Optional[str] = Header(None),
+    x_aurea_token: Optional[str] = Header(None, alias="X-Aurea-Token"),
     db: Session = Depends(get_db)
 ):
     """
     Endpoint receptor para las Automatizaciones de Atajos de iOS (Apple Shortcuts).
-    Procesa tanto pagos con Apple Pay como mensajes SMS de bancos colombianos.
+    Procesa tanto pagos con Apple Pay como mensajes SMS de bancos colombianos con verificación opcional de token.
     """
+    # Verificación de token criptográfico si se suministra
+    token_val = None
+    if authorization and authorization.lower().startswith("bearer "):
+        token_val = authorization[7:].strip()
+    elif x_aurea_token:
+        token_val = x_aurea_token.strip()
+    elif token:
+        token_val = token.strip()
+    elif payload.get("token"):
+        token_val = str(payload.get("token")).strip()
+
+    user_from_token = None
+    if token_val:
+        user_from_token = db.query(Usuario).filter(Usuario.biometric_token == token_val).first()
+        if not user_from_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token de atajo iOS inválido o no reconocido."
+            )
+
+    target_user_id = user_from_token.id if user_from_token else payload.get("usuario_id")
     medio_raw = str(payload.get("medio", "SMS")).upper()
     fecha_movimiento = datetime.now(timezone.utc)
 
@@ -153,7 +178,7 @@ def procesar_atajo_ios(
             es_gasto_hormiga=es_hormiga,
             hash_idempotencia=hash_idemp,
             raw_payload=str(payload),
-            usuario_id=cuenta.usuario_id if (cuenta and cuenta.usuario_id) else payload.get("usuario_id"),
+            usuario_id=cuenta.usuario_id if (cuenta and cuenta.usuario_id) else target_user_id,
         )
         db.add(transaccion)
         db.commit()
@@ -238,7 +263,7 @@ def procesar_atajo_ios(
             es_gasto_hormiga=False,
             hash_idempotencia=hash_idemp,
             raw_payload=texto_sms,
-            usuario_id=cuenta_bancaria.usuario_id if (cuenta_bancaria and cuenta_bancaria.usuario_id) else payload.get("usuario_id"),
+            usuario_id=cuenta_bancaria.usuario_id if (cuenta_bancaria and cuenta_bancaria.usuario_id) else target_user_id,
         )
         db.add(transaccion)
         db.commit()
@@ -285,7 +310,7 @@ def procesar_atajo_ios(
             es_gasto_hormiga=es_hormiga,
             hash_idempotencia=hash_idemp,
             raw_payload=texto_sms,
-            usuario_id=cuenta.usuario_id if (cuenta and cuenta.usuario_id) else payload.get("usuario_id"),
+            usuario_id=cuenta.usuario_id if (cuenta and cuenta.usuario_id) else target_user_id,
         )
         db.add(transaccion)
         db.commit()

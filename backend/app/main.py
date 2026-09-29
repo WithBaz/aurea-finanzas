@@ -41,6 +41,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
 # Conectar routers
 app.include_router(api_router, prefix="/api/v1")
 
@@ -940,17 +951,22 @@ def mobile_dashboard_preview():
             let sesionAutenticada = false;
             let usuarioActual = localStorage.getItem('aurea_usuario_actual_nombre') || null;
             let usuarioActualId = localStorage.getItem('aurea_usuario_actual_id') ? parseInt(localStorage.getItem('aurea_usuario_actual_id')) : null;
+            let usuarioActualToken = localStorage.getItem('aurea_usuario_actual_token') || null;
 
-            // Interceptor global para adjuntar el ID del usuario activo a todas las peticiones
+            // Interceptor global para adjuntar el token de autenticación e ID del usuario a todas las peticiones
             const _origFetch = window.fetch;
             window.fetch = function(url, options = {}) {
                 options = options || {};
                 options.headers = options.headers || {};
-                if (usuarioActualId && typeof url === 'string' && url.startsWith('/api/v1/')) {
+                if (typeof url === 'string' && url.startsWith('/api/v1/')) {
                     if (options.headers instanceof Headers) {
-                        options.headers.set('X-Usuario-Id', String(usuarioActualId));
+                        if (usuarioActualToken) options.headers.set('Authorization', 'Bearer ' + usuarioActualToken);
+                        if (usuarioActualToken) options.headers.set('X-Aurea-Token', usuarioActualToken);
+                        if (usuarioActualId) options.headers.set('X-Usuario-Id', String(usuarioActualId));
                     } else {
-                        options.headers['X-Usuario-Id'] = String(usuarioActualId);
+                        if (usuarioActualToken) options.headers['Authorization'] = 'Bearer ' + usuarioActualToken;
+                        if (usuarioActualToken) options.headers['X-Aurea-Token'] = usuarioActualToken;
+                        if (usuarioActualId) options.headers['X-Usuario-Id'] = String(usuarioActualId);
                     }
                 }
                 return _origFetch(url, options);
@@ -1076,8 +1092,10 @@ def mobile_dashboard_preview():
                         const data = await res.json();
                         usuarioActualId = data.usuario_id;
                         usuarioActual = data.username;
+                        usuarioActualToken = data.biometric_token || null;
                         localStorage.setItem('aurea_usuario_actual_id', usuarioActualId);
                         localStorage.setItem('aurea_usuario_actual_nombre', usuarioActual);
+                        if (usuarioActualToken) localStorage.setItem('aurea_usuario_actual_token', usuarioActualToken);
                         sessionStorage.setItem('aurea_sesion_activa', 'true');
                         desbloquearApp();
                     } else {
@@ -1152,8 +1170,10 @@ def mobile_dashboard_preview():
                         const data = await res.json();
                         usuarioActualId = data.usuario_id;
                         usuarioActual = data.username;
+                        usuarioActualToken = data.biometric_token || null;
                         localStorage.setItem('aurea_usuario_actual_id', usuarioActualId);
                         localStorage.setItem('aurea_usuario_actual_nombre', usuarioActual);
+                        if (usuarioActualToken) localStorage.setItem('aurea_usuario_actual_token', usuarioActualToken);
                         sessionStorage.setItem('aurea_sesion_activa', 'true');
                         alert(`¡Bienvenido a AUREA, ${username}! Tu cuenta ha sido creada exitosamente.`);
                         desbloquearApp();

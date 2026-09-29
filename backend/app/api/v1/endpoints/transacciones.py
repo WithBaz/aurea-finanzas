@@ -51,6 +51,11 @@ def crear_transaccion_manual(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cuenta de origen no encontrada"
         )
+    if current_uid is not None and cuenta_origen.usuario_id is not None and cuenta_origen.usuario_id != current_uid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para operar con esta cuenta de origen."
+        )
 
     # Actualizar saldos según tipo
     if tx_in.tipo == TipoTransaccion.EGRESO:
@@ -69,6 +74,11 @@ def crear_transaccion_manual(
         cuenta_destino = db.query(Cuenta).filter(Cuenta.id == tx_in.cuenta_destino_id).first()
         if not cuenta_destino:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta de destino no encontrada")
+        if current_uid is not None and cuenta_destino.usuario_id is not None and cuenta_destino.usuario_id != current_uid:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permiso para operar con esta cuenta de destino."
+            )
         cuenta_origen.saldo_actual -= tx_in.monto
         cuenta_destino.saldo_actual += tx_in.monto
 
@@ -257,6 +267,7 @@ async def registrar_gasto_ia_rapida(
 def reasignar_cuenta_transaccion(
     transaccion_id: int,
     payload: dict,
+    current_uid: Optional[int] = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """
@@ -265,11 +276,15 @@ def reasignar_cuenta_transaccion(
     tx = db.query(Transaccion).filter(Transaccion.id == transaccion_id).first()
     if not tx:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
+    if current_uid is not None and tx.usuario_id is not None and tx.usuario_id != current_uid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para modificar esta transacción.")
 
     nueva_cuenta_id = payload.get("cuenta_id")
     nueva_cuenta = db.query(Cuenta).filter(Cuenta.id == nueva_cuenta_id).first()
     if not nueva_cuenta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
+    if current_uid is not None and nueva_cuenta.usuario_id is not None and nueva_cuenta.usuario_id != current_uid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para asignar a esta cuenta.")
 
     # Revertir saldo anterior si aplica
     antigua_cuenta = tx.cuenta_origen
@@ -309,6 +324,7 @@ def _aplicar_efecto_saldo(cuenta: Cuenta, tipo_tx: TipoTransaccion, monto: float
 @router.get("/{transaccion_id}", response_model=TransaccionResponse)
 def obtener_detalle_transaccion(
     transaccion_id: int,
+    current_uid: Optional[int] = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """
@@ -317,6 +333,8 @@ def obtener_detalle_transaccion(
     tx = db.query(Transaccion).filter(Transaccion.id == transaccion_id).first()
     if not tx:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
+    if current_uid is not None and tx.usuario_id is not None and tx.usuario_id != current_uid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para acceder a esta transacción.")
     return tx
 
 
@@ -324,6 +342,7 @@ def obtener_detalle_transaccion(
 def actualizar_transaccion(
     transaccion_id: int,
     tx_in: TransaccionUpdate,
+    current_uid: Optional[int] = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """
@@ -332,6 +351,8 @@ def actualizar_transaccion(
     tx = db.query(Transaccion).filter(Transaccion.id == transaccion_id).first()
     if not tx:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
+    if current_uid is not None and tx.usuario_id is not None and tx.usuario_id != current_uid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para modificar esta transacción.")
 
     cuenta_anterior = tx.cuenta_origen
     cuenta_nueva = cuenta_anterior
@@ -339,6 +360,8 @@ def actualizar_transaccion(
         cuenta_nueva = db.query(Cuenta).filter(Cuenta.id == tx_in.cuenta_origen_id).first()
         if not cuenta_nueva:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nueva cuenta no encontrada")
+        if current_uid is not None and cuenta_nueva.usuario_id is not None and cuenta_nueva.usuario_id != current_uid:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para operar con esta cuenta.")
 
     # 1. Revertir saldo anterior
     if cuenta_anterior:
@@ -375,6 +398,7 @@ def actualizar_transaccion(
 @router.delete("/{transaccion_id}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_transaccion(
     transaccion_id: int,
+    current_uid: Optional[int] = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """
@@ -383,6 +407,8 @@ def eliminar_transaccion(
     tx = db.query(Transaccion).filter(Transaccion.id == transaccion_id).first()
     if not tx:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
+    if current_uid is not None and tx.usuario_id is not None and tx.usuario_id != current_uid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para eliminar esta transacción.")
 
     if tx.cuenta_origen:
         _aplicar_efecto_saldo(tx.cuenta_origen, tx.tipo, tx.monto, aplicar=False)

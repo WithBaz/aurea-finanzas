@@ -95,7 +95,7 @@ def registrar_usuario(
 
     if existente:
         # Si ya existe con ese nombre, verificar si el PIN/contraseña coincide para iniciar sesión
-        if existente.pin_hash == pin_hash:
+        if secrets.compare_digest(existente.pin_hash, pin_hash):
             return {
                 "status": "exitoso",
                 "mensaje": f"Bienvenido de nuevo, {existente.username}.",
@@ -164,7 +164,7 @@ def iniciar_sesion(
         )
 
     pin_hash = calcular_hash_pin(payload.pin)
-    if pin_hash != usuario.pin_hash:
+    if not secrets.compare_digest(pin_hash, usuario.pin_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Contraseña o PIN incorrecto. Intenta de nuevo."
@@ -281,7 +281,7 @@ def cambiar_pin(
             detail="No hay usuario registrado."
         )
 
-    if calcular_hash_pin(payload.pin_actual) != usuario.pin_hash:
+    if not secrets.compare_digest(calcular_hash_pin(payload.pin_actual), usuario.pin_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="El PIN actual no coincide."

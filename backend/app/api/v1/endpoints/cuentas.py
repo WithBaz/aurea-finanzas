@@ -59,12 +59,21 @@ def crear_cuenta(
 
 
 @router.get("/{cuenta_id}", response_model=CuentaResponse)
-def obtener_cuenta(cuenta_id: int, db: Session = Depends(get_db)):
+def obtener_cuenta(
+    cuenta_id: int,
+    current_uid: Optional[int] = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
     if not cuenta:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cuenta no encontrada"
+        )
+    if current_uid is not None and cuenta.usuario_id is not None and cuenta.usuario_id != current_uid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para acceder a esta cuenta."
         )
     return cuenta
 
@@ -73,6 +82,7 @@ def obtener_cuenta(cuenta_id: int, db: Session = Depends(get_db)):
 def actualizar_cuenta(
     cuenta_id: int,
     cuenta_in: CuentaUpdate,
+    current_uid: Optional[int] = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """
@@ -81,6 +91,11 @@ def actualizar_cuenta(
     cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
     if not cuenta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
+    if current_uid is not None and cuenta.usuario_id is not None and cuenta.usuario_id != current_uid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para modificar esta cuenta."
+        )
 
     update_data = cuenta_in.model_dump(exclude_unset=True)
     cupo_disp = update_data.pop("cupo_disponible", None)
@@ -97,13 +112,22 @@ def actualizar_cuenta(
 
 
 @router.delete("/{cuenta_id}", status_code=status.HTTP_204_NO_CONTENT)
-def eliminar_cuenta(cuenta_id: int, db: Session = Depends(get_db)):
+def eliminar_cuenta(
+    cuenta_id: int,
+    current_uid: Optional[int] = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """
     Elimina una cuenta y sus transacciones asociadas.
     """
     cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
     if not cuenta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
+    if current_uid is not None and cuenta.usuario_id is not None and cuenta.usuario_id != current_uid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para eliminar esta cuenta."
+        )
     
     # Eliminar en cascada las transacciones asociadas a la cuenta
     db.query(Transaccion).filter(
@@ -116,14 +140,21 @@ def eliminar_cuenta(cuenta_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/sincronizar", response_model=List[CuentaResponse])
-def sincronizar_cuentas(cuentas_in: List[CuentaCreate], db: Session = Depends(get_db)):
+def sincronizar_cuentas(
+    cuentas_in: List[CuentaCreate],
+    current_uid: Optional[int] = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """
     Sincroniza y rehidrata cuentas desde la caché local del cliente cuando
     un contenedor efímero se reinicia o se conecta por primera vez.
     """
     resultados = []
     for c_data in cuentas_in:
-        existente = db.query(Cuenta).filter(Cuenta.nombre == c_data.nombre, Cuenta.activa == True).first()
+        query = db.query(Cuenta).filter(Cuenta.nombre == c_data.nombre, Cuenta.activa == True)
+        if current_uid:
+            query = query.filter((Cuenta.usuario_id == current_uid) | (Cuenta.usuario_id == None))
+        existente = query.first()
         if existente:
             existente.saldo_actual = c_data.saldo_actual
             existente.tipo = c_data.tipo
@@ -133,6 +164,8 @@ def sincronizar_cuentas(cuentas_in: List[CuentaCreate], db: Session = Depends(ge
         else:
             d = c_data.model_dump()
             d.pop("cupo_disponible", None)
+            if current_uid:
+                d["usuario_id"] = current_uid
             nueva = Cuenta(**d)
             db.add(nueva)
             resultados.append(nueva)
@@ -145,6 +178,7 @@ def sincronizar_cuentas(cuentas_in: List[CuentaCreate], db: Session = Depends(ge
 @router.post("/{cuenta_id}/corte", response_model=CuentaResponse)
 def registrar_corte_tarjeta(
     cuenta_id: int,
+    current_uid: Optional[int] = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """
@@ -154,6 +188,8 @@ def registrar_corte_tarjeta(
     cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
     if not cuenta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta no encontrada")
+    if current_uid is not None and cuenta.usuario_id is not None and cuenta.usuario_id != current_uid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para modificar esta cuenta.")
     if cuenta.tipo != TipoCuenta.CREDITO:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo las tarjetas de crédito tienen fecha de corte")
 
@@ -169,6 +205,7 @@ def registrar_corte_tarjeta(
 def registrar_pago_tarjeta(
     cuenta_id: int,
     pago_in: PagoTarjetaRequest,
+    current_uid: Optional[int] = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """
@@ -180,6 +217,8 @@ def registrar_pago_tarjeta(
     cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_id).first()
     if not cuenta:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarjeta no encontrada")
+    if current_uid is not None and cuenta.usuario_id is not None and cuenta.usuario_id != current_uid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para modificar esta tarjeta.")
     if cuenta.tipo != TipoCuenta.CREDITO:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo se pueden registrar pagos a tarjetas de crédito")
 
@@ -193,6 +232,8 @@ def registrar_pago_tarjeta(
         cuenta_origen = db.query(Cuenta).filter(Cuenta.id == pago_in.cuenta_origen_id).first()
         if not cuenta_origen:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cuenta de origen para el pago no encontrada")
+        if current_uid is not None and cuenta_origen.usuario_id is not None and cuenta_origen.usuario_id != current_uid:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para debitar de esta cuenta de origen.")
         # Descontar de la cuenta líquida
         cuenta_origen.saldo_actual -= monto
         
@@ -206,7 +247,7 @@ def registrar_pago_tarjeta(
             descripcion=pago_in.descripcion or f"Pago de tarjeta {cuenta.nombre} con fondos de {cuenta_origen.nombre}",
             cuenta_origen_id=cuenta_origen.id,
             cuenta_destino_id=cuenta.id,
-            usuario_id=cuenta.usuario_id
+            usuario_id=current_uid or cuenta.usuario_id
         )
         db.add(tx)
         db.flush()

@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
-from backend.app.api.deps import get_current_user_id
+from backend.app.api.deps import get_current_user_id, require_current_user_id
 from backend.app.schemas import (
     SemaforoResponse,
     RendimientoDiarioResponse,
@@ -97,32 +97,23 @@ def actualizar_perfil(
 @router.post("/limpiar-demo")
 def reiniciar_todo_desde_cero(
     db: Session = Depends(get_db),
-    current_uid: Optional[int] = Depends(get_current_user_id)
+    current_uid: int = Depends(require_current_user_id)
 ):
     """
-    Elimina datos asociados al usuario actual para empezar desde cero.
+    Elimina datos asociados al usuario actual para empezar desde cero de manera segura.
+    Requiere autenticación obligatoria y jamás toca datos de otros usuarios.
     """
     from backend.app.models import MetaAhorro, GastoFijo
-    if current_uid:
-        db.query(Transaccion).filter((Transaccion.usuario_id == current_uid) | (Transaccion.usuario_id == None)).delete(synchronize_session=False)
-        db.query(MetaAhorro).filter((MetaAhorro.usuario_id == current_uid) | (MetaAhorro.usuario_id == None)).delete(synchronize_session=False)
-        db.query(Cuenta).filter((Cuenta.usuario_id == current_uid) | (Cuenta.usuario_id == None)).delete(synchronize_session=False)
-        db.query(GastoFijo).filter((GastoFijo.usuario_id == current_uid) | (GastoFijo.usuario_id == None)).delete(synchronize_session=False)
-        perfil = db.query(PerfilFinanciero).filter((PerfilFinanciero.usuario_id == current_uid) | (PerfilFinanciero.usuario_id == None)).first()
-        if perfil:
-            perfil.ingreso_mensual_estimado = 0.0
-            perfil.compromisos_fijos_mensual = 0.0
-    else:
-        db.query(Transaccion).delete()
-        db.query(MetaAhorro).delete()
-        db.query(Cuenta).delete()
-        db.query(GastoFijo).delete()
-        perfil = db.query(PerfilFinanciero).first()
-        if perfil:
-            perfil.ingreso_mensual_estimado = 0.0
-            perfil.compromisos_fijos_mensual = 0.0
+    db.query(Transaccion).filter(Transaccion.usuario_id == current_uid).delete(synchronize_session=False)
+    db.query(MetaAhorro).filter(MetaAhorro.usuario_id == current_uid).delete(synchronize_session=False)
+    db.query(Cuenta).filter(Cuenta.usuario_id == current_uid).delete(synchronize_session=False)
+    db.query(GastoFijo).filter(GastoFijo.usuario_id == current_uid).delete(synchronize_session=False)
+    perfil = db.query(PerfilFinanciero).filter(PerfilFinanciero.usuario_id == current_uid).first()
+    if perfil:
+        perfil.ingreso_mensual_estimado = 0.0
+        perfil.compromisos_fijos_mensual = 0.0
     db.commit()
-    return {"status": "exitoso", "mensaje": "Base de datos reiniciada a cero. Tu aplicación está 100% limpia para registrar tus cuentas reales."}
+    return {"status": "exitoso", "mensaje": "Tus datos financieros personales han sido reiniciados a cero."}
 
 
 @router.get("/dashboard")
@@ -222,7 +213,10 @@ def obtener_estado_db(db: Session = Depends(get_db)):
 
 
 @router.get("/migrar-esquema")
-def ejecutar_migracion_esquema(db: Session = Depends(get_db)):
+def ejecutar_migracion_esquema(
+    current_uid: int = Depends(require_current_user_id),
+    db: Session = Depends(get_db)
+):
     """
     Ejecuta bajo demanda la migración de columnas y tablas, y reporta las columnas existentes.
     """
