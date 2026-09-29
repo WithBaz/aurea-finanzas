@@ -114,6 +114,10 @@ def mobile_dashboard_preview():
         <link rel="shortcut icon" href="/favicon.ico">
         <link rel="manifest" href="/manifest.json">
 
+        <!-- Preconnect para acelerar descarga de recursos externos -->
+        <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+        <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+
         <title>AUREA • Finanzas Personales</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -192,9 +196,48 @@ def mobile_dashboard_preview():
                 animation-name: onAutoFillStart;
                 animation-duration: 0.001s;
             }
+            /* Animaciones Apple Splash Screen & Biometría Face ID */
+            @keyframes splashAura {
+                0% { opacity: 0.35; transform: scale(0.95); }
+                100% { opacity: 0.85; transform: scale(1.08); }
+            }
+            @keyframes splashSpin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            @keyframes scanLaser {
+                0% { top: 12%; opacity: 0.2; }
+                50% { top: 82%; opacity: 1; }
+                100% { top: 12%; opacity: 0.2; }
+            }
+            .animate-scanLaser {
+                animation: scanLaser 1.5s ease-in-out infinite;
+            }
         </style>
     </head>
     <body class="selection:bg-blue-600 selection:text-white">
+
+        <!-- ========================================== -->
+        <!-- SPLASH SCREEN INSTANTÁNEO NATIVO APPLE HIG -->
+        <!-- Renderizado ultrarrápido de 0ms con estilos inline (sin bloqueo de CDN) -->
+        <!-- ========================================== -->
+        <div id="app-splash-screen" style="position:fixed;inset:0;z-index:99999;background:#000000;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.35s ease, transform 0.35s ease;">
+            <!-- Aura luminosa y logotipo AUREA -->
+            <div style="position:relative;width:84px;height:84px;margin-bottom:22px;display:flex;align-items:center;justify-content:center;">
+                <div style="position:absolute;inset:-10px;border-radius:30px;background:linear-gradient(135deg, rgba(94,92,230,0.5), rgba(10,132,255,0.45));filter:blur(16px);animation:splashAura 2s ease-in-out infinite alternate;"></div>
+                <div style="position:relative;width:76px;height:76px;border-radius:22px;background:#1C1C1E;border:1px solid rgba(255,255,255,0.18);overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;">
+                    <img src="/apple-touch-icon.png" alt="AUREA" style="width:100%;height:100%;object-fit:cover;display:block;">
+                </div>
+            </div>
+            <!-- Tipografía de Marca Apple -->
+            <h1 style="color:#ffffff;font-size:24px;font-weight:900;letter-spacing:-0.5px;margin:0 0 6px 0;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;">AUREA</h1>
+            <p style="color:#8E8E93;font-size:12px;font-weight:500;margin:0 0 28px 0;letter-spacing:0.2px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;">Gestión Financiera Personal</p>
+            <!-- Micro-indicador de Carga Apple -->
+            <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.06);padding:6px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.08);">
+                <div style="width:16px;height:16px;border:2px solid rgba(255,255,255,0.15);border-top-color:#0A84FF;border-right-color:#5E5CE6;border-radius:50%;animation:splashSpin 0.75s linear infinite;"></div>
+                <span style="color:#AEAEB2;font-size:11px;font-weight:600;letter-spacing:0.3px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;">Iniciando sistema seguro...</span>
+            </div>
+        </div>
 
         <!-- ========================================== -->
         <!-- PANTALLA DE ACCESO NATIVA (Login & Registro) -->
@@ -332,6 +375,35 @@ def mobile_dashboard_preview():
             <div class="text-[11px] text-[#8E8E93] flex items-center gap-1.5 pb-2">
                 <i class="fa-solid fa-shield-halved text-blue-400 text-xs"></i>
                 <span>Sesión segura y privada en cualquier navegador</span>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- OVERLAY DE ANIMACIÓN Y VERIFICACIÓN LOGIN (Apple Liquid Glass) -->
+        <!-- ========================================== -->
+        <div id="overlay-login-animacion" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-2xl flex flex-col items-center justify-center px-6 transition-all duration-300 opacity-0 pointer-events-none hidden">
+            <div id="login-anim-card" class="w-full max-w-xs rounded-3xl p-7 bg-[#1C1C1E]/95 border border-white/15 shadow-2xl flex flex-col items-center text-center relative overflow-hidden backdrop-blur-3xl transform transition-all duration-300 scale-95">
+                
+                <!-- Aura circular con brillo dinámico -->
+                <div class="relative w-20 h-20 mb-3 flex items-center justify-center">
+                    <div id="login-anim-aura" class="absolute inset-0 rounded-full bg-gradient-to-tr from-[#5E5CE6]/35 to-[#0A84FF]/35 blur-xl animate-pulse"></div>
+                    
+                    <!-- Caja de icono biométrico con escáner láser -->
+                    <div id="login-anim-iconbox" class="relative w-16 h-16 rounded-2xl bg-[#0A84FF]/10 border border-[#0A84FF]/30 flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden transition-all duration-300">
+                        <div id="login-scan-bar" class="absolute inset-x-1 h-0.5 bg-gradient-to-r from-transparent via-[#0A84FF] to-transparent shadow-[0_0_8px_#0A84FF] animate-scanLaser"></div>
+                        <i id="login-anim-icon" class="fa-solid fa-face-smile text-3xl text-[#0A84FF] transition-all duration-300"></i>
+                    </div>
+                </div>
+
+                <!-- Textos dinámicos -->
+                <h3 id="login-anim-title" class="text-base font-extrabold text-white mt-2 tracking-tight transition-all duration-200">Verificando Acceso</h3>
+                <p id="login-anim-subtitle" class="text-xs text-[#8E8E93] mt-1 transition-all duration-200">Autenticando credenciales seguras...</p>
+
+                <!-- Micro-badge de estado criptográfico -->
+                <div id="login-anim-badge" class="mt-4 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/25 flex items-center gap-2 transition-all duration-300">
+                    <span id="login-anim-badgedot" class="w-2 h-2 rounded-full bg-[#0A84FF] animate-ping"></span>
+                    <span id="login-anim-status" class="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Cifrado Biométrico</span>
+                </div>
             </div>
         </div>
 
@@ -971,16 +1043,31 @@ def mobile_dashboard_preview():
                 return _origFetch(url, options);
             };
 
+            // Ocultar Splash Screen inicial de carga
+            function ocultarSplashInicial() {
+                const splash = document.getElementById('app-splash-screen');
+                if (splash && splash.style.display !== 'none') {
+                    splash.style.opacity = '0';
+                    splash.style.transform = 'scale(1.04)';
+                    splash.style.pointerEvents = 'none';
+                    setTimeout(() => {
+                        splash.style.display = 'none';
+                    }, 350);
+                }
+            }
+
             // Inicializar sesión y comprobar autenticación
             async function inicializarSeguridad() {
                 // Si la sesión ya fue desbloqueada en esta navegación, mantener abierta
                 if (sessionStorage.getItem('aurea_sesion_activa') === 'true' && usuarioActualId) {
                     desbloquearApp(false);
+                    setTimeout(ocultarSplashInicial, 60);
                     return;
                 }
 
                 // Mostrar pantalla de inicio de sesión
                 bloquearApp();
+                setTimeout(ocultarSplashInicial, 80);
             }
 
             // Cambiar entre vista de Login y vista de Registro
@@ -1115,6 +1202,88 @@ def mobile_dashboard_preview():
                 ejecutarLogin();
             }
 
+            // ==========================================
+            // CONTROL DE ANIMACIÓN DE ACCESO NATIVO APPLE
+            // ==========================================
+            function mostrarOverlayLoginAnimacion(username) {
+                const overlay = document.getElementById('overlay-login-animacion');
+                const card = document.getElementById('login-anim-card');
+                const icon = document.getElementById('login-anim-icon');
+                const iconBox = document.getElementById('login-anim-iconbox');
+                const aura = document.getElementById('login-anim-aura');
+                const title = document.getElementById('login-anim-title');
+                const subtitle = document.getElementById('login-anim-subtitle');
+                const badge = document.getElementById('login-anim-badge');
+                const badgeDot = document.getElementById('login-anim-badgedot');
+                const badgeText = document.getElementById('login-anim-status');
+                const scanBar = document.getElementById('login-scan-bar');
+
+                if (!overlay) return;
+
+                if (scanBar) scanBar.classList.remove('hidden');
+                if (icon) icon.className = 'fa-solid fa-face-smile text-3xl text-[#0A84FF] transition-all duration-300';
+                if (iconBox) iconBox.className = 'relative w-16 h-16 rounded-2xl bg-[#0A84FF]/10 border border-[#0A84FF]/30 flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden transition-all duration-300';
+                if (aura) aura.className = 'absolute inset-0 rounded-full bg-gradient-to-tr from-[#5E5CE6]/35 to-[#0A84FF]/35 blur-xl animate-pulse';
+                if (card) { card.style.borderColor = 'rgba(255, 255, 255, 0.15)'; }
+                if (title) title.innerText = 'Verificando Acceso';
+                if (subtitle) subtitle.innerText = `Autenticando credenciales para ${username || 'tu cuenta'}...`;
+                if (badge) badge.className = 'mt-4 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/25 flex items-center gap-2 transition-all duration-300';
+                if (badgeDot) badgeDot.className = 'w-2 h-2 rounded-full bg-[#0A84FF] animate-ping';
+                if (badgeText) { badgeText.innerText = 'Cifrado Biométrico'; badgeText.className = 'text-[10px] font-bold text-blue-400 uppercase tracking-wider'; }
+
+                overlay.classList.remove('hidden');
+                void overlay.offsetWidth; // Forzar reflow para animación suave
+                overlay.classList.remove('opacity-0', 'pointer-events-none');
+                overlay.classList.add('opacity-100');
+                if (card) {
+                    card.classList.remove('scale-95');
+                    card.classList.add('scale-100');
+                }
+            }
+
+            function marcarExitoLoginAnimacion(username) {
+                const icon = document.getElementById('login-anim-icon');
+                const iconBox = document.getElementById('login-anim-iconbox');
+                const aura = document.getElementById('login-anim-aura');
+                const title = document.getElementById('login-anim-title');
+                const subtitle = document.getElementById('login-anim-subtitle');
+                const badge = document.getElementById('login-anim-badge');
+                const badgeDot = document.getElementById('login-anim-badgedot');
+                const badgeText = document.getElementById('login-anim-status');
+                const scanBar = document.getElementById('login-scan-bar');
+                const card = document.getElementById('login-anim-card');
+
+                if (scanBar) scanBar.classList.add('hidden');
+                if (icon) icon.className = 'fa-solid fa-check text-3xl text-[#30D158] transition-all duration-300 transform scale-110';
+                if (iconBox) iconBox.className = 'relative w-16 h-16 rounded-2xl bg-[#30D158]/15 border border-[#30D158]/40 flex items-center justify-center shadow-xl shadow-emerald-500/30 overflow-hidden transition-all duration-300';
+                if (aura) aura.className = 'absolute inset-0 rounded-full bg-gradient-to-tr from-[#30D158]/35 to-[#0A84FF]/25 blur-xl animate-none';
+                if (card) card.style.borderColor = 'rgba(48, 209, 88, 0.4)';
+                if (title) title.innerText = '¡Acceso Concedido!';
+                if (subtitle) subtitle.innerText = `¡Bienvenido de vuelta, ${username || 'Usuario'}!`;
+                if (badge) badge.className = 'mt-4 px-3.5 py-1.5 rounded-full bg-[#30D158]/15 border border-[#30D158]/35 flex items-center gap-2 transition-all duration-300';
+                if (badgeDot) badgeDot.className = 'w-2 h-2 rounded-full bg-[#30D158]';
+                if (badgeText) { badgeText.innerText = 'Identidad Verificada'; badgeText.className = 'text-[10px] font-bold text-[#30D158] uppercase tracking-wider'; }
+
+                try {
+                    if (navigator.vibrate) navigator.vibrate([15, 30, 15]);
+                } catch(e) {}
+            }
+
+            function ocultarOverlayLoginAnimacion() {
+                const overlay = document.getElementById('overlay-login-animacion');
+                const card = document.getElementById('login-anim-card');
+                if (!overlay) return;
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+                if (card) {
+                    card.classList.remove('scale-100');
+                    card.classList.add('scale-95');
+                }
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    if (card) card.style.borderColor = '';
+                }, 300);
+            }
+
             // Flujo de Inicio de Sesión
             async function ejecutarLogin() {
                 const username = document.getElementById('login-input-username')?.value.trim();
@@ -1148,12 +1317,20 @@ def mobile_dashboard_preview():
                     btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i><span>Ingresando...</span>';
                 }
 
+                // Mostrar animación elegante integrada estilo Apple HIG
+                mostrarOverlayLoginAnimacion(username);
+
+                // Mínimo tiempo de animación solicitado: ~1.1s ("que se demore un segundito y salga una animación bonita")
+                // Si la red o servidor tarda más, Promise.all esperará sin congelar la animación.
+                const minWait = new Promise(r => setTimeout(r, 1100));
+                const loginFetch = _origFetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: username, pin: password })
+                });
+
                 try {
-                    const res = await _origFetch('/api/v1/auth/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username: username, pin: password })
-                    });
+                    const [res] = await Promise.all([loginFetch, minWait]);
 
                     if (res.ok) {
                         const data = await res.json();
@@ -1164,8 +1341,16 @@ def mobile_dashboard_preview():
                         localStorage.setItem('aurea_usuario_actual_nombre', usuarioActual);
                         if (usuarioActualToken) localStorage.setItem('aurea_usuario_actual_token', usuarioActualToken);
                         sessionStorage.setItem('aurea_sesion_activa', 'true');
+
+                        // Efecto de confirmación exitosa en el modal de animación
+                        marcarExitoLoginAnimacion(usuarioActual);
+
+                        // Pausa de 500ms para apreciar el acceso concedido antes de abrir la app
+                        await new Promise(r => setTimeout(r, 500));
+                        ocultarOverlayLoginAnimacion();
                         desbloquearApp();
                     } else {
+                        ocultarOverlayLoginAnimacion();
                         const err = await res.json();
                         if (errLog) {
                             errLog.innerText = err.detail || 'Usuario o contraseña incorrectos.';
@@ -1178,6 +1363,7 @@ def mobile_dashboard_preview():
                         }
                     }
                 } catch(e) {
+                    ocultarOverlayLoginAnimacion();
                     if (errLog) {
                         errLog.innerText = 'Error de conexión con el servidor. Reintenta.';
                         errLog.classList.remove('hidden');
@@ -2534,6 +2720,14 @@ def mobile_dashboard_preview():
             configurarAutoFillFaceId();
             cargarDatosPerfilAjustes();
             setInterval(() => { if(sesionAutenticada) fetchDashboard(); }, 8000);
+
+            // Garantizar desaparición fluida del splash inicial de carga
+            window.addEventListener('DOMContentLoaded', () => {
+                setTimeout(ocultarSplashInicial, 600);
+            });
+            window.addEventListener('load', () => {
+                setTimeout(ocultarSplashInicial, 200);
+            });
 
             document.addEventListener('visibilitychange', () => {
                 if (!document.hidden && sesionAutenticada) fetchDashboard();
