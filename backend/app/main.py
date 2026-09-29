@@ -265,7 +265,7 @@ def mobile_dashboard_preview():
                 visibility: hidden !important;
             }
 
-            /* Contenedor maestro de autenticación (fijo, centrado, a salvo de notch / dynamic island) */
+            /* Contenedor maestro de autenticación (fijo, centrado, a salvo de notch / dynamic island y teclado virtual) */
             #pantalla-auth {
                 position: fixed !important;
                 top: 0 !important;
@@ -280,12 +280,12 @@ def mobile_dashboard_preview():
                 display: flex !important;
                 flex-direction: column !important;
                 align-items: center !important;
-                justify-content: center !important;
+                justify-content: flex-start !important;
                 overflow-x: hidden !important;
                 overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch;
                 padding-top: calc(var(--sat) + 12px) !important;
-                padding-bottom: calc(var(--sab) + 12px) !important;
+                padding-bottom: calc(var(--sab) + 140px) !important;
                 padding-left: 1.5rem !important;
                 padding-right: 1.5rem !important;
             }
@@ -522,15 +522,10 @@ def mobile_dashboard_preview():
                             <!-- Campo Usuario -->
                             <div>
                                 <label for="login-input-username" class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1.5">Tu Usuario</label>
-                                <div class="relative flex items-center">
-                                    <span class="absolute left-0 inset-y-0 w-11 flex items-center justify-center text-[#8E8E93] pointer-events-none">
-                                        <i class="fa-solid fa-user text-xs"></i>
-                                    </span>
-                                    <input type="text" id="login-input-username" name="username" placeholder="Ingresa tu usuario"
-                                        autocomplete="username webauthn" autocapitalize="none" autocorrect="off" spellcheck="false"
-                                        class="w-full h-[50px] glass-input pl-11 pr-4 text-white font-medium text-base outline-none transition"
-                                        required>
-                                </div>
+                                <input type="text" id="login-input-username" name="username" placeholder="Ingresa tu usuario"
+                                    autocomplete="username webauthn" autocapitalize="none" autocorrect="off" spellcheck="false"
+                                    class="w-full h-[50px] glass-input px-4 text-white font-medium text-base outline-none transition"
+                                    required>
                             </div>
 
                             <!-- Campo Contraseña -->
@@ -543,12 +538,9 @@ def mobile_dashboard_preview():
                                     </span>
                                 </div>
                                 <div class="relative flex items-center">
-                                    <span class="absolute left-0 inset-y-0 w-11 flex items-center justify-center text-[#8E8E93] pointer-events-none">
-                                        <i class="fa-solid fa-lock text-xs"></i>
-                                    </span>
                                     <input type="password" id="login-input-password" name="password" placeholder="Ingresa tu contraseña"
                                         autocomplete="current-password"
-                                        class="w-full h-[50px] glass-input pl-11 pr-11 text-white font-medium text-base outline-none transition"
+                                        class="w-full h-[50px] glass-input pl-4 pr-11 text-white font-medium text-base outline-none transition"
                                         required>
                                     <button type="button" onclick="toggleVerPassword('login-input-password', 'login-ojo-icon')" class="absolute right-0 inset-y-0 w-11 flex items-center justify-center text-[#8E8E93] hover:text-white transition active:scale-90" tabindex="-1">
                                         <i class="fa-solid fa-eye text-xs" id="login-ojo-icon"></i>
@@ -1513,7 +1505,16 @@ def mobile_dashboard_preview():
                 userEl.addEventListener('change', handleInput);
                 passEl.addEventListener('change', handleInput);
 
-                // 3. Si el usuario toca el campo de usuario y ya existen credenciales guardadas en el navegador
+                // 3. Centrar campo en pantalla al enfocar para que no quede tapado por el teclado
+                const centrarCampoVisible = (el) => {
+                    setTimeout(() => {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 300);
+                };
+                userEl.addEventListener('focus', () => centrarCampoVisible(userEl));
+                passEl.addEventListener('focus', () => centrarCampoVisible(passEl));
+
+                // 4. Si el usuario toca el campo de usuario y ya existen credenciales guardadas en el navegador
                 userEl.addEventListener('focus', () => {
                     if (autoLoginPausado) return;
                     setTimeout(() => {

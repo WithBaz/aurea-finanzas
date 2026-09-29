@@ -337,7 +337,7 @@ def test_aislamiento_navegacion_y_centrado_login(client):
     assert "#nav-inferior.hidden" in html
     assert "#app-principal.hidden" in html
     assert "padding-top: calc(var(--sat) + 12px) !important;" in html
-    assert "padding-bottom: calc(var(--sab) + 12px) !important;" in html
+    assert "padding-bottom: calc(var(--sab) + 140px) !important;" in html
     assert "position: fixed !important;" in html
     assert "z-index: 80 !important;" in html
 
@@ -371,9 +371,11 @@ def test_alineacion_cursor_y_placeholder_usuario(client):
     assert "line-height: normal !important;" in html
     assert "height: 3.125rem !important;" in html
 
-    # 3. Dimensiones y centrado de contenedor e icono
-    assert 'class="w-full h-[50px] glass-input pl-11' in html
-    assert 'class="absolute left-0 inset-y-0 w-11 flex items-center justify-center text-[#8E8E93] pointer-events-none"' in html
+    # 3. Dimensiones, alineación limpia px-4 y despeje para teclado virtual
+    assert 'class="w-full h-[50px] glass-input px-4 text-white font-medium text-base outline-none transition"' in html
+    assert 'class="w-full h-[50px] glass-input pl-4 pr-11 text-white font-medium text-base outline-none transition"' in html
+    assert "padding-bottom: calc(var(--sab) + 140px) !important;" in html
+    assert "centrarCampoVisible" in html
 
 
 
