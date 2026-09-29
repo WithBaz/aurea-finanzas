@@ -377,6 +377,11 @@ def test_alineacion_cursor_y_placeholder_usuario(client):
     assert "padding-bottom: calc(var(--sab) + 140px) !important;" in html
     assert "centrarCampoVisible" in html
 
+    # 4. Padding estático síncrono y control de foco en WebKit / Safari iOS
+    assert "padding-left: 1rem !important;" in html
+    assert "#login-input-password, #reg-input-password" in html
+    assert "pageshow" in html
+
 
 
 

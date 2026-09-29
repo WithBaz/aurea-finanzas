@@ -303,18 +303,36 @@ def mobile_dashboard_preview():
                 transition: all 0.25s ease !important;
             }
             .glass-input {
+                display: block !important;
+                width: 100% !important;
                 height: 3.125rem !important; /* 50px Apple HIG */
+                min-height: 3.125rem !important;
+                max-height: 3.125rem !important;
+                padding-left: 1rem !important; /* 16px nativo e inmediato antes de renderizar Tailwind */
+                padding-right: 1rem !important;
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+                margin: 0 !important;
                 line-height: normal !important; /* Elimina desalineación vertical del cursor parpadeante en WebKit/iOS */
                 caret-color: #0A84FF !important; /* Cursor azul Apple alineado */
+                font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif !important;
+                font-size: 1rem !important; /* 16px para evitar auto-zoom indeseado en Safari iOS */
+                font-weight: 500 !important;
                 background: rgba(0, 0, 0, 0.35) !important;
                 backdrop-filter: blur(20px) !important;
                 -webkit-backdrop-filter: blur(20px) !important;
                 border: 1px solid rgba(255, 255, 255, 0.12) !important;
                 border-radius: 1rem !important;
                 color: #FFFFFF !important;
-                font-size: 1rem !important; /* 16px para evitar auto-zoom indeseado en Safari iOS */
-                transition: all 0.2s ease !important;
+                outline: none !important;
                 box-sizing: border-box !important;
+                -webkit-appearance: none !important;
+                appearance: none !important;
+                vertical-align: middle !important;
+                transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
+            }
+            #login-input-password, #reg-input-password {
+                padding-right: 2.75rem !important;
             }
             .glass-input:focus {
                 border-color: #0A84FF !important;
@@ -326,6 +344,14 @@ def mobile_dashboard_preview():
                 opacity: 0.8 !important;
                 font-size: 0.9375rem !important;
                 font-weight: 500 !important;
+                line-height: normal !important;
+            }
+            .glass-input::-webkit-input-placeholder {
+                color: #8E8E93 !important;
+                opacity: 0.8 !important;
+                font-size: 0.9375rem !important;
+                font-weight: 500 !important;
+                line-height: normal !important;
             }
 
             /* REGLAS MODO CLARO (Apple HIG Theme) */
@@ -448,6 +474,12 @@ def mobile_dashboard_preview():
             html.theme-light .glass-input::placeholder {
                 color: #8E8E93 !important;
                 opacity: 0.9 !important;
+                line-height: normal !important;
+            }
+            html.theme-light .glass-input::-webkit-input-placeholder {
+                color: #8E8E93 !important;
+                opacity: 0.9 !important;
+                line-height: normal !important;
             }
             html.theme-light [id^="modal-"] > div:not(.bg-black\/80) {
                 background-color: #FFFFFF !important;
@@ -1392,6 +1424,9 @@ def mobile_dashboard_preview():
                     }
                     if (ponerFoco) {
                         userInp.focus();
+                    } else if (document.activeElement === userInp) {
+                        // Desenfocar si Safari restauró foco residual al reabrir para prevenir cursor desfasado o teclado abierto
+                        userInp.blur();
                     }
                 }
                 configurarAutoFillFaceId();
@@ -1986,6 +2021,9 @@ def mobile_dashboard_preview():
                 // Ocultar navegación y app principal de inmediato
                 document.getElementById('nav-inferior')?.classList.add('hidden');
                 document.getElementById('app-principal')?.classList.add('hidden');
+                if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                    try { document.activeElement.blur(); } catch(e) {}
+                }
                 const pantalla = document.getElementById('pantalla-auth');
                 if(pantalla) {
                     pantalla.classList.remove('hidden');
@@ -3247,6 +3285,11 @@ def mobile_dashboard_preview():
                 try { aplicarDatosDashboard(JSON.parse(cacheInicial)); } catch(e) {}
             }
 
+            // Desactivar foco fantasma o restauración automática de WebKit/Safari al abrir la app
+            if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                try { document.activeElement.blur(); } catch(e) {}
+            }
+
             inicializarSeguridad();
             configurarAutoFillFaceId();
             aplicarTema(temaActualConfig, false);
@@ -3254,7 +3297,19 @@ def mobile_dashboard_preview():
             setInterval(() => { if(sesionAutenticada) fetchDashboard(); }, 8000);
 
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden && sesionAutenticada) fetchDashboard();
+                if (!document.hidden) {
+                    if (sesionAutenticada) {
+                        fetchDashboard();
+                    } else if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                        // En reapertura o retorno de pestaña, prevenir que Safari despierte el cursor desfasado
+                        try { document.activeElement.blur(); } catch(e) {}
+                    }
+                }
+            });
+            window.addEventListener('pageshow', () => {
+                if (!sesionAutenticada && document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                    try { document.activeElement.blur(); } catch(e) {}
+                }
             });
             window.addEventListener('focus', () => {
                 if(sesionAutenticada) fetchDashboard();
