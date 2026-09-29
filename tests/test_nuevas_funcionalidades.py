@@ -317,6 +317,41 @@ def test_login_liquid_glass_y_sin_splash_loader(client):
     assert res_icon.headers["content-type"] == "image/png"
 
 
+def test_aislamiento_navegacion_y_centrado_login(client):
+    """
+    Verifica que:
+    1. La barra de navegación inferior y el contenedor principal estén estrictamente aislados y ocultos con clase hidden mientras la sesión no esté autenticada.
+    2. #pantalla-auth cuente con posición fija completa, z-index superior, padding de área segura para notch/dynamic island y centrado flex.
+    3. Las funciones JavaScript de autenticación controlen la visibilidad de nav-inferior y app-principal.
+    4. El cambio de tabs y modales estén blindados ante accesos no autenticados.
+    """
+    res = client.get("/")
+    assert res.status_code == 200
+    html = res.text
+
+    # 1. Elementos estructurales ocultos por defecto
+    assert 'id="nav-inferior" class="fixed bottom-0 left-0 right-0 z-40 liquid-glass-nav hidden"' in html
+    assert 'id="app-principal" class="w-full max-w-lg mx-auto px-4 sm:px-6 pt-2 hidden"' in html
+
+    # 2. Reglas CSS estrictas
+    assert "#nav-inferior.hidden" in html
+    assert "#app-principal.hidden" in html
+    assert "padding-top: calc(var(--sat) + 12px) !important;" in html
+    assert "padding-bottom: calc(var(--sab) + 12px) !important;" in html
+    assert "position: fixed !important;" in html
+    assert "z-index: 80 !important;" in html
+
+    # 3. Control de visibilidad en JS
+    assert "document.getElementById('nav-inferior')?.classList.add('hidden');" in html
+    assert "document.getElementById('app-principal')?.classList.add('hidden');" in html
+    assert "document.getElementById('nav-inferior')?.classList.remove('hidden');" in html
+    assert "document.getElementById('app-principal')?.classList.remove('hidden');" in html
+
+    # 4. Guardas de autenticación
+    assert "if (!sesionAutenticada) return;" in html
+
+
+
 
 
 

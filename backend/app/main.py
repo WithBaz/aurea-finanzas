@@ -254,13 +254,40 @@ def mobile_dashboard_preview():
             .animate-laserScanHUD {
                 animation: scanLaserHUD 1.4s ease-in-out infinite;
             }
-            /* Reglas estrictas para asegurar que pantallas inactivas nunca bloqueen clics */
+            /* Reglas estrictas para asegurar que pantallas inactivas nunca bloqueen clics ni sean visibles */
             #pantalla-auth.hidden,
             #overlay-login-animacion.hidden,
+            #nav-inferior.hidden,
+            #app-principal.hidden,
             .hidden {
                 display: none !important;
                 pointer-events: none !important;
                 visibility: hidden !important;
+            }
+
+            /* Contenedor maestro de autenticación (fijo, centrado, a salvo de notch / dynamic island) */
+            #pantalla-auth {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                height: 100dvh !important;
+                z-index: 80 !important;
+                background-color: var(--system-bg) !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                overflow-x: hidden !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch;
+                padding-top: calc(var(--sat) + 12px) !important;
+                padding-bottom: calc(var(--sab) + 12px) !important;
+                padding-left: 1.5rem !important;
+                padding-right: 1.5rem !important;
             }
             /* Estilo Liquid Glass Nativo Apple (visionOS / iOS 18 HIG) */
             #vista-login, #vista-registro {
@@ -438,153 +465,158 @@ def mobile_dashboard_preview():
         <!-- ========================================== -->
         <!-- PANTALLA DE ACCESO NATIVA (Login & Registro) -->
         <!-- ========================================== -->
-        <div id="pantalla-auth" class="fixed inset-0 z-50 bg-[#000000] flex flex-col justify-between items-center px-6 py-6 transition-all duration-300 overflow-y-auto relative overflow-hidden" style="display: flex; opacity: 1; pointer-events: auto;">
+        <div id="pantalla-auth" class="fixed inset-0 z-50 bg-[#000000] flex flex-col items-center justify-center px-6 transition-all duration-300 overflow-y-auto" style="display: flex; opacity: 1; pointer-events: auto;">
             
             <!-- Orbes de luz ambiente estilo visionOS / Liquid Glass -->
-            <div class="absolute -top-24 -left-20 w-80 h-80 rounded-full bg-gradient-to-tr from-purple-600/25 to-indigo-500/20 blur-[90px] pointer-events-none"></div>
-            <div class="absolute -bottom-20 -right-16 w-80 h-80 rounded-full bg-gradient-to-tr from-blue-600/25 to-cyan-500/20 blur-[90px] pointer-events-none"></div>
+            <div class="fixed -top-24 -left-20 w-80 h-80 rounded-full bg-gradient-to-tr from-purple-600/25 to-indigo-500/20 blur-[90px] pointer-events-none"></div>
+            <div class="fixed -bottom-20 -right-16 w-80 h-80 rounded-full bg-gradient-to-tr from-blue-600/25 to-cyan-500/20 blur-[90px] pointer-events-none"></div>
 
-            <!-- Selector Rápido de Tema en Pantalla de Acceso -->
-            <div class="w-full max-w-sm flex justify-end items-center pt-1 relative z-10">
+            <!-- Selector Rápido de Tema Flotante (Protegido por Safe Area en la esquina superior) -->
+            <div class="absolute z-20" style="top: calc(var(--sat) + 12px); right: 20px;">
                 <button type="button" onclick="alternarTema()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-xl flex items-center justify-center text-[#8E8E93] hover:text-white transition active:scale-90" title="Cambiar tema">
                     <i class="auth-theme-icon fa-solid fa-moon text-xs"></i>
                 </button>
             </div>
 
-            <!-- Header Marca AUREA (Logo con halo de luz continuo, sin marco anidado) -->
-            <div class="text-center pt-2 w-full max-w-sm mx-auto relative z-10">
-                <div class="relative w-20 h-20 mx-auto mb-3 flex items-center justify-center">
-                    <div class="absolute inset-0 rounded-[24px] bg-gradient-to-tr from-purple-500/40 via-indigo-500/30 to-blue-500/40 blur-xl"></div>
-                    <div class="relative w-20 h-20 rounded-[22px] overflow-hidden border border-white/20 shadow-2xl shadow-black/80">
-                        <img src="/apple-touch-icon.png" alt="AUREA" class="w-full h-full object-cover">
-                    </div>
-                </div>
-                <h1 class="text-3xl font-black tracking-tight text-white" id="auth-main-title">AUREA</h1>
-                <p class="text-xs text-[#8E8E93] mt-0.5 font-medium tracking-wide" id="auth-main-subtitle">Gestión Financiera Personal</p>
-            </div>
+            <!-- Contenedor Centrado Unificado (Logo + Formularios + Footer) -->
+            <div class="w-full max-w-sm mx-auto my-auto flex flex-col items-center justify-center py-4 relative z-10">
 
-            <!-- CONTENEDOR CENTRAL: FORMULARIOS LIQUID GLASS -->
-            <div class="w-full max-w-sm mx-auto my-auto py-3 relative z-10">
-
-                <!-- 1. VISTA: INICIAR SESIÓN UNIFICADA (Apple Liquid Glass) -->
-                <div id="vista-login" class="ios-card rounded-3xl p-6 shadow-2xl">
-                    <div class="mb-5">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block">Bienvenido de nuevo</span>
-                        <h2 class="text-xl font-extrabold text-white mt-0.5 tracking-tight">Iniciar Sesión</h2>
-                    </div>
-
-                    <form id="form-login" onsubmit="event.preventDefault(); ejecutarLogin();" class="space-y-4" autocomplete="on">
-                        <!-- Campo Usuario -->
-                        <div>
-                            <label for="login-input-username" class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1.5">Tu Usuario</label>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#8E8E93]">
-                                    <i class="fa-solid fa-user text-xs"></i>
-                                </span>
-                                <input type="text" id="login-input-username" name="username" placeholder="Ingresa tu usuario (ej: Jorge)"
-                                    autocomplete="username webauthn" autocapitalize="none" autocorrect="off" spellcheck="false"
-                                    class="w-full glass-input pl-10 pr-4 py-3.5 text-white font-bold text-sm outline-none transition"
-                                    required>
-                            </div>
+                <!-- Header Marca AUREA (Logo con halo de luz continuo, sin marco anidado) -->
+                <div class="text-center mb-5 w-full">
+                    <div class="relative w-20 h-20 mx-auto mb-3 flex items-center justify-center">
+                        <div class="absolute inset-0 rounded-[24px] bg-gradient-to-tr from-purple-500/40 via-indigo-500/30 to-blue-500/40 blur-xl"></div>
+                        <div class="relative w-20 h-20 rounded-[22px] overflow-hidden border border-white/20 shadow-2xl shadow-black/80">
+                            <img src="/apple-touch-icon.png" alt="AUREA" class="w-full h-full object-cover">
                         </div>
-
-                        <!-- Campo Contraseña -->
-                        <div>
-                            <div class="flex items-center justify-between mb-1.5">
-                                <label for="login-input-password" class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93]">Tu Contraseña</label>
-                                <span class="text-[10px] font-semibold text-[#0A84FF] flex items-center gap-1.5">
-                                    <i class="fa-solid fa-fingerprint text-[11px]"></i>
-                                    <span>Face ID</span>
-                                </span>
-                            </div>
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#8E8E93]">
-                                    <i class="fa-solid fa-lock text-xs"></i>
-                                </span>
-                                <input type="password" id="login-input-password" name="password" placeholder="Ingresa tu contraseña"
-                                    autocomplete="current-password"
-                                    class="w-full glass-input pl-10 pr-10 py-3.5 text-white font-bold text-sm outline-none transition"
-                                    required>
-                                <button type="button" onclick="toggleVerPassword('login-input-password', 'login-ojo-icon')" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#8E8E93] hover:text-white" tabindex="-1">
-                                    <i class="fa-solid fa-eye text-xs" id="login-ojo-icon"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Botón Iniciar Sesión (Apple Liquid Glass Action Button) -->
-                        <button id="btn-login-submit" type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#0A84FF] to-[#0066DF] hover:brightness-110 text-white font-black text-sm active:scale-[0.98] transition-all shadow-lg shadow-blue-500/30 border border-white/20 flex items-center justify-center gap-2 mt-3 cursor-pointer">
-                            <span>Iniciar Sesión</span>
-                            <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
-                        </button>
-                    </form>
-
-                    <!-- Mensaje de Error de Login -->
-                    <div id="login-error-msg" class="text-xs text-rose-400 font-semibold text-center mt-3 hidden"></div>
-
-                    <!-- Switch a Crear Cuenta -->
-                    <div class="pt-5 border-t border-white/10 mt-5 text-center">
-                        <span class="text-xs text-[#8E8E93]">¿No tienes una cuenta aún?</span>
-                        <button onclick="mostrarVistaRegistro()" type="button" class="block w-full text-center text-xs font-bold text-blue-400 hover:text-blue-300 mt-1.5 transition">
-                            Crear cuenta nueva
-                        </button>
                     </div>
+                    <h1 class="text-3xl font-black tracking-tight text-white" id="auth-main-title">AUREA</h1>
+                    <p class="text-xs text-[#8E8E93] mt-0.5 font-medium tracking-wide" id="auth-main-subtitle">Gestión Financiera Personal</p>
                 </div>
 
-                <!-- 2. VISTA: CREAR CUENTA NUEVA (Apple Liquid Glass) -->
-                <div id="vista-registro" class="ios-card rounded-3xl p-6 shadow-2xl hidden">
-                    <div class="mb-5">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block">Nuevo Espacio</span>
-                        <h2 class="text-xl font-extrabold text-white mt-0.5 tracking-tight">Crear Cuenta</h2>
-                        <p class="text-xs text-[#8E8E93] mt-1">Crea tu cuenta personal o para un amigo con finanzas aisladas</p>
-                    </div>
+                <!-- CONTENEDOR CENTRAL: FORMULARIOS LIQUID GLASS -->
+                <div class="w-full">
 
-                    <div class="space-y-3.5">
-                        <div>
-                            <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1">Nombre de Usuario</label>
-                            <input type="text" id="reg-input-username" placeholder="Ej: Jorge o Carlos" autocomplete="username"
-                                class="w-full glass-input px-4 py-3 text-white font-bold text-sm outline-none transition">
+                    <!-- 1. VISTA: INICIAR SESIÓN UNIFICADA (Apple Liquid Glass) -->
+                    <div id="vista-login" class="ios-card rounded-3xl p-6 shadow-2xl">
+                        <div class="mb-5">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block">Bienvenido de nuevo</span>
+                            <h2 class="text-xl font-extrabold text-white mt-0.5 tracking-tight">Iniciar Sesión</h2>
                         </div>
 
-                        <div>
-                            <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1">Contraseña (Mínimo 4 caracteres)</label>
-                            <div class="relative">
-                                <input type="password" id="reg-input-password" placeholder="Tu contraseña privada" autocomplete="new-password"
-                                    class="w-full glass-input pl-4 pr-10 py-3 text-white font-bold text-sm outline-none transition">
-                                <button type="button" onclick="toggleVerPassword('reg-input-password', 'reg-ojo-icon')" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#8E8E93] hover:text-white">
-                                    <i class="fa-solid fa-eye text-xs" id="reg-ojo-icon"></i>
-                                </button>
+                        <form id="form-login" onsubmit="event.preventDefault(); ejecutarLogin();" class="space-y-4" autocomplete="on">
+                            <!-- Campo Usuario -->
+                            <div>
+                                <label for="login-input-username" class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1.5">Tu Usuario</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#8E8E93]">
+                                        <i class="fa-solid fa-user text-xs"></i>
+                                    </span>
+                                    <input type="text" id="login-input-username" name="username" placeholder="Ingresa tu usuario (ej: Jorge)"
+                                        autocomplete="username webauthn" autocapitalize="none" autocorrect="off" spellcheck="false"
+                                        class="w-full glass-input pl-10 pr-4 py-3.5 text-white font-bold text-sm outline-none transition"
+                                        required>
+                                </div>
                             </div>
+
+                            <!-- Campo Contraseña -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label for="login-input-password" class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93]">Tu Contraseña</label>
+                                    <span class="text-[10px] font-semibold text-[#0A84FF] flex items-center gap-1.5">
+                                        <i class="fa-solid fa-fingerprint text-[11px]"></i>
+                                        <span>Face ID</span>
+                                    </span>
+                                </div>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#8E8E93]">
+                                        <i class="fa-solid fa-lock text-xs"></i>
+                                    </span>
+                                    <input type="password" id="login-input-password" name="password" placeholder="Ingresa tu contraseña"
+                                        autocomplete="current-password"
+                                        class="w-full glass-input pl-10 pr-10 py-3.5 text-white font-bold text-sm outline-none transition"
+                                        required>
+                                    <button type="button" onclick="toggleVerPassword('login-input-password', 'login-ojo-icon')" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#8E8E93] hover:text-white" tabindex="-1">
+                                        <i class="fa-solid fa-eye text-xs" id="login-ojo-icon"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Botón Iniciar Sesión (Apple Liquid Glass Action Button) -->
+                            <button id="btn-login-submit" type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#0A84FF] to-[#0066DF] hover:brightness-110 text-white font-black text-sm active:scale-[0.98] transition-all shadow-lg shadow-blue-500/30 border border-white/20 flex items-center justify-center gap-2 mt-3 cursor-pointer">
+                                <span>Iniciar Sesión</span>
+                                <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
+                            </button>
+                        </form>
+
+                        <!-- Mensaje de Error de Login -->
+                        <div id="login-error-msg" class="text-xs text-rose-400 font-semibold text-center mt-3 hidden"></div>
+
+                        <!-- Switch a Crear Cuenta -->
+                        <div class="pt-5 border-t border-white/10 mt-5 text-center">
+                            <span class="text-xs text-[#8E8E93]">¿No tienes una cuenta aún?</span>
+                            <button onclick="mostrarVistaRegistro()" type="button" class="block w-full text-center text-xs font-bold text-blue-400 hover:text-blue-300 mt-1.5 transition">
+                                Crear cuenta nueva
+                            </button>
                         </div>
-
-                        <div>
-                            <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1">Confirmar Contraseña</label>
-                            <input type="password" id="reg-input-confirm" placeholder="Repite tu contraseña" autocomplete="new-password"
-                                class="w-full glass-input px-4 py-3 text-white font-bold text-sm outline-none transition"
-                                onkeydown="if(event.key === 'Enter') ejecutarRegistro()">
-                        </div>
-
-                        <div id="reg-error-msg" class="text-xs text-rose-400 font-semibold text-center hidden"></div>
-
-                        <button onclick="ejecutarRegistro()" type="button" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#0A84FF] to-[#0066DF] hover:brightness-110 text-white font-black text-sm active:scale-[0.98] transition-all shadow-lg shadow-blue-500/30 border border-white/20 mt-3 cursor-pointer">
-                            Crear Mi Cuenta
-                        </button>
                     </div>
 
-                    <!-- Switch a Iniciar Sesión -->
-                    <div class="pt-5 border-t border-white/10 mt-5 text-center">
-                        <span class="text-xs text-[#8E8E93]">¿Ya tienes una cuenta registrada?</span>
-                        <button onclick="mostrarVistaLogin()" type="button" class="block w-full text-center text-xs font-bold text-blue-400 hover:text-blue-300 mt-1.5 transition">
-                            Iniciar Sesión
-                        </button>
+                    <!-- 2. VISTA: CREAR CUENTA NUEVA (Apple Liquid Glass) -->
+                    <div id="vista-registro" class="ios-card rounded-3xl p-6 shadow-2xl hidden">
+                        <div class="mb-5">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block">Nuevo Espacio</span>
+                            <h2 class="text-xl font-extrabold text-white mt-0.5 tracking-tight">Crear Cuenta</h2>
+                            <p class="text-xs text-[#8E8E93] mt-1">Crea tu cuenta personal o para un amigo con finanzas aisladas</p>
+                        </div>
+
+                        <div class="space-y-3.5">
+                            <div>
+                                <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1">Nombre de Usuario</label>
+                                <input type="text" id="reg-input-username" placeholder="Ej: Jorge o Carlos" autocomplete="username"
+                                    class="w-full glass-input px-4 py-3 text-white font-bold text-sm outline-none transition">
+                            </div>
+
+                            <div>
+                                <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1">Contraseña (Mínimo 4 caracteres)</label>
+                                <div class="relative">
+                                    <input type="password" id="reg-input-password" placeholder="Tu contraseña privada" autocomplete="new-password"
+                                        class="w-full glass-input pl-4 pr-10 py-3 text-white font-bold text-sm outline-none transition">
+                                    <button type="button" onclick="toggleVerPassword('reg-input-password', 'reg-ojo-icon')" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#8E8E93] hover:text-white">
+                                        <i class="fa-solid fa-eye text-xs" id="reg-ojo-icon"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1">Confirmar Contraseña</label>
+                                <input type="password" id="reg-input-confirm" placeholder="Repite tu contraseña" autocomplete="new-password"
+                                    class="w-full glass-input px-4 py-3 text-white font-bold text-sm outline-none transition"
+                                    onkeydown="if(event.key === 'Enter') ejecutarRegistro()">
+                            </div>
+
+                            <div id="reg-error-msg" class="text-xs text-rose-400 font-semibold text-center hidden"></div>
+
+                            <button onclick="ejecutarRegistro()" type="button" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#0A84FF] to-[#0066DF] hover:brightness-110 text-white font-black text-sm active:scale-[0.98] transition-all shadow-lg shadow-blue-500/30 border border-white/20 mt-3 cursor-pointer">
+                                Crear Mi Cuenta
+                            </button>
+                        </div>
+
+                        <!-- Switch a Iniciar Sesión -->
+                        <div class="pt-5 border-t border-white/10 mt-5 text-center">
+                            <span class="text-xs text-[#8E8E93]">¿Ya tienes una cuenta registrada?</span>
+                            <button onclick="mostrarVistaLogin()" type="button" class="block w-full text-center text-xs font-bold text-blue-400 hover:text-blue-300 mt-1.5 transition">
+                                Iniciar Sesión
+                            </button>
+                        </div>
                     </div>
+
                 </div>
 
-            </div>
+                <!-- Footer Seguro -->
+                <div class="text-[11px] text-[#8E8E93] flex items-center gap-1.5 mt-5">
+                    <i class="fa-solid fa-shield-halved text-blue-400 text-xs"></i>
+                    <span>Sesión segura y privada en cualquier navegador</span>
+                </div>
 
-            <!-- Footer Seguro -->
-            <div class="text-[11px] text-[#8E8E93] flex items-center gap-1.5 pb-2">
-                <i class="fa-solid fa-shield-halved text-blue-400 text-xs"></i>
-                <span>Sesión segura y privada en cualquier navegador</span>
             </div>
         </div>
 
@@ -657,7 +689,7 @@ def mobile_dashboard_preview():
         <!-- ========================================== -->
         <!-- APP PRINCIPAL NATIVA iOS -->
         <!-- ========================================== -->
-        <div class="w-full max-w-lg mx-auto px-4 sm:px-6 pt-2">
+        <div id="app-principal" class="w-full max-w-lg mx-auto px-4 sm:px-6 pt-2 hidden">
 
             <!-- Top Header Estilo Apple HIG -->
             <div class="flex justify-between items-center py-2 mb-2">
@@ -957,7 +989,7 @@ def mobile_dashboard_preview():
         <!-- ========================================== -->
         <!-- BARRA DE NAVEGACIÓN INFERIOR (Estilo WhatsApp iOS Liquid Glass) -->
         <!-- ========================================== -->
-        <nav class="fixed bottom-0 left-0 right-0 z-40 liquid-glass-nav">
+        <nav id="nav-inferior" class="fixed bottom-0 left-0 right-0 z-40 liquid-glass-nav hidden">
             <div class="max-w-lg mx-auto px-6 flex justify-between items-center">
                 <button onclick="cambiarTab('billetera')" id="tab-btn-billetera" class="flex flex-col items-center text-[#0A84FF] py-1 transition-all">
                     <i class="fa-solid fa-wallet text-[19px]"></i>
@@ -1332,6 +1364,10 @@ def mobile_dashboard_preview():
                     desbloquearApp(false);
                     return;
                 }
+
+                // Ocultar explícitamente navegación y app principal antes de autenticar
+                document.getElementById('nav-inferior')?.classList.add('hidden');
+                document.getElementById('app-principal')?.classList.add('hidden');
 
                 // Mostrar pantalla de inicio de sesión
                 bloquearApp();
@@ -1912,6 +1948,10 @@ def mobile_dashboard_preview():
                         pantalla.style.visibility = 'hidden';
                     }
                 }
+                // Revelar navegación y app principal
+                document.getElementById('nav-inferior')?.classList.remove('hidden');
+                document.getElementById('app-principal')?.classList.remove('hidden');
+
                 const labelAjustes = document.getElementById('ajustes-usuario-label');
                 if (labelAjustes) {
                     labelAjustes.innerText = `Conectado como ${usuarioActual || 'Usuario'}`;
@@ -1927,6 +1967,9 @@ def mobile_dashboard_preview():
             function bloquearApp() {
                 sesionAutenticada = false;
                 sessionStorage.removeItem('aurea_sesion_activa');
+                // Ocultar navegación y app principal de inmediato
+                document.getElementById('nav-inferior')?.classList.add('hidden');
+                document.getElementById('app-principal')?.classList.add('hidden');
                 const pantalla = document.getElementById('pantalla-auth');
                 if(pantalla) {
                     pantalla.classList.remove('hidden');
@@ -1947,6 +1990,11 @@ def mobile_dashboard_preview():
                 localStorage.removeItem('aurea_usuario_actual_nombre');
                 localStorage.removeItem('aurea_usuario_actual_id');
                 localStorage.removeItem('aurea_usuario_actual_token');
+                localStorage.removeItem('aurea_dashboard_cache');
+
+                // Ocultar navegación y app principal de inmediato
+                document.getElementById('nav-inferior')?.classList.add('hidden');
+                document.getElementById('app-principal')?.classList.add('hidden');
 
                 // Pausar autologin inmediato para evitar bucle infinito tras cerrar sesión
                 usuarioInteractuo = false;
@@ -2790,6 +2838,7 @@ def mobile_dashboard_preview():
             }
 
             function abrirModalNuevaCuenta() {
+                if (!sesionAutenticada) return;
                 document.getElementById('modal-nueva-cuenta').classList.remove('hidden');
                 adaptarFormularioCuenta();
                 document.getElementById('nueva-cuenta-nombre').focus();
@@ -2929,6 +2978,7 @@ def mobile_dashboard_preview():
             }
 
             function abrirModalNuevoGastoFijo() {
+                if (!sesionAutenticada) return;
                 setEstadoNuevoFijo(true);
                 document.getElementById('modal-nuevo-gasto-fijo').classList.remove('hidden');
                 document.getElementById('nuevo-fijo-nombre').focus();
@@ -2994,6 +3044,7 @@ def mobile_dashboard_preview():
             // MODAL GASTO MANUAL
             // ==========================================
             function abrirModalGasto() {
+                if (!sesionAutenticada) return;
                 document.getElementById('modal-gasto').classList.remove('hidden');
                 document.getElementById('input-monto').focus();
             }
@@ -3053,6 +3104,7 @@ def mobile_dashboard_preview():
             let tabActual = 'billetera';
 
             function cambiarTab(tab) {
+                if (!sesionAutenticada) return;
                 tabActual = tab;
                 const tabs = ['billetera', 'movimientos', 'cuentas', 'ajustes'];
                 const configTab = {
@@ -3157,6 +3209,7 @@ def mobile_dashboard_preview():
             // SINCRONIZACIÓN Y RECARGA AUTOMÁTICA
             // ==========================================
             async function fetchDashboard() {
+                if(!sesionAutenticada) return;
                 try {
                     const res = await fetch('/api/v1/metricas/dashboard');
                     if(!res.ok) return;
