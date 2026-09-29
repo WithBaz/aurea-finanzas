@@ -84,3 +84,36 @@ Registro cronológico y auditable de las interacciones, decisiones técnicas, pr
   * Estado vacío amigable (*empty state*) en la lista de cuentas con botón directo de alta.
   * Modal nativo en la app con copia de URLs para webhooks de Siri y Apple Pay.
   * Documentación completa en `docs/shortcuts/atajo-apple-intelligence-voz.md` para invocar el registro por voz sin abrir la app (*"Oye Siri, registrar gasto"* o botón de acción).
+
+---
+
+## Sesión 4: 27-29 de Septiembre de 2026 - Gestión de Tarjetas de Crédito, Compromisos Fijos, Autenticación Multi-Usuario, Modo Claro/Oscuro y Blindaje Estricto de Seguridad
+
+### 1. Requerimientos del Usuario y Evolución del Sistema
+* **Tarjetas de Crédito y Ciclos de Facturación:** Soporte completo para fechas de corte, estado `PENDIENTE_PAGO`, cálculo de deuda en tiempo real y pagos de tarjeta desde cuentas de débito/ahorros sin duplicar gastos.
+* **Compromisos y Gastos Fijos:** Apartado automático de arriendo, servicios y compromisos del ciclo de nómina para calcular el disponible diario real en el semáforo.
+* **Autenticación y Multi-Usuario:** Registro independiente para el titular y amigos con finanzas 100% aisladas, login con contraseña alfanumérica y validación biométrica Face ID.
+* **Modo Claro / Modo Oscuro:** Selector nativo de temas Apple con persistencia en cliente y transiciones suaves.
+* **Auditoría Estricta de Vulnerabilidades:** Verificación exhaustiva de seguridad en el backend, blindaje contra suplantación de cabeceras, anti-IDOR en endpoints de IA y webhooks, y eliminación de fugas hacia usuarios anónimos.
+
+### 2. Implementaciones Realizadas
+* **Corte y Abono/Pago de Tarjetas (`backend/app/api/v1/endpoints/cuentas.py`):**
+  * Endpoints `/api/v1/cuentas/{id}/corte` y `/api/v1/cuentas/{id}/pagar`.
+  * Generación de transferencias internas automáticas para reflejar el abono sin afectar el semáforo mensual.
+* **Módulo de Gastos Fijos (`backend/app/api/v1/endpoints/gastos_fijos.py`):**
+  * Integración en `FinancialEngine` para deducir compromisos antes de repartir el presupuesto diario.
+* **Sistema de Autenticación Criptográfica (`backend/app/api/v1/endpoints/auth.py`):**
+  * Tokens Bearer con `secrets.token_hex(24)`.
+  * Hashing con salt y validación en tiempo constante con `secrets.compare_digest`.
+  * Soporte de Face ID con credenciales seguras.
+* **Aislamiento Multi-Usuario y Blindaje de Vulnerabilidades (`backend/app/api/deps.py`):**
+  * Función guardia `check_auth_if_users_exist()` en todas las rutas protegidas para evitar acceso anónimo.
+  * Neutralización de Header Spoofing (`X-Usuario-Id` sin token genera `401 Unauthorized`; discrepancias de token generan `403 Forbidden`).
+  * Validación de propiedad de cuentas en `/api/v1/transacciones/ia-rapida`.
+  * Filtrado estricto por usuario en webhooks de Apple Pay y SMS.
+  * Aislamiento en `/api/v1/cuentas/sincronizar`.
+* **Suite de Pruebas Automatizadas:**
+  * Incremento a **59 pruebas unitarias y de penetración** en `pytest` pasando al 100%.
+* **Despliegue y Experiencia PWA:**
+  * Configuración lista para despliegue en la nube (Vercel) con ícono de alta resolución y soporte de pantalla de inicio independiente en iPhone.
+

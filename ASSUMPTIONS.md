@@ -32,6 +32,28 @@ Este documento recoge de manera transparente los supuestos, restricciones y deci
 ## 3. Asunciones Tecnológicas
 
 1. **Persistencia Portable:**  
-   Uso de SQLite con SQLAlchemy 2.0 para garantizar portabilidad en entornos de desarrollo local, pruebas y despliegue rápido sin requerir servidores externos complejos de base de datos.
-2. **Frontend Nativo:**  
-   React Native con Expo para permitir pruebas directas en iPhone vía Expo Go con componentes nativos táctiles y respuesta háptica.
+   Uso de SQLite con SQLAlchemy 2.0 para garantizar portabilidad en entornos de desarrollo local, pruebas y despliegue rápido sin requerir servidores externos complejos de base de datos, con plena compatibilidad para PostgreSQL en entornos de producción persistente.
+2. **Frontend Nativo y PWA Autónomo:**  
+   Arquitectura dual: aplicación en React Native con Expo para pruebas en Expo Go, combinada con Progressive Web App (PWA) optimizada para Safari en iPhone (`apple-mobile-web-app-capable`, *safe areas*, temas Dark/Light nativos) que elimina la dependencia de compilaciones o cuentas de desarrollador de Apple.
+
+---
+
+## 4. Asunciones de Seguridad, Control de Acceso y Multi-Tenant
+
+1. **Aislamiento Estricto de Datos:**  
+   Cada usuario registrado (titular o amigos) posee un espacio de datos estrictamente aislado. Ningún usuario puede consultar, editar, eliminar ni transferir saldos de cuentas pertenecientes a otro usuario (prevención total de IDOR).
+2. **Autenticación Criptográfica:**  
+   El acceso a los recursos protegidos exige la presentación de un token Bearer criptográfico válido (`secrets.token_hex(24)`). No se confía en encabezados descriptivos como `X-Usuario-Id` sin validación del token de sesión.
+3. **Protección contra Peticiones Anónimas:**  
+   Una vez que existen usuarios registrados en la base de datos, todos los endpoints de consulta y manipulación financiera exigen autenticación obligatoria (`401 Unauthorized`).
+4. **Validación Biométrica Segura:**  
+   El flujo de Face ID / Touch ID valida credenciales de forma criptográfica y respeta el estado de activación configurado por el usuario en su perfil.
+
+---
+
+## 5. Asunciones de Despliegue en Producción
+
+1. **Ejecución Continua en la Nube:**  
+   El backend se ejecuta en una plataforma serverless / contenedor en la nube (ej. Vercel o Render) con soporte HTTPS, permitiendo que las automatizaciones de Atajos de iOS envíen pagos en tiempo real sin requerir una máquina local encendida.
+2. **Rehidratación y Resiliencia en Contenedores Efímeros:**  
+   Para entornos de ejecución serverless efímeros, la PWA implementa mecanismos de sincronización protegida desde caché local (`/api/v1/cuentas/sincronizar`), garantizando la preservación del estado financiero.
