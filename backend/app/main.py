@@ -183,6 +183,15 @@ def mobile_dashboard_preview():
                 background-color: rgba(255, 255, 255, 0.22);
             }
             ::-webkit-scrollbar { display: none; }
+            /* Detección de AutoFill en WebKit / Safari iOS */
+            @keyframes onAutoFillStart {
+                from { opacity: 0.99; }
+                to { opacity: 1; }
+            }
+            input:-webkit-autofill {
+                animation-name: onAutoFillStart;
+                animation-duration: 0.001s;
+            }
         </style>
     </head>
     <body class="selection:bg-blue-600 selection:text-white">
@@ -204,67 +213,57 @@ def mobile_dashboard_preview():
             <!-- CONTENEDOR CENTRAL: FORMULARIOS -->
             <div class="w-full max-w-sm mx-auto my-auto py-4">
 
-                <!-- 1. VISTA: INICIAR SESIÓN (Flujo Usuario -> Enter -> Contraseña) -->
+                <!-- 1. VISTA: INICIAR SESIÓN UNIFICADA (Apple HIG / AutoFill Instantáneo Face ID) -->
                 <div id="vista-login" class="ios-card rounded-3xl p-6 bg-[#1C1C1E] border border-white/10 shadow-2xl">
                     <div class="mb-5">
                         <span class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block">Bienvenido de nuevo</span>
                         <h2 class="text-xl font-extrabold text-white mt-0.5">Iniciar Sesión</h2>
                     </div>
 
-                    <!-- Paso A: Ingrese Usuario -->
-                    <div id="login-paso-usuario" class="space-y-4">
+                    <form id="form-login" onsubmit="event.preventDefault(); ejecutarLogin();" class="space-y-4" autocomplete="on">
+                        <!-- Campo Usuario -->
                         <div>
-                            <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1.5">Tu Usuario</label>
+                            <label for="login-input-username" class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1.5">Tu Usuario</label>
                             <div class="relative">
                                 <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#8E8E93]">
                                     <i class="fa-solid fa-user text-xs"></i>
                                 </span>
-                                <input type="text" id="login-input-username" placeholder="Ingresa tu usuario (ej: Jorge)" autocomplete="username"
+                                <input type="text" id="login-input-username" name="username" placeholder="Ingresa tu usuario (ej: Jorge)"
+                                    autocomplete="username webauthn" autocapitalize="none" autocorrect="off" spellcheck="false"
                                     class="w-full bg-[#000000] border border-white/15 rounded-2xl pl-10 pr-4 py-3.5 text-white font-bold text-sm focus:border-[#0A84FF] outline-none transition"
-                                    onkeydown="if(event.key === 'Enter') loginAvanzarAContrasena()">
+                                    required>
                             </div>
                         </div>
 
-                        <button onclick="loginAvanzarAContrasena()" type="button" class="w-full py-3.5 rounded-2xl bg-[#0A84FF] hover:bg-blue-600 text-white font-black text-sm active:scale-95 transition shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2">
-                            <span>Continuar</span>
-                            <i class="fa-solid fa-arrow-right text-xs"></i>
-                        </button>
-                    </div>
-
-                    <!-- Paso B: Ingrese Contraseña (se revela tras dar Enter en Usuario) -->
-                    <div id="login-paso-password" class="space-y-4 hidden">
-                        <div class="flex items-center justify-between p-2.5 rounded-2xl bg-[#000000] border border-white/10 mb-2">
-                            <div class="flex items-center gap-2.5">
-                                <div class="w-7 h-7 rounded-xl bg-blue-500/20 text-[#0A84FF] flex items-center justify-center text-xs font-bold">
-                                    <i class="fa-solid fa-user"></i>
-                                </div>
-                                <span class="text-xs font-bold text-white" id="login-label-usuario-seleccionado">Usuario</span>
-                            </div>
-                            <button onclick="loginVolverAUsuario()" type="button" class="text-[11px] font-bold text-blue-400 hover:text-white px-2 py-1 rounded-lg transition">
-                                Cambiar
-                            </button>
-                        </div>
-
+                        <!-- Campo Contraseña -->
                         <div>
-                            <label class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] block mb-1.5">Tu Contraseña</label>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label for="login-input-password" class="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93]">Tu Contraseña</label>
+                                <span class="text-[10px] font-semibold text-[#0A84FF] flex items-center gap-1">
+                                    <i class="fa-solid fa-face-smile text-[11px]"></i>
+                                    <span>Face ID</span>
+                                </span>
+                            </div>
                             <div class="relative">
                                 <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#8E8E93]">
                                     <i class="fa-solid fa-lock text-xs"></i>
                                 </span>
-                                <input type="password" id="login-input-password" placeholder="Ingresa tu contraseña" autocomplete="current-password"
+                                <input type="password" id="login-input-password" name="password" placeholder="Ingresa tu contraseña"
+                                    autocomplete="current-password"
                                     class="w-full bg-[#000000] border border-white/15 rounded-2xl pl-10 pr-10 py-3.5 text-white font-bold text-sm focus:border-[#0A84FF] outline-none transition"
-                                    onkeydown="if(event.key === 'Enter') ejecutarLogin()">
-                                <button type="button" onclick="toggleVerPassword('login-input-password', 'login-ojo-icon')" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#8E8E93] hover:text-white">
+                                    required>
+                                <button type="button" onclick="toggleVerPassword('login-input-password', 'login-ojo-icon')" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#8E8E93] hover:text-white" tabindex="-1">
                                     <i class="fa-solid fa-eye text-xs" id="login-ojo-icon"></i>
                                 </button>
                             </div>
                         </div>
 
-                        <button onclick="ejecutarLogin()" id="btn-login-submit" type="button" class="w-full py-3.5 rounded-2xl bg-[#0A84FF] hover:bg-blue-600 text-white font-black text-sm active:scale-95 transition shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2">
+                        <!-- Botón Iniciar Sesión -->
+                        <button id="btn-login-submit" type="submit" class="w-full py-3.5 rounded-2xl bg-[#0A84FF] hover:bg-blue-600 text-white font-black text-sm active:scale-95 transition shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 mt-2">
                             <span>Iniciar Sesión</span>
                             <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
                         </button>
-                    </div>
+                    </form>
 
                     <!-- Mensaje de Error de Login -->
                     <div id="login-error-msg" class="text-xs text-rose-400 font-semibold text-center mt-3 hidden"></div>
@@ -988,8 +987,15 @@ def mobile_dashboard_preview():
             function mostrarVistaLogin() {
                 document.getElementById('vista-login')?.classList.remove('hidden');
                 document.getElementById('vista-registro')?.classList.add('hidden');
-                loginVolverAUsuario();
                 limpiarMensajesAuth();
+                const userInp = document.getElementById('login-input-username');
+                if (userInp) {
+                    if (!userInp.value && usuarioActual) {
+                        userInp.value = usuarioActual;
+                    }
+                    userInp.focus();
+                }
+                configurarAutoFillFaceId();
             }
 
             function mostrarVistaRegistro() {
@@ -1014,48 +1020,102 @@ def mobile_dashboard_preview():
                 if (errReg) { errReg.innerText = ''; errReg.classList.add('hidden'); }
             }
 
-            // Flujo Login Paso 1: Usuario -> Enter
-            function loginAvanzarAContrasena() {
-                const usernameInput = document.getElementById('login-input-username');
-                const username = usernameInput ? usernameInput.value.trim() : '';
-                const errLog = document.getElementById('login-error-msg');
+            // ==========================================
+            // AUTOFILL & FACE ID INSTANTÁNEO
+            // ==========================================
+            let loginEnProceso = false;
 
-                if (!username) {
-                    if (errLog) {
-                        errLog.innerText = 'Por favor ingresa tu nombre de usuario.';
-                        errLog.classList.remove('hidden');
+            function verificarYAutologin(motivo = 'autofill') {
+                if (loginEnProceso) return;
+                const userEl = document.getElementById('login-input-username');
+                const passEl = document.getElementById('login-input-password');
+                if (!userEl || !passEl) return;
+
+                const u = userEl.value.trim();
+                const p = passEl.value;
+
+                if (u.length >= 2 && p.length >= 4) {
+                    loginEnProceso = true;
+                    const btnSubmit = document.getElementById('btn-login-submit');
+                    if (btnSubmit) {
+                        btnSubmit.disabled = true;
+                        btnSubmit.innerHTML = '<i class="fa-solid fa-face-smile text-xs animate-bounce text-[#0A84FF]"></i><span class="ml-2 font-bold">Face ID Verificado... Entrando</span>';
                     }
-                    usernameInput.focus();
-                    return;
-                }
-
-                if (errLog) { errLog.classList.add('hidden'); }
-                
-                // Mostrar Paso Contraseña
-                document.getElementById('login-paso-usuario')?.classList.add('hidden');
-                const pasoPass = document.getElementById('login-paso-password');
-                if (pasoPass) pasoPass.classList.remove('hidden');
-                
-                const labelUser = document.getElementById('login-label-usuario-seleccionado');
-                if (labelUser) labelUser.innerText = username;
-
-                const passInput = document.getElementById('login-input-password');
-                if (passInput) {
-                    passInput.value = '';
-                    passInput.focus();
+                    // Micro-pausa de 100ms para permitir que WebKit asiente los datos en el DOM
+                    setTimeout(() => {
+                        ejecutarLogin();
+                    }, 100);
                 }
             }
 
-            // Volver de Contraseña a Usuario
+            let autofillListenersConfigurados = false;
+            function configurarAutoFillFaceId() {
+                const userEl = document.getElementById('login-input-username');
+                const passEl = document.getElementById('login-input-password');
+                if (!userEl || !passEl) return;
+
+                if (autofillListenersConfigurados) return;
+                autofillListenersConfigurados = true;
+
+                // 1. Detección instantánea por animación CSS de WebKit (Safari iOS AutoFill trigger nativo)
+                const handleAnimationStart = (e) => {
+                    if (e.animationName === 'onAutoFillStart') {
+                        setTimeout(() => {
+                            verificarYAutologin('css-animation-autofill');
+                        }, 60);
+                    }
+                };
+                userEl.addEventListener('animationstart', handleAnimationStart);
+                passEl.addEventListener('animationstart', handleAnimationStart);
+
+                // 2. Detección en evento 'input' y 'change'
+                const handleInput = (e) => {
+                    const u = userEl.value.trim();
+                    const p = passEl.value;
+                    if (!u || !p) return;
+
+                    // Señales definitivas de autocompletado en iOS:
+                    // A) Pseudo-clase de WebKit activa
+                    const isAutofillPseudo = (passEl.matches && passEl.matches(':-webkit-autofill')) ||
+                                             (userEl.matches && userEl.matches(':-webkit-autofill'));
+
+                    // B) La contraseña fue inyectada mientras el foco está en el campo de usuario (comportamiento típico de Face ID Keychain)
+                    const passFilledWhileUserFocused = (document.activeElement === userEl && p.length >= 4);
+
+                    // C) Inserción masiva de caracteres por gestor de contraseñas de iOS
+                    const isBulkInsert = (e.inputType !== 'insertText' && e.inputType !== 'deleteContentBackward' && e.inputType !== 'insertFromPaste' && p.length >= 4);
+
+                    if (isAutofillPseudo || passFilledWhileUserFocused || isBulkInsert) {
+                        verificarYAutologin('input-autofill');
+                    }
+                };
+
+                userEl.addEventListener('input', handleInput);
+                passEl.addEventListener('input', handleInput);
+                userEl.addEventListener('change', handleInput);
+                passEl.addEventListener('change', handleInput);
+
+                // 3. Si el usuario toca el campo de usuario y ya existen credenciales guardadas en el navegador
+                userEl.addEventListener('focus', () => {
+                    setTimeout(() => {
+                        const u = userEl.value.trim();
+                        const p = passEl.value;
+                        if (u.length >= 2 && p.length >= 4 && (passEl.matches(':-webkit-autofill') || userEl.matches(':-webkit-autofill'))) {
+                            verificarYAutologin('focus-autofill');
+                        }
+                    }, 250);
+                });
+            }
+
             function loginVolverAUsuario() {
-                document.getElementById('login-paso-password')?.classList.add('hidden');
-                const pasoUser = document.getElementById('login-paso-usuario');
-                if (pasoUser) pasoUser.classList.remove('hidden');
-                const userInput = document.getElementById('login-input-username');
-                if (userInput) userInput.focus();
+                document.getElementById('login-input-username')?.focus();
             }
 
-            // Flujo Login Paso 2: Contraseña -> Enter -> Iniciar Sesión
+            function loginAvanzarAContrasena() {
+                ejecutarLogin();
+            }
+
+            // Flujo de Inicio de Sesión
             async function ejecutarLogin() {
                 const username = document.getElementById('login-input-username')?.value.trim();
                 const password = document.getElementById('login-input-password')?.value;
@@ -1063,7 +1123,12 @@ def mobile_dashboard_preview():
                 const btnSubmit = document.getElementById('btn-login-submit');
 
                 if (!username) {
-                    loginVolverAUsuario();
+                    if (errLog) {
+                        errLog.innerText = 'Por favor ingresa tu nombre de usuario.';
+                        errLog.classList.remove('hidden');
+                    }
+                    document.getElementById('login-input-username')?.focus();
+                    loginEnProceso = false;
                     return;
                 }
 
@@ -1073,9 +1138,11 @@ def mobile_dashboard_preview():
                         errLog.classList.remove('hidden');
                     }
                     document.getElementById('login-input-password')?.focus();
+                    loginEnProceso = false;
                     return;
                 }
 
+                loginEnProceso = true;
                 if (btnSubmit) {
                     btnSubmit.disabled = true;
                     btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i><span>Ingresando...</span>';
@@ -1116,6 +1183,7 @@ def mobile_dashboard_preview():
                         errLog.classList.remove('hidden');
                     }
                 } finally {
+                    loginEnProceso = false;
                     if (btnSubmit) {
                         btnSubmit.disabled = false;
                         btnSubmit.innerHTML = '<span>Iniciar Sesión</span><i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>';
@@ -2463,6 +2531,7 @@ def mobile_dashboard_preview():
             }
 
             inicializarSeguridad();
+            configurarAutoFillFaceId();
             cargarDatosPerfilAjustes();
             setInterval(() => { if(sesionAutenticada) fetchDashboard(); }, 8000);
 
