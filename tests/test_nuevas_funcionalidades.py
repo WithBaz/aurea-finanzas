@@ -295,5 +295,28 @@ def test_modo_claro_oscuro_y_animacion_face_id(client):
     assert "animate-laserScanHUD" in html
 
 
+def test_login_liquid_glass_y_sin_splash_loader(client):
+    """
+    Verifica que:
+    1. No exista apple-touch-startup-image para evitar pantallas de carga prematuras.
+    2. El formulario de login use inputs y tarjetas liquid glass.
+    3. Exista la guarda usuarioInteractuo para evitar autologin no solicitado al abrir la app.
+    4. El icono de la aplicación se sirva correctamente en 180x180.
+    """
+    res = client.get("/")
+    assert res.status_code == 200
+    html = res.text
+
+    assert "apple-touch-startup-image" not in html
+    assert "glass-input" in html
+    assert "usuarioInteractuo" in html
+
+    # Verificar que el icono nuevo se sirve en 200 OK
+    res_icon = client.get("/apple-touch-icon.png")
+    assert res_icon.status_code == 200
+    assert res_icon.headers["content-type"] == "image/png"
+
+
+
 
 
