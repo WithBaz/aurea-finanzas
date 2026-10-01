@@ -173,23 +173,30 @@ class NLPSmartExpenseParser:
         inicio_ingreso = any(primeras_palabras.startswith(p) or f" {p} " in f" {primeras_palabras} " for p in ["ingreso", "ingresos", "ingresaron", "entrada", "recibi", "me pagaron", "me entro", "nomina", "sueldo", "salario", "consignacion", "abono", "gane", "venta"])
         inicio_egreso = any(primeras_palabras.startswith(p) or f" {p} " in f" {primeras_palabras} " for p in ["gasto", "gastos", "pague", "compre", "mande", "envie", "pase", "retire", "saque"])
 
+        tipo_explicito = False
         if inicio_ingreso and not inicio_egreso:
             tipo = "INGRESO"
+            tipo_explicito = True
         elif inicio_egreso and not inicio_ingreso:
             tipo = "EGRESO"
+            tipo_explicito = True
         else:
             es_egreso_explicito = any(p in t_norm for p in palabras_egreso_norm)
             es_ingreso = any(palabra in t_norm for palabra in palabras_ingreso_norm)
             if es_ingreso and not es_egreso_explicito:
                 tipo = "INGRESO"
+                tipo_explicito = True
             elif es_egreso_explicito and not es_ingreso:
                 tipo = "EGRESO"
+                tipo_explicito = True
             elif es_ingreso and es_egreso_explicito:
                 idx_egreso = min([t_norm.find(p) for p in palabras_egreso_norm if p in t_norm])
                 idx_ingreso = min([t_norm.find(p) for p in palabras_ingreso_norm if p in t_norm])
                 tipo = "INGRESO" if idx_ingreso < idx_egreso else "EGRESO"
+                tipo_explicito = True
             else:
                 tipo = "EGRESO"
+                tipo_explicito = False
 
         # En Colombia ningún ingreso (nómina, sueldo, transferencia, honorarios) es menor a $1.000 COP ($0.25 USD).
         # Si se detectó ingreso y el monto es menor a 1.000, auto-escalar a miles (ej. 500 -> 500.000 COP).
@@ -198,6 +205,11 @@ class NLPSmartExpenseParser:
 
         # 4. Extraer Comercio / Concepto
         comercio = cls._extraer_concepto(t, es_ingreso=(tipo == "INGRESO"))
+
+        # Si el concepto detectado es una categoría clara de gasto cotidiano (almuerzo, taxi, etc.), marcar tipo_explicito
+        conceptos_egreso = ["almuerzo", "desayuno", "cena", "comida", "taxi", "uber", "didi", "gasolina", "mercado", "supermercado", "arriendo", "servicios", "peaje", "parqueadero"]
+        if not tipo_explicito and any(c in t_norm for c in conceptos_egreso):
+            tipo_explicito = True
 
         # 5. Categoría
         categoria_nombre, categoria_id = CategorizadorComercios.sugerir_categoria(comercio, db)
@@ -211,12 +223,14 @@ class NLPSmartExpenseParser:
         return {
             "monto": monto,
             "tipo": tipo,
+            "tipo_explicito": tipo_explicito,
             "comercio": comercio,
             "cuenta_id": cuenta_id,
             "cuenta_nombre": cuenta_nombre,
             "categoria_nombre": categoria_nombre,
             "categoria_id": categoria_id,
             "requiere_confirmar_cuenta": cuenta_id is None,
+            "requiere_confirmar_tipo": not tipo_explicito,
             "texto_original": texto
         }
 

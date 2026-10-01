@@ -403,5 +403,56 @@ def test_ia_rapida_con_parametro_tipo_alias(client):
     assert d4["monto"] == 100000.0
 
 
+def test_ia_rapida_flujo_validaciones_prioritarias(client):
+    """
+    Verifica la regla de negocio:
+    1. Si el usuario dice '20 mil en Nequi' sin especificar ingreso o gasto,
+       el sistema debe preguntar primero '¿Es un ingreso o es un gasto?' (status: requiere_tipo).
+    2. Al responder con tipo='gasto', como la cuenta ya se conocía (Nequi), debe registrar de inmediato.
+    3. Si el usuario dice '30 mil' (sin tipo ni cuenta):
+       - Primero debe preguntar si es ingreso o gasto (status: requiere_tipo).
+       - Al responder el tipo, debe preguntar '¿De qué cuenta lo pagaste?' (status: requiere_cuenta).
+       - Al dar la cuenta, debe registrar exitosamente.
+    """
+    # 1. Frase ambigua '20 mil en Nequi' -> solicita tipo
+    res1 = client.post("/api/v1/transacciones/ia-rapida", json={"texto": "20 mil en Nequi"})
+    assert res1.status_code == 200
+    d1 = res1.json()
+    assert d1["status"] == "requiere_tipo"
+    assert "¿Es un ingreso o es un gasto?" in d1["mensaje"]
+    assert d1["cuenta_nombre"] == "Nequi"
+    assert d1["monto"] == 20000.0
+
+    # 2. Responde 'gasto' -> Registra directamente porque Nequi ya estaba detectado
+    res2 = client.post("/api/v1/transacciones/ia-rapida", json={"texto": "20 mil en Nequi", "tipo": "gasto"})
+    assert res2.status_code == 200
+    d2 = res2.json()
+    assert d2["status"] == "registrado"
+    assert d2["tipo"] == "EGRESO"
+    assert d2["monto"] == 20000.0
+    assert d2["cuenta"] == "Nequi"
+
+    # 3. Frase '30 mil' (ni tipo ni cuenta) -> Pregunta primero tipo
+    res3 = client.post("/api/v1/transacciones/ia-rapida", json={"texto": "30 mil"})
+    assert res3.status_code == 200
+    d3 = res3.json()
+    assert d3["status"] == "requiere_tipo"
+
+    # 4. Al indicar tipo pero aún sin cuenta -> Pregunta por la cuenta
+    res4 = client.post("/api/v1/transacciones/ia-rapida", json={"texto": "30 mil", "tipo": "gasto"})
+    assert res4.status_code == 200
+    d4 = res4.json()
+    assert d4["status"] == "requiere_cuenta"
+    assert "¿De qué cuenta" in d4["mensaje"]
+
+    # 5. Al proveer la cuenta -> Registra
+    res5 = client.post("/api/v1/transacciones/ia-rapida", json={"texto": "30 mil en efectivo", "tipo": "gasto"})
+    assert res5.status_code == 200
+    d5 = res5.json()
+    assert d5["status"] == "registrado"
+    assert d5["cuenta"] == "Billetera Efectivo"
+
+
+
 
 

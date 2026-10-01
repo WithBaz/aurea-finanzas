@@ -274,6 +274,25 @@ async def registrar_gasto_ia_rapida(
 
     monto_texto = f"{int(monto):,}".replace(",", ".") + " pesos"
 
+    # 1. PRIORIDAD 1: Validar si es Ingreso o Gasto
+    # Si el usuario dijo "20 mil en Nequi" o "25 mil en efectivo" sin indicar si fue gasto o ingreso,
+    # y el atajo no envió el parámetro 'tipo', preguntarle primero al usuario antes de registrar.
+    if not tipo_forzado and not interpretacion.get("tipo_explicito", True):
+        nom_cuenta_txt = f" en {interpretacion['cuenta_nombre']}" if interpretacion.get("cuenta_nombre") else ""
+        return {
+            "status": "requiere_tipo",
+            "mensaje": f"Se detectaron {monto_texto}{nom_cuenta_txt}. ¿Es un ingreso o es un gasto?",
+            "pregunta": "¿Es un ingreso o es un gasto?",
+            "monto": monto,
+            "comercio": comercio,
+            "cuenta_id": cuenta_detectada_id,
+            "cuenta_nombre": interpretacion.get("cuenta_nombre"),
+            "categoria_id": interpretacion.get("categoria_id"),
+            "categoria_nombre": interpretacion.get("categoria_nombre"),
+            "texto_original": texto_final
+        }
+
+    # 2. PRIORIDAD 2: Validar si se indicó la cuenta
     # Si no se detectó cuenta, preguntar al usuario
     if not cuenta_detectada_id:
         pregunta = "¿A qué cuenta ingresó el dinero?" if tipo == "INGRESO" else "¿De qué cuenta lo pagaste?"
@@ -281,11 +300,13 @@ async def registrar_gasto_ia_rapida(
         return {
             "status": "requiere_cuenta",
             "mensaje": f"Se detectó {texto_tipo} de {monto_texto} en '{comercio}'. {pregunta}",
+            "pregunta": pregunta,
             "monto": monto,
             "comercio": comercio,
             "tipo": tipo,
             "categoria_id": interpretacion["categoria_id"],
-            "categoria_nombre": interpretacion["categoria_nombre"]
+            "categoria_nombre": interpretacion["categoria_nombre"],
+            "texto_original": texto_final
         }
 
     cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_detectada_id).first()
