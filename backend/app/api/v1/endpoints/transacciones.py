@@ -230,13 +230,14 @@ async def registrar_gasto_ia_rapida(
     monto = interpretacion["monto"]
     comercio = interpretacion["comercio"]
     
-    # Si el atajo forzó tipo explícito (ej. atajo de Registrar Ingreso o Registrar Gasto)
+    # Si el atajo forzó tipo explícito (ej. atajo de Registrar Ingreso o Registrar Gasto o respuesta de voz)
     tipo_forzado = None
     if tipo_final:
-        t_clean = str(tipo_final).strip().upper()
-        if t_clean in ["INGRESO", "INGRESOS", "ENTRADA", "ENTRADAS", "INCOME"]:
+        from backend.app.services.nlp_expense_parser import normalizar_texto
+        t_clean = normalizar_texto(str(tipo_final))
+        if any(k in t_clean for k in ["ingreso", "entrada", "income", "abono"]):
             tipo_forzado = "INGRESO"
-        elif t_clean in ["EGRESO", "EGRESOS", "GASTO", "GASTOS", "SALIDA", "SALIDAS", "EXPENSE"]:
+        elif any(k in t_clean for k in ["egreso", "gasto", "salida", "expense"]):
             tipo_forzado = "EGRESO"
 
     if tipo_forzado:
