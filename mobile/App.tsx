@@ -215,19 +215,23 @@ export default function App() {
           <>
             <View style={[styles.card, { borderColor: '#8B5CF6', backgroundColor: '#18122B' }]}>
               <Text style={[styles.cardLabel, { color: '#C4B5FD' }]}>ATAJO DE VOZ & SIRI / BOTÓN DE ACCIÓN</Text>
-              <Text style={styles.shortcutsTitle}>🎙️ "Oye Siri, registrar gasto"</Text>
+              <Text style={styles.shortcutsTitle}>🎙️ Gastos e Ingresos con Siri</Text>
               <Text style={styles.shortcutsBody}>
-                Registra cualquier gasto con tu voz o el botón de acción sin abrir la app:{'\n\n'}
-                <Text style={{ fontWeight: 'bold', color: '#F59E0B' }}>Paso 1:</Text> En app <Text style={{ color: '#F59E0B' }}>Atajos</Text>, crea uno llamado <Text style={{ color: '#F59E0B' }}>Registrar Gasto</Text>.{'\n'}
-                <Text style={{ fontWeight: 'bold', color: '#F59E0B' }}>Paso 2:</Text> Acción: <Text style={{ color: '#CBD5E1', fontStyle: 'italic' }}>Solicitar entrada (Texto) con pregunta "¿Qué gastaste?"</Text>.{'\n'}
+                Registra cualquier gasto o ingreso con tu voz o el botón de acción sin abrir la app:{'\n\n'}
+                <Text style={{ fontWeight: 'bold', color: '#F59E0B' }}>Paso 1:</Text> En app <Text style={{ color: '#F59E0B' }}>Atajos</Text>, crea uno llamado <Text style={{ color: '#F59E0B' }}>Registrar Movimiento</Text> (o <Text style={{ color: '#F59E0B' }}>Registrar Gasto</Text>).{'\n'}
+                <Text style={{ fontWeight: 'bold', color: '#F59E0B' }}>Paso 2:</Text> Acción: <Text style={{ color: '#CBD5E1', fontStyle: 'italic' }}>Solicitar entrada (Texto) con pregunta "¿Qué movimiento hiciste?"</Text>.{'\n'}
                 <Text style={{ fontWeight: 'bold', color: '#F59E0B' }}>Paso 3:</Text> Acción: <Text style={{ color: '#CBD5E1', fontStyle: 'italic' }}>Obtener contenido de URL</Text>:{'\n'}
                 <Text style={{ color: '#60A5FA', fontSize: 11 }}>https://tu-dominio/api/v1/transacciones/ia-rapida?texto=[Entrada provista]</Text>{'\n'}
                 <Text style={{ fontWeight: 'bold', color: '#F59E0B' }}>Paso 4:</Text> Acción: <Text style={{ color: '#CBD5E1', fontStyle: 'italic' }}>Mostrar resultado de Contenido de URL</Text> (o leer con Siri).{'\n\n'}
-                <Text style={{ color: '#10B981', fontWeight: 'bold' }}>Frases soportadas:</Text>{'\n'}
+                <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>Gastos soportados:</Text>{'\n'}
                 • "Pagué 15 mil en Nequi"{'\n'}
-                • "Pagué 12 mil de taxi en efectivo"{'\n'}
-                • "Almuerzo 28000 con Bancolombia"{'\n'}
-                • "Mercado 65 mil con Nu"
+                • "Taxi 12 mil en efectivo"{'\n'}
+                • "Almuerzo 28000 con Bancolombia"{'\n\n'}
+                <Text style={{ color: '#10B981', fontWeight: 'bold' }}>Ingresos soportados:</Text>{'\n'}
+                • "Me pagaron 500 mil en Bancolombia"{'\n'}
+                • "Me consignaron 80 mil a Nequi"{'\n'}
+                • "Venta de 80 mil en efectivo"{'\n'}
+                • "Sueldo 2 millones en Bancolombia"
               </Text>
             </View>
 

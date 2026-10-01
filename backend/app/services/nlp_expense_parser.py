@@ -139,37 +139,69 @@ class NLPSmartExpenseParser:
         # 3. Detectar Tipo (Ingreso vs Egreso)
         palabras_egreso_fuertes = [
             "pagué", "pague", "gasté", "gaste", "compré", "compre",
+            "gasto", "gastos", "egreso", "egresos", "salida", "salidas",
             "mandé", "mande", "envié", "envie", "pasé", "pase",
             "le pasé", "le pase", "le mandé", "le mande", "le transferí", "le transferi",
+            "transferí", "transferi",
             "retiré", "retire", "saqué", "saque"
         ]
-        es_egreso_explicito = any(p in t for p in palabras_egreso_fuertes)
 
         palabras_ingreso = [
-            "ingreso", "ingresos", "me pagaron", "pagaron", "recibí", "recibi",
-            "consignaron", "me consignaron", "consignación", "consignacion", "consigne", "consigné",
+            "ingreso", "ingresos", "ingresaron", "ingresó", "ingreso", "ingresé", "ingrese", "ingresar",
+            "me pagaron", "pagaron", "me pagó", "me pago", "pago recibido", "recibí", "recibi", "recibido", "recibida",
+            "consignaron", "me consignaron", "consignación", "consignacion", "consigne", "consigné", "consigno", "consignó",
             "transfirieron", "me transfirieron", "transferencia recibida", "transfirio", "transfirió",
             "me pasaron", "pasaron", "me enviaron", "enviaron", "me mandaron", "mandaron",
-            "me llegaron", "llegaron", "recargué", "recargue", "metí", "meti",
-            "sueldo", "nómina", "nomina", "quincena", "abono", "abonaron", "me abonaron", "honorarios",
-            "gané", "gane", "ganancia", "me entró", "me entro", "cobré", "cobre",
+            "me llegaron", "llegaron", "me llegó", "me llego", "llegó", "llego",
+            "recargué", "recargue", "metí", "meti",
+            "sueldo", "nómina", "nomina", "salario", "salarios", "quincena", "abono", "abonaron", "me abonaron", "honorarios",
+            "gané", "gane", "ganancia", "ganancias",
+            "me entró", "me entro", "entraron", "entró", "entro", "entrada", "entradas",
+            "cobré", "cobre", "cobro", "cobros",
             "depósito", "deposito", "depositaron", "me depositaron", "me giraron",
-            "giraron", "reembolso", "devolución", "devolucion", "freelance"
+            "giraron", "reembolso", "reembolsos", "devolución", "devolucion", "devolvieron", "me devolvieron",
+            "me debían", "me debian", "deuda que me pagaron", "plata que me debían", "plata que me debian",
+            "venta", "ventas", "freelance", "propina", "propinas",
+            "rendimiento", "rendimientos", "intereses", "dividendos"
         ]
-        es_ingreso = not es_egreso_explicito and any(palabra in t for palabra in palabras_ingreso)
-        tipo = "INGRESO" if es_ingreso else "EGRESO"
+
+        t_norm = normalizar_texto(t)
+        palabras_egreso_norm = [normalizar_texto(p) for p in palabras_egreso_fuertes]
+        palabras_ingreso_norm = [normalizar_texto(p) for p in palabras_ingreso]
+
+        primeras_palabras = " ".join(t_norm.split()[:3])
+        inicio_ingreso = any(primeras_palabras.startswith(p) or f" {p} " in f" {primeras_palabras} " for p in ["ingreso", "ingresos", "ingresaron", "entrada", "recibi", "me pagaron", "me entro", "nomina", "sueldo", "salario", "consignacion", "abono", "gane", "venta"])
+        inicio_egreso = any(primeras_palabras.startswith(p) or f" {p} " in f" {primeras_palabras} " for p in ["gasto", "gastos", "pague", "compre", "mande", "envie", "pase", "retire", "saque"])
+
+        if inicio_ingreso and not inicio_egreso:
+            tipo = "INGRESO"
+        elif inicio_egreso and not inicio_ingreso:
+            tipo = "EGRESO"
+        else:
+            es_egreso_explicito = any(p in t_norm for p in palabras_egreso_norm)
+            es_ingreso = any(palabra in t_norm for palabra in palabras_ingreso_norm)
+            if es_ingreso and not es_egreso_explicito:
+                tipo = "INGRESO"
+            elif es_egreso_explicito and not es_ingreso:
+                tipo = "EGRESO"
+            elif es_ingreso and es_egreso_explicito:
+                idx_egreso = min([t_norm.find(p) for p in palabras_egreso_norm if p in t_norm])
+                idx_ingreso = min([t_norm.find(p) for p in palabras_ingreso_norm if p in t_norm])
+                tipo = "INGRESO" if idx_ingreso < idx_egreso else "EGRESO"
+            else:
+                tipo = "EGRESO"
 
         # En Colombia ningún ingreso (nómina, sueldo, transferencia, honorarios) es menor a $1.000 COP ($0.25 USD).
         # Si se detectó ingreso y el monto es menor a 1.000, auto-escalar a miles (ej. 500 -> 500.000 COP).
-        if es_ingreso and 0 < monto < 1000:
+        if tipo == "INGRESO" and 0 < monto < 1000:
             monto *= 1000.0
 
         # 4. Extraer Comercio / Concepto
-        comercio = cls._extraer_concepto(t, es_ingreso=es_ingreso)
+        comercio = cls._extraer_concepto(t, es_ingreso=(tipo == "INGRESO"))
 
         # 5. Categoría
         categoria_nombre, categoria_id = CategorizadorComercios.sugerir_categoria(comercio, db)
-        if es_ingreso and not categoria_id and db:
+        if tipo == "INGRESO" and not categoria_id and db:
             from backend.app.models import Categoria
             cat_nom = db.query(Categoria).filter(Categoria.nombre.ilike("%nómina%")).first()
             if cat_nom:
@@ -285,16 +317,52 @@ class NLPSmartExpenseParser:
                     c_cr = next((c for c in cuentas if c.tipo == TipoCuenta.CREDITO), None)
                     if c_cr:
                         return c_cr.id, c_cr.nombre
+                    nueva_c = Cuenta(
+                        nombre="Tarjeta de Crédito",
+                        tipo=TipoCuenta.CREDITO,
+                        saldo_actual=0.0,
+                        cupo_total=5000000.0,
+                        usuario_id=usuario_id,
+                        activa=True
+                    )
+                    db.add(nueva_c)
+                    db.commit()
+                    db.refresh(nueva_c)
+                    return nueva_c.id, nueva_c.nombre
 
                 elif key == "nu":
                     c_nu = next((c for c in cuentas if c.tipo == TipoCuenta.ALTO_RENDIMIENTO or "nu" in normalizar_texto(c.nombre)), None)
                     if c_nu:
                         return c_nu.id, c_nu.nombre
+                    nueva_c = Cuenta(
+                        nombre="Nu Colombia (Cajita)",
+                        tipo=TipoCuenta.ALTO_RENDIMIENTO,
+                        saldo_actual=0.0,
+                        tasa_ea=13.0,
+                        usuario_id=usuario_id,
+                        activa=True
+                    )
+                    db.add(nueva_c)
+                    db.commit()
+                    db.refresh(nueva_c)
+                    return nueva_c.id, nueva_c.nombre
 
                 elif key in ["bancolombia", "davivienda"]:
-                    c_deb = next((c for c in cuentas if c.tipo == TipoCuenta.DEBITO and "nequi" not in normalizar_texto(c.nombre)), None)
+                    c_deb = next((c for c in cuentas if c.tipo == TipoCuenta.DEBITO and "nequi" not in normalizar_texto(c.nombre) and key in normalizar_texto(c.nombre)), None)
                     if c_deb:
                         return c_deb.id, c_deb.nombre
+                    nom_banco = "Bancolombia Principal" if key == "bancolombia" else "Davivienda"
+                    nueva_c = Cuenta(
+                        nombre=nom_banco,
+                        tipo=TipoCuenta.DEBITO,
+                        saldo_actual=0.0,
+                        usuario_id=usuario_id,
+                        activa=True
+                    )
+                    db.add(nueva_c)
+                    db.commit()
+                    db.refresh(nueva_c)
+                    return nueva_c.id, nueva_c.nombre
 
         # 2. Búsqueda directa por el nombre de las cuentas del usuario
         for c in cuentas:
@@ -315,12 +383,14 @@ class NLPSmartExpenseParser:
     @classmethod
     def _extraer_concepto(cls, texto: str, es_ingreso: bool = False) -> str:
         stop_words = (
-            r"\b(pagué|pague|gasté|gaste|compré|compre|me|pagaron|recibí|recibi|consignaron|"
-            r"transfirieron|giraron|depositaron|entró|entro|cobré|cobre|mandé|mande|envié|envie|"
-            r"pasé|pase|enviaron|mandaron|pasaron|de|en|con|por|un|una|unos|unas|la|el|los|las|"
+            r"\b(pagué|pague|gasté|gaste|compré|compre|gasto|gastos|egreso|egresos|"
+            r"me|pagaron|pagó|pago|recibí|recibi|consignaron|consigné|consigne|consignación|consignacion|"
+            r"transfirieron|giraron|depositaron|entró|entro|entraron|cobré|cobre|cobro|cobros|mandé|mande|envié|envie|"
+            r"pasé|pase|enviaron|mandaron|pasaron|llegó|llego|llegaron|recargué|recargue|metí|meti|"
+            r"de|en|con|por|un|una|unos|unas|la|el|los|las|"
             r"mil|k|pesos|cop|efectivo|tarjeta|crédito|credito|debito|débito|bancolombia|nu|nequi|"
             r"nequí|neki|neky|daviplata|davi|davivienda|bbva|rappi|lulo|cajita|cajero|cuenta|"
-            r"plata|dinero|fisico|físico)\b"
+            r"plata|dinero|fisico|físico|saldo)\b"
         )
         limpio = re.sub(stop_words, "", texto, flags=re.IGNORECASE)
         limpio = re.sub(r"\$?\s*\d+(?:[.,]\d+)?", "", limpio)

@@ -906,8 +906,8 @@ def mobile_dashboard_preview():
                         <!-- URL Atajo Siri & Voz Inteligente (NLP) -->
                         <div class="p-3 rounded-2xl bg-[#000000] border border-purple-500/20 space-y-2">
                             <div class="flex justify-between items-center">
-                                <span class="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">Atajo de Voz / Siri & Apple Intelligence</span>
-                                <span class="text-[9px] text-[#8E8E93]">Con token seguro</span>
+                                <span class="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">Atajo de Gastos e Ingresos / Siri (NLP)</span>
+                                <span class="text-[9px] text-[#8E8E93]">Gastos e Ingresos con token</span>
                             </div>
                             <div class="flex items-center gap-2">
                                 <input type="text" id="url-siri-voz-endpoint" readonly class="w-full bg-[#1C1C1E] border border-white/10 rounded-xl px-2.5 py-2 text-[10px] text-purple-400 font-mono select-all">

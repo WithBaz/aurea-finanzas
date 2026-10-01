@@ -337,4 +337,71 @@ def test_ia_rapida_formatos_cuerpo_atajos(client):
     assert "No detecté el monto" in res_err.json()["mensaje"]
 
 
+def test_nlp_reconocimiento_amplio_ingresos_y_gastos():
+    """
+    Verifica que el parser diferencie de forma natural y robusta entre gastos e ingresos
+    en expresiones cotidianas colombianas sin requerir forzar parámetros.
+    """
+    db = TestingSessionLocal()
+    casos = [
+        ("Ingresaron 100 mil a Bancolombia", "INGRESO", 100000.0, "Bancolombia Principal"),
+        ("Entraron 200 mil a Bancolombia", "INGRESO", 200000.0, "Bancolombia Principal"),
+        ("Venta de 80 mil en efectivo", "INGRESO", 80000.0, "Billetera Efectivo"),
+        ("Cobro de 50 mil en efectivo", "INGRESO", 50000.0, "Billetera Efectivo"),
+        ("Me devolvieron 30 mil en Nequi", "INGRESO", 30000.0, "Nequi"),
+        ("Plata que me debian 50 mil en Nequi", "INGRESO", 50000.0, "Nequi"),
+        ("Sueldo de 2 millones en Bancolombia", "INGRESO", 2000000.0, "Bancolombia Principal"),
+        ("Gasto de 15 mil en efectivo", "EGRESO", 15000.0, "Billetera Efectivo"),
+        ("Gasto 20 mil en Nequi", "EGRESO", 20000.0, "Nequi"),
+        ("Pagué 15 mil en Nequi", "EGRESO", 15000.0, "Nequi"),
+        ("Taxi 12 mil en efectivo", "EGRESO", 12000.0, "Billetera Efectivo"),
+    ]
+    for frase, tipo_esperado, monto_esperado, cuenta_esperada in casos:
+        res = NLPSmartExpenseParser.interpretar_texto_gasto(frase, db)
+        assert res["tipo"] == tipo_esperado, f"Fallo en tipo para '{frase}': esperado {tipo_esperado}, obtenido {res['tipo']}"
+        assert res["monto"] == monto_esperado, f"Fallo en monto para '{frase}': esperado {monto_esperado}, obtenido {res['monto']}"
+        if cuenta_esperada:
+            assert res["cuenta_nombre"] == cuenta_esperada, f"Fallo en cuenta para '{frase}': esperado {cuenta_esperada}, obtenido {res['cuenta_nombre']}"
+    db.close()
+
+
+def test_ia_rapida_con_parametro_tipo_alias(client):
+    """
+    Verifica que el endpoint /ia-rapida respete el parámetro tipo
+    con alias como 'gasto', 'GASTO', 'ingreso', 'INGRESO', 'entrada', tanto en GET como en POST.
+    """
+    # 1. GET con tipo=gasto
+    res1 = client.get("/api/v1/transacciones/ia-rapida?texto=15000 en Nequi&tipo=gasto")
+    assert res1.status_code == 200
+    d1 = res1.json()
+    assert d1["status"] == "registrado"
+    assert d1["tipo"] == "EGRESO"
+    assert d1["monto"] == 15000.0
+
+    # 2. GET con tipo=ingreso
+    res2 = client.get("/api/v1/transacciones/ia-rapida?texto=50000 en Nequi&tipo=ingreso")
+    assert res2.status_code == 200
+    d2 = res2.json()
+    assert d2["status"] == "registrado"
+    assert d2["tipo"] == "INGRESO"
+    assert d2["monto"] == 50000.0
+
+    # 3. POST JSON con tipo='GASTO'
+    res3 = client.post("/api/v1/transacciones/ia-rapida", json={"texto": "20000 en efectivo", "tipo": "GASTO"})
+    assert res3.status_code == 200
+    d3 = res3.json()
+    assert d3["status"] == "registrado"
+    assert d3["tipo"] == "EGRESO"
+    assert d3["monto"] == 20000.0
+
+    # 4. POST Form con tipo='entrada'
+    res4 = client.post("/api/v1/transacciones/ia-rapida", content=b"texto=100000+en+Bancolombia&tipo=entrada", headers={"Content-Type": "application/x-www-form-urlencoded"})
+    assert res4.status_code == 200
+    d4 = res4.json()
+    assert d4["status"] == "registrado"
+    assert d4["tipo"] == "INGRESO"
+    assert d4["monto"] == 100000.0
+
+
+
 

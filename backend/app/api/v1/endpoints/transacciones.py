@@ -164,7 +164,7 @@ async def registrar_gasto_ia_rapida(
                 pass
 
         # 3. Intentar Texto Plano Directo o Formulario crudo en el Body
-        if not texto_final:
+        if not texto_final or not tipo_final:
             try:
                 raw_bytes = await request.body()
                 raw_str = raw_bytes.decode("utf-8").strip()
@@ -172,12 +172,15 @@ async def registrar_gasto_ia_rapida(
                     import urllib.parse
                     if "texto=" in raw_str:
                         qs = urllib.parse.parse_qs(raw_str)
-                        if qs.get("texto"):
+                        if not texto_final and qs.get("texto"):
                             texto_final = qs["texto"][0]
                         if not token_val and qs.get("token"):
                             token_val = qs["token"][0]
+                        if not tipo_final and qs.get("tipo"):
+                            tipo_final = qs["tipo"][0]
                     elif not raw_str.startswith("{"):
-                        texto_final = raw_str
+                        if not texto_final:
+                            texto_final = raw_str
             except Exception:
                 pass
 
@@ -185,7 +188,7 @@ async def registrar_gasto_ia_rapida(
     if not texto_final:
         return {
             "status": "error",
-            "mensaje": "No se recibió ningún texto. Por favor di lo que gastaste (ej: 'Pagué 15 mil en Nequi')."
+            "mensaje": "No se recibió ningún texto. Por favor di lo que gastaste o ingresaste (ej: 'Pagué 15 mil en Nequi' o 'Me pagaron 500 mil')."
         }
 
     # Autenticación segura mediante Bearer token, X-Aurea-Token o query param token
@@ -227,11 +230,21 @@ async def registrar_gasto_ia_rapida(
     monto = interpretacion["monto"]
     comercio = interpretacion["comercio"]
     
-    # Si el atajo forzó tipo explícito (ej. atajo de Registrar Ingreso)
-    if tipo_final and tipo_final.upper() in ["INGRESO", "EGRESO"]:
-        tipo = tipo_final.upper()
-        if tipo == "INGRESO" and comercio == "Gasto General":
+    # Si el atajo forzó tipo explícito (ej. atajo de Registrar Ingreso o Registrar Gasto)
+    tipo_forzado = None
+    if tipo_final:
+        t_clean = str(tipo_final).strip().upper()
+        if t_clean in ["INGRESO", "INGRESOS", "ENTRADA", "ENTRADAS", "INCOME"]:
+            tipo_forzado = "INGRESO"
+        elif t_clean in ["EGRESO", "EGRESOS", "GASTO", "GASTOS", "SALIDA", "SALIDAS", "EXPENSE"]:
+            tipo_forzado = "EGRESO"
+
+    if tipo_forzado:
+        tipo = tipo_forzado
+        if tipo == "INGRESO" and comercio in ["Gasto General", "Gasto"]:
             comercio = "Ingreso General"
+        elif tipo == "EGRESO" and comercio in ["Ingreso General", "Ingreso"]:
+            comercio = "Gasto General"
     else:
         tipo = interpretacion["tipo"]
 
@@ -311,11 +324,13 @@ async def registrar_gasto_ia_rapida(
     db.commit()
     db.refresh(tx)
 
+    tipo_palabra = "ingreso" if tipo == "INGRESO" else "gasto"
     return {
         "status": "registrado",
-        "mensaje": f"¡Listo! Registrado {tipo.lower()} de {monto_texto} en '{comercio}' con {cuenta.nombre}.",
+        "mensaje": f"¡Listo! Registrado {tipo_palabra} de {monto_texto} en '{comercio}' con {cuenta.nombre}.",
         "transaccion_id": tx.id,
         "monto": monto,
+        "tipo": tipo,
         "comercio": comercio,
         "cuenta": cuenta.nombre,
         "saldo_cuenta_actual": cuenta.saldo_actual
