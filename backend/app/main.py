@@ -878,43 +878,6 @@ def mobile_dashboard_preview():
                     </div>
                 </div>
 
-                <!-- Card 2: Automatizaciones de iOS (Apple Pay y Consignaciones / SMS) -->
-                <div class="ios-card rounded-3xl p-5 mb-6 border border-white/10 bg-[#1C1C1E]">
-                    <div class="flex items-center gap-2 mb-3">
-                        <div class="w-7 h-7 rounded-lg bg-white/10 text-white flex items-center justify-center text-xs">
-                            <i class="fa-brands fa-apple"></i>
-                        </div>
-                        <h3 class="text-sm font-bold text-white">Automatizaciones de iOS</h3>
-                    </div>
-                    
-                    <div class="space-y-3 text-xs">
-                        <!-- URL Webhook Apple Pay / SMS -->
-                        <div class="p-3 rounded-2xl bg-[#000000] border border-white/5 space-y-2">
-                            <span class="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">URL Webhook Apple Pay / SMS</span>
-                            <div class="flex items-center gap-2">
-                                <input type="text" id="url-webhook-endpoint" readonly class="w-full bg-[#1C1C1E] border border-white/10 rounded-xl px-2.5 py-2 text-[10px] text-blue-400 font-mono select-all">
-                                <button onclick="copiarUrlWebhook()" class="px-3.5 py-2 rounded-xl bg-[#0A84FF] text-white font-bold text-xs shrink-0 active:scale-95 transition">
-                                    Copiar
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- URL Atajo Siri & Voz Inteligente (NLP) -->
-                        <div class="p-3 rounded-2xl bg-[#000000] border border-purple-500/20 space-y-2">
-                            <div class="flex justify-between items-center">
-                                <span class="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">Atajo de Gastos e Ingresos / Siri (NLP)</span>
-                                <span class="text-[9px] text-[#8E8E93]">Gastos e Ingresos con token</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <input type="text" id="url-siri-voz-endpoint" readonly class="w-full bg-[#1C1C1E] border border-white/10 rounded-xl px-2.5 py-2 text-[10px] text-purple-400 font-mono select-all">
-                                <button onclick="copiarUrlSiriVoz()" class="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shrink-0 active:scale-95 transition">
-                                    Copiar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Card 3: Acerca de AUREA -->
                 <div class="ios-card rounded-3xl p-4 mb-6 border border-white/10 bg-[#1C1C1E] flex items-center gap-3.5">
                     <img src="/apple-touch-icon.png" alt="AUREA Logo" class="w-12 h-12 rounded-2xl border border-white/15 shadow-lg object-cover">
@@ -3076,7 +3039,7 @@ def mobile_dashboard_preview():
                     },
                     'ajustes': {
                         titulo: 'Ajustes',
-                        subtitulo: 'Seguridad de cuenta y automatizaciones iOS',
+                        subtitulo: 'Preferencias, apariencia y seguridad',
                         accion: ''
                     }
                 };
@@ -3110,16 +3073,6 @@ def mobile_dashboard_preview():
 
             function cargarDatosPerfilAjustes() {
                 try {
-                    const origin = window.location.origin;
-                    const elWebhook = document.getElementById('url-webhook-endpoint');
-                    if(elWebhook) elWebhook.value = origin + '/api/v1/webhooks/ios-shortcut';
-
-                    const elSiri = document.getElementById('url-siri-voz-endpoint');
-                    if(elSiri) {
-                        const tokenParam = usuarioActualToken ? `?token=${encodeURIComponent(usuarioActualToken)}` : '';
-                        elSiri.value = `${origin}/api/v1/transacciones/ia-rapida${tokenParam}`;
-                    }
-
                     const segUser = document.getElementById('ajustes-seguridad-username');
                     if(segUser) segUser.innerText = `Conectado como ${usuarioActual || 'Usuario'}`;
                     actualizarSelectorTemaAjustes(temaActualConfig);
@@ -3150,29 +3103,6 @@ def mobile_dashboard_preview():
                 } catch(e) {
                     alert('Error al guardar ajustes.');
                 }
-            }
-
-            function copiarUrlWebhook() {
-                const input = document.getElementById('url-webhook-endpoint');
-                navigator.clipboard.writeText(input.value).then(() => {
-                    alert('✓ ¡URL copiada! Pégala en Atajos de Apple.');
-                }).catch(() => {
-                    input.select();
-                    document.execCommand('copy');
-                    alert('✓ ¡URL copiada!');
-                });
-            }
-
-            function copiarUrlSiriVoz() {
-                const input = document.getElementById('url-siri-voz-endpoint');
-                if(!input) return;
-                navigator.clipboard.writeText(input.value).then(() => {
-                    alert('✓ ¡URL de Siri y Voz copiada con tu token personal!');
-                }).catch(() => {
-                    input.select();
-                    document.execCommand('copy');
-                    alert('✓ ¡URL de Siri y Voz copiada!');
-                });
             }
 
             // ==========================================
