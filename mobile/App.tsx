@@ -212,17 +212,37 @@ export default function App() {
         )}
 
         {tab === 'atajos' && (
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>INTEGRACIÓN AUTOMÁTICA DE IPHONE</Text>
-            <Text style={styles.shortcutsTitle}>Apple Pay & SMS Bancarios</Text>
-            <Text style={styles.shortcutsBody}>
-              1. Abre la app <Text style={{ color: '#F59E0B', fontWeight: 'bold' }}>Atajos</Text> en tu iPhone.{'\n'}
-              2. Ve a <Text style={{ color: '#F59E0B' }}>Automatización</Text> y pulsa (+).{'\n'}
-              3. Selecciona <Text style={{ color: '#F59E0B' }}>Transacción</Text> para Apple Pay o <Text style={{ color: '#F59E0B' }}>Mensaje</Text> para SMS.{'\n'}
-              4. Configura acción HTTP POST a:{'\n'}
-              <Text style={{ color: '#60A5FA', fontSize: 11 }}>http://tu-servidor-aurea.com/api/v1/webhooks/ios-shortcut</Text>
-            </Text>
-          </View>
+          <>
+            <View style={[styles.card, { borderColor: '#8B5CF6', backgroundColor: '#18122B' }]}>
+              <Text style={[styles.cardLabel, { color: '#C4B5FD' }]}>ATAJO DE VOZ & SIRI / BOTÓN DE ACCIÓN</Text>
+              <Text style={styles.shortcutsTitle}>🎙️ "Oye Siri, registrar gasto"</Text>
+              <Text style={styles.shortcutsBody}>
+                Registra cualquier gasto con tu voz o el botón de acción sin abrir la app:{'\n\n'}
+                <Text style={{ fontWeight: 'bold', color: '#F59E0B' }}>Paso 1:</Text> En app <Text style={{ color: '#F59E0B' }}>Atajos</Text>, crea uno llamado <Text style={{ color: '#F59E0B' }}>Registrar Gasto</Text>.{'\n'}
+                <Text style={{ fontWeight: 'bold', color: '#F59E0B' }}>Paso 2:</Text> Acción: <Text style={{ color: '#CBD5E1', fontStyle: 'italic' }}>Solicitar entrada (Texto) con pregunta "¿Qué gastaste?"</Text>.{'\n'}
+                <Text style={{ fontWeight: 'bold', color: '#F59E0B' }}>Paso 3:</Text> Acción: <Text style={{ color: '#CBD5E1', fontStyle: 'italic' }}>Obtener contenido de URL</Text>:{'\n'}
+                <Text style={{ color: '#60A5FA', fontSize: 11 }}>https://tu-dominio/api/v1/transacciones/ia-rapida?texto=[Entrada provista]</Text>{'\n'}
+                <Text style={{ fontWeight: 'bold', color: '#F59E0B' }}>Paso 4:</Text> Acción: <Text style={{ color: '#CBD5E1', fontStyle: 'italic' }}>Mostrar resultado de Contenido de URL</Text> (o leer con Siri).{'\n\n'}
+                <Text style={{ color: '#10B981', fontWeight: 'bold' }}>Frases soportadas:</Text>{'\n'}
+                • "Pagué 15 mil en Nequi"{'\n'}
+                • "Pagué 12 mil de taxi en efectivo"{'\n'}
+                • "Almuerzo 28000 con Bancolombia"{'\n'}
+                • "Mercado 65 mil con Nu"
+              </Text>
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>INTEGRACIÓN AUTOMÁTICA EN SEGUNDO PLANO</Text>
+              <Text style={styles.shortcutsTitle}>💳 Apple Pay & SMS Bancarios</Text>
+              <Text style={styles.shortcutsBody}>
+                1. Abre la app <Text style={{ color: '#F59E0B', fontWeight: 'bold' }}>Atajos</Text> en tu iPhone.{'\n'}
+                2. Ve a <Text style={{ color: '#F59E0B' }}>Automatización</Text> y pulsa (+).{'\n'}
+                3. Selecciona <Text style={{ color: '#F59E0B' }}>Transacción</Text> para Apple Pay o <Text style={{ color: '#F59E0B' }}>Mensaje</Text> para SMS.{'\n'}
+                4. Configura acción HTTP POST a:{'\n'}
+                <Text style={{ color: '#60A5FA', fontSize: 11 }}>https://tu-dominio/api/v1/webhooks/ios-shortcut</Text>
+              </Text>
+            </View>
+          </>
         )}
       </ScrollView>
 
