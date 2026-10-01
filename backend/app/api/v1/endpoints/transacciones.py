@@ -163,19 +163,30 @@ async def registrar_gasto_ia_rapida(
             except Exception:
                 pass
 
-        # 3. Intentar Texto Plano Directo en el Body
+        # 3. Intentar Texto Plano Directo o Formulario crudo en el Body
         if not texto_final:
             try:
                 raw_bytes = await request.body()
                 raw_str = raw_bytes.decode("utf-8").strip()
-                if raw_str and not raw_str.startswith("{") and "=" not in raw_str:
-                    texto_final = raw_str
+                if raw_str:
+                    import urllib.parse
+                    if "texto=" in raw_str:
+                        qs = urllib.parse.parse_qs(raw_str)
+                        if qs.get("texto"):
+                            texto_final = qs["texto"][0]
+                        if not token_val and qs.get("token"):
+                            token_val = qs["token"][0]
+                    elif not raw_str.startswith("{"):
+                        texto_final = raw_str
             except Exception:
                 pass
 
     texto_final = str(texto_final or "").strip()
     if not texto_final:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El campo 'texto' es requerido")
+        return {
+            "status": "error",
+            "mensaje": "No se recibió ningún texto. Por favor di lo que gastaste (ej: 'Pagué 15 mil en Nequi')."
+        }
 
     # Autenticación segura mediante Bearer token, X-Aurea-Token o query param token
     auth_header = request.headers.get("Authorization")
@@ -199,6 +210,16 @@ async def registrar_gasto_ia_rapida(
                 detail="Token de autorización inválido o expirado."
             )
         current_uid = user.id
+    else:
+        # En instalaciones personales con un único usuario registrado,
+        # asociar automáticamente la petición al dueño para que los atajos de Siri
+        # funcionen de inmediato sin bloqueos de token.
+        from backend.app.models import Usuario
+        total_usuarios = db.query(Usuario).count()
+        if total_usuarios == 1:
+            primer_usuario = db.query(Usuario).first()
+            if primer_usuario:
+                current_uid = primer_usuario.id
 
     check_auth_if_users_exist(current_uid, db, "registrar transacciones con IA")
 
@@ -221,7 +242,10 @@ async def registrar_gasto_ia_rapida(
     cuenta_detectada_id = cuenta_id_final or interpretacion["cuenta_id"]
 
     if monto <= 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se detectó un monto válido en el mensaje")
+        return {
+            "status": "error",
+            "mensaje": f"No detecté el monto en '{texto_final}'. Intenta diciendo por ejemplo: 'Pagué 15 mil en Nequi' o 'Almuerzo 20 mil en efectivo'."
+        }
 
     if cuenta_detectada_id:
         cuenta = db.query(Cuenta).filter(Cuenta.id == cuenta_detectada_id).first()

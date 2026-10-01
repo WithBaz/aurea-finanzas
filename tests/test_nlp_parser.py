@@ -310,3 +310,31 @@ def test_auto_aprovisionar_nequi_si_no_existe_y_evitar_efectivo(client):
     db.close()
 
 
+def test_ia_rapida_formatos_cuerpo_atajos(client):
+    """
+    Verifica que /ia-rapida acepte peticiones desde Atajos de iOS sin importar si se envían como:
+    1. Texto plano crudo en el body.
+    2. Formulario urlencoded crudo.
+    3. Frase donde no se detectó monto (debe devolver status: 'error' con clave 'mensaje' para Siri).
+    """
+    # 1. Texto plano directo en el body
+    res_raw = client.post("/api/v1/transacciones/ia-rapida", content=b"Pague 25 mil en Bancolombia", headers={"Content-Type": "text/plain"})
+    assert res_raw.status_code == 200
+    assert res_raw.json()["status"] == "registrado"
+    assert res_raw.json()["monto"] == 25000.0
+
+    # 2. Formulario crudo en el body
+    res_form = client.post("/api/v1/transacciones/ia-rapida", content=b"texto=Almuerzo+18000+en+Bancolombia", headers={"Content-Type": "application/x-www-form-urlencoded"})
+    assert res_form.status_code == 200
+    assert res_form.json()["status"] == "registrado"
+    assert res_form.json()["monto"] == 18000.0
+
+    # 3. Monto no detectado (Siri recibe el mensaje amigable en vez de error 400)
+    res_err = client.post("/api/v1/transacciones/ia-rapida", json={"texto": "Hola Siri"})
+    assert res_err.status_code == 200
+    assert res_err.json()["status"] == "error"
+    assert "mensaje" in res_err.json()
+    assert "No detecté el monto" in res_err.json()["mensaje"]
+
+
+
