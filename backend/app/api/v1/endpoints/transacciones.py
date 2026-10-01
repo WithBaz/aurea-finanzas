@@ -130,6 +130,7 @@ async def registrar_gasto_ia_rapida(
     texto_final = texto
     cuenta_id_final = cuenta_id
     tipo_final = tipo
+    token_val = None
 
     if request.method == "POST":
         # 1. Intentar JSON
@@ -142,19 +143,23 @@ async def registrar_gasto_ia_rapida(
                     cuenta_id_final = int(body.get("cuenta_id"))
                 if not tipo_final and body.get("tipo"):
                     tipo_final = str(body.get("tipo"))
+                if body.get("token"):
+                    token_val = str(body.get("token")).strip()
         except Exception:
             pass
 
         # 2. Intentar Formulario (Form en Atajos iOS)
-        if not texto_final:
+        if not texto_final or not token_val:
             try:
                 form = await request.form()
-                if form.get("texto"):
+                if not texto_final and form.get("texto"):
                     texto_final = str(form.get("texto"))
                 if not cuenta_id_final and form.get("cuenta_id"):
                     cuenta_id_final = int(form.get("cuenta_id"))
                 if not tipo_final and form.get("tipo"):
                     tipo_final = str(form.get("tipo"))
+                if not token_val and form.get("token"):
+                    token_val = str(form.get("token")).strip()
             except Exception:
                 pass
 
@@ -177,7 +182,6 @@ async def registrar_gasto_ia_rapida(
     aurea_header = request.headers.get("X-Aurea-Token")
     token_param = request.query_params.get("token")
 
-    token_val = None
     if auth_header and auth_header.lower().startswith("bearer "):
         token_val = auth_header[7:].strip()
     elif aurea_header:
@@ -257,7 +261,7 @@ async def registrar_gasto_ia_rapida(
         )
 
     if tipo == "EGRESO":
-        if cuenta.tipo in [TipoCuenta.DEBITO, TipoCuenta.EFECTIVO]:
+        if cuenta.tipo in [TipoCuenta.DEBITO, TipoCuenta.EFECTIVO, TipoCuenta.ALTO_RENDIMIENTO]:
             cuenta.saldo_actual -= monto
         elif cuenta.tipo == TipoCuenta.CREDITO:
             cuenta.saldo_actual += monto
@@ -322,12 +326,12 @@ def reasignar_cuenta_transaccion(
     antigua_cuenta = tx.cuenta_origen
     if antigua_cuenta and antigua_cuenta.id != nueva_cuenta.id:
         if tx.tipo == TipoTransaccion.EGRESO:
-            if antigua_cuenta.tipo in [TipoCuenta.DEBITO, TipoCuenta.EFECTIVO]:
+            if antigua_cuenta.tipo in [TipoCuenta.DEBITO, TipoCuenta.EFECTIVO, TipoCuenta.ALTO_RENDIMIENTO]:
                 antigua_cuenta.saldo_actual += tx.monto
             elif antigua_cuenta.tipo == TipoCuenta.CREDITO:
                 antigua_cuenta.saldo_actual -= tx.monto
 
-            if nueva_cuenta.tipo in [TipoCuenta.DEBITO, TipoCuenta.EFECTIVO]:
+            if nueva_cuenta.tipo in [TipoCuenta.DEBITO, TipoCuenta.EFECTIVO, TipoCuenta.ALTO_RENDIMIENTO]:
                 nueva_cuenta.saldo_actual -= tx.monto
             elif nueva_cuenta.tipo == TipoCuenta.CREDITO:
                 nueva_cuenta.saldo_actual += tx.monto

@@ -1,8 +1,21 @@
 import re
+import unicodedata
 from typing import Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 from backend.app.models import Cuenta, TipoCuenta
 from backend.app.services.categorizer import CategorizadorComercios
+
+
+def normalizar_texto(texto: str) -> str:
+    """
+    Normaliza el texto eliminando tildes/acentos y caracteres combinados
+    para comparación insensible a diacríticos (ej. 'Nequí' -> 'nequi', 'crédito' -> 'credito').
+    """
+    if not texto:
+        return ""
+    nfkd = unicodedata.normalize("NFKD", texto.lower())
+    sin_tildes = "".join([c for c in nfkd if not unicodedata.combining(c)])
+    return sin_tildes.strip()
 
 
 class NLPSmartExpenseParser:
@@ -15,58 +28,6 @@ class NLPSmartExpenseParser:
     - 'Compré 42.000 en el D1 con tarjeta de crédito'
     - 'Café 8500'
     """
-
-    @classmethod
-    def interpretar_texto_gasto(cls, texto: str, db: Optional[Session] = None) -> Dict[str, Any]:
-        t = texto.strip().lower()
-
-        # 1. Extraer Monto
-        monto = cls._extraer_monto(t)
-
-        # 2. Detectar Cuenta
-        cuenta_id, cuenta_nombre = cls._detectar_cuenta(t, db)
-
-        # 3. Detectar Tipo (Ingreso vs Egreso)
-        palabras_ingreso = [
-            "ingreso", "ingresos", "me pagaron", "pagaron", "recibí", "recibi",
-            "consignaron", "me consignaron", "consignación", "consignacion",
-            "transfirieron", "me transfirieron", "transferencia recibida",
-            "sueldo", "nómina", "nomina", "quincena", "abono", "honorarios",
-            "gané", "gane", "ganancia", "me entró", "me entro", "cobré", "cobre",
-            "depósito", "deposito", "depositaron", "me depositaron", "me giraron",
-            "giraron", "reembolso", "devolución", "devolucion", "freelance"
-        ]
-        es_ingreso = any(palabra in t for palabra in palabras_ingreso)
-        tipo = "INGRESO" if es_ingreso else "EGRESO"
-
-        # En Colombia ningún ingreso (nómina, sueldo, transferencia, honorarios) es menor a $1.000 COP ($0.25 USD).
-        # Si se detectó ingreso y el monto es menor a 1.000, auto-escalar a miles (ej. 500 -> 500.000 COP).
-        if es_ingreso and 0 < monto < 1000:
-            monto *= 1000.0
-
-        # 4. Extraer Comercio / Concepto
-        comercio = cls._extraer_concepto(t, es_ingreso=es_ingreso)
-
-        # 5. Categoría
-        categoria_nombre, categoria_id = CategorizadorComercios.sugerir_categoria(comercio, db)
-        if es_ingreso and not categoria_id and db:
-            from backend.app.models import Categoria
-            cat_nom = db.query(Categoria).filter(Categoria.nombre.ilike("%nómina%")).first()
-            if cat_nom:
-                categoria_nombre = cat_nom.nombre
-                categoria_id = cat_nom.id
-
-        return {
-            "monto": monto,
-            "tipo": tipo,
-            "comercio": comercio,
-            "cuenta_id": cuenta_id,
-            "cuenta_nombre": cuenta_nombre,
-            "categoria_nombre": categoria_nombre,
-            "categoria_id": categoria_id,
-            "requiere_confirmar_cuenta": cuenta_id is None,
-            "texto_original": texto
-        }
 
     @classmethod
     def _extraer_monto(cls, texto: str) -> float:
@@ -232,66 +193,121 @@ class NLPSmartExpenseParser:
         if not db:
             return None, None
 
-        t = texto.lower()
+        t = normalizar_texto(texto)
         query = db.query(Cuenta).filter(Cuenta.activa == True)
         if usuario_id:
-            query = query.filter(Cuenta.usuario_id == usuario_id)
+            from sqlalchemy import or_
+            query = query.filter(or_(Cuenta.usuario_id == usuario_id, Cuenta.usuario_id.is_(None)))
         cuentas = query.all()
         if not cuentas:
             cuentas = db.query(Cuenta).filter(Cuenta.activa == True).all()
 
-        if not cuentas:
-            return None, None
-
-        # 1. Búsqueda por entidades financieras / instrumentos colombianos
+        # 1. Mapeo de entidades financieras / instrumentos colombianos (sin tildes para búsqueda precisa)
         keywords_map = {
-            "nequi": ["nequi"],
-            "daviplata": ["daviplata", "davi"],
-            "bancolombia": ["bancolombia", "banco", "débito", "debito"],
+            "nequi": ["nequi", "neki", "neky", "nekki", "nequie"],
+            "daviplata": ["daviplata", "davi", "davyplata", "davi plata"],
+            "bancolombia": ["bancolombia", "banco colombia", "bancolombia a la mano", "a la mano"],
             "davivienda": ["davivienda"],
-            "nu": ["nu", "nubank", "cajita", "cuenta nu"],
-            "efectivo": ["efectivo", "en cash", "plata en mano", "billetes", "cash"],
-            "credito": ["crédito", "credito", "tarjeta", "tc", "visa", "mastercard", "amex"],
-            "lulo": ["lulo", "lulobank"],
+            "nu": ["nu", "nubank", "cajita", "cajitas", "cuenta nu"],
+            "lulo": ["lulo", "lulobank", "lulo bank"],
             "rappi": ["rappi", "rappipay", "rappi pay"],
-            "falabella": ["falabella"],
+            "falabella": ["falabella", "banco falabella"],
             "bbva": ["bbva"],
             "scotia": ["colpatria", "scotiabank"],
-            "bogota": ["banco de bogota", "banco bogota", "bogota"]
+            "bogota": ["banco de bogota", "banco bogota", "bogota"],
+            "efectivo": ["efectivo", "en cash", "cash", "billetes", "plata en mano", "en fisico", "plata de efectivo", "billetera efectivo"],
+            "credito": ["tarjeta de credito", "credito", "tarjeta", "tc", "visa", "mastercard", "amex", "american express"]
         }
 
+        entidad_detectada = None
         for key, tokens in keywords_map.items():
             if any(token in t for token in tokens):
-                # Primero buscar cuenta de la base de datos cuyo nombre contenga el banco
+                entidad_detectada = key
+
+                # A. Buscar cuenta de la base de datos cuyo nombre contenga la entidad
                 for c in cuentas:
-                    nom_c = c.nombre.lower()
+                    nom_c = normalizar_texto(c.nombre)
                     if any(token in nom_c for token in tokens):
                         return c.id, c.nombre
-                # Si no hay por coincidencia de nombre, mapear a tipo
-                if key == "efectivo":
-                    c_ef = next((c for c in cuentas if c.tipo == TipoCuenta.EFECTIVO), None)
-                    if c_ef: return c_ef.id, c_ef.nombre
+
+                # B. Mapeo por tipo o coincidencia especializada
+                if key == "nequi":
+                    # Si el usuario ya tiene una cuenta con 'nequi' en su nombre
+                    c_neq = next((c for c in cuentas if "nequi" in normalizar_texto(c.nombre)), None)
+                    if c_neq:
+                        return c_neq.id, c_neq.nombre
+                    # Si el usuario dijo explícitamente Nequi pero no la tiene creada, auto-aprovisionarla
+                    nueva_c = Cuenta(
+                        nombre="Nequi",
+                        tipo=TipoCuenta.DEBITO,
+                        saldo_actual=0.0,
+                        usuario_id=usuario_id,
+                        activa=True
+                    )
+                    db.add(nueva_c)
+                    db.commit()
+                    db.refresh(nueva_c)
+                    return nueva_c.id, nueva_c.nombre
+
+                elif key == "daviplata":
+                    c_davi = next((c for c in cuentas if "daviplata" in normalizar_texto(c.nombre)), None)
+                    if c_davi:
+                        return c_davi.id, c_davi.nombre
+                    nueva_c = Cuenta(
+                        nombre="Daviplata",
+                        tipo=TipoCuenta.DEBITO,
+                        saldo_actual=0.0,
+                        usuario_id=usuario_id,
+                        activa=True
+                    )
+                    db.add(nueva_c)
+                    db.commit()
+                    db.refresh(nueva_c)
+                    return nueva_c.id, nueva_c.nombre
+
+                elif key == "efectivo":
+                    c_ef = next((c for c in cuentas if c.tipo == TipoCuenta.EFECTIVO or "efectivo" in normalizar_texto(c.nombre)), None)
+                    if c_ef:
+                        return c_ef.id, c_ef.nombre
+                    nueva_c = Cuenta(
+                        nombre="Billetera Efectivo",
+                        tipo=TipoCuenta.EFECTIVO,
+                        saldo_actual=0.0,
+                        usuario_id=usuario_id,
+                        activa=True
+                    )
+                    db.add(nueva_c)
+                    db.commit()
+                    db.refresh(nueva_c)
+                    return nueva_c.id, nueva_c.nombre
+
                 elif key == "credito":
                     c_cr = next((c for c in cuentas if c.tipo == TipoCuenta.CREDITO), None)
-                    if c_cr: return c_cr.id, c_cr.nombre
+                    if c_cr:
+                        return c_cr.id, c_cr.nombre
+
                 elif key == "nu":
-                    c_nu = next((c for c in cuentas if c.tipo == TipoCuenta.ALTO_RENDIMIENTO), None)
-                    if c_nu: return c_nu.id, c_nu.nombre
-                elif key in ["bancolombia", "nequi", "daviplata", "davivienda"]:
-                    c_deb = next((c for c in cuentas if c.tipo == TipoCuenta.DEBITO), None)
-                    if c_deb: return c_deb.id, c_deb.nombre
+                    c_nu = next((c for c in cuentas if c.tipo == TipoCuenta.ALTO_RENDIMIENTO or "nu" in normalizar_texto(c.nombre)), None)
+                    if c_nu:
+                        return c_nu.id, c_nu.nombre
+
+                elif key in ["bancolombia", "davivienda"]:
+                    c_deb = next((c for c in cuentas if c.tipo == TipoCuenta.DEBITO and "nequi" not in normalizar_texto(c.nombre)), None)
+                    if c_deb:
+                        return c_deb.id, c_deb.nombre
 
         # 2. Búsqueda directa por el nombre de las cuentas del usuario
         for c in cuentas:
-            nom_c = c.nombre.lower()
+            nom_c = normalizar_texto(c.nombre)
             if nom_c in t:
                 return c.id, c.nombre
-            palabras_c = [w for w in re.findall(r"\w+", nom_c) if len(w) >= 4 and w not in ["cuenta", "tarjeta", "billetera", "banco"]]
+            # Excluir palabras genéricas como 'plata', 'dinero', 'cuenta', etc.
+            palabras_c = [w for w in re.findall(r"\w+", nom_c) if len(w) >= 4 and w not in ["cuenta", "tarjeta", "billetera", "banco", "plata", "dinero", "saldo"]]
             if palabras_c and any(w in t for w in palabras_c):
                 return c.id, c.nombre
 
-        # 3. Si el usuario solo tiene una cuenta activa en su sistema, asignarla automáticamente
-        if len(cuentas) == 1:
+        # 3. Si el usuario sólo tiene 1 cuenta activa y NO se especificó otra entidad en el texto, asignarla
+        if len(cuentas) == 1 and not entidad_detectada:
             return cuentas[0].id, cuentas[0].nombre
 
         return None, None
@@ -303,7 +319,8 @@ class NLPSmartExpenseParser:
             r"transfirieron|giraron|depositaron|entró|entro|cobré|cobre|mandé|mande|envié|envie|"
             r"pasé|pase|enviaron|mandaron|pasaron|de|en|con|por|un|una|unos|unas|la|el|los|las|"
             r"mil|k|pesos|cop|efectivo|tarjeta|crédito|credito|debito|débito|bancolombia|nu|nequi|"
-            r"daviplata|davivienda|bbva|rappi|lulo|cajita|cajero|cuenta)\b"
+            r"nequí|neki|neky|daviplata|davi|davivienda|bbva|rappi|lulo|cajita|cajero|cuenta|"
+            r"plata|dinero|fisico|físico)\b"
         )
         limpio = re.sub(stop_words, "", texto, flags=re.IGNORECASE)
         limpio = re.sub(r"\$?\s*\d+(?:[.,]\d+)?", "", limpio)

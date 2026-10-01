@@ -195,3 +195,118 @@ def test_interpretar_nequi_y_daviplata_voz():
 
     db.close()
 
+
+def test_nequi_con_tilde_y_variaciones_voz():
+    """
+    Verifica que transcripciones de Siri con tildes ('Nequí'), modismos ('plata por Nequi')
+    o variantes fonéticas resuelvan SIEMPRE a Nequi y NUNCA a Efectivo.
+    """
+    db = TestingSessionLocal()
+    nequi = db.query(Cuenta).filter(Cuenta.nombre.ilike("%nequi%")).first()
+    if not nequi:
+        nequi = Cuenta(nombre="Nequi", tipo=TipoCuenta.DEBITO, saldo_actual=200000.0)
+        db.add(nequi)
+        db.commit()
+
+    frases_nequi = [
+        "Pagué 15 mil en Nequí",
+        "Pagué 15 mil en Nequi.",
+        "Mandé plata por Nequi 25 mil",
+        "15 mil de taxi por Nequí",
+        "Almuerzo 20k en Nequí",
+        "gasté una plata en Nequi",
+        "plata de nequi 15 mil",
+        "nequi 50000",
+        "pagué con nequi 10 mil"
+    ]
+
+    for f in frases_nequi:
+        res = NLPSmartExpenseParser.interpretar_texto_gasto(f, db)
+        assert res["cuenta_nombre"] == nequi.nombre, f"Falló '{f}': se resolvió a {res['cuenta_nombre']} en vez de Nequi"
+        assert "efectivo" not in res["cuenta_nombre"].lower()
+
+    db.close()
+
+
+def test_diferenciacion_estricta_nequi_vs_efectivo_en_api(client):
+    """
+    Valida a nivel de endpoint API (/ia-rapida) que:
+    1. Un gasto en Nequi debita únicamente de Nequi y deja Efectivo intacto.
+    2. Un gasto en Efectivo debita únicamente de Efectivo y deja Nequi intacto.
+    """
+    db = TestingSessionLocal()
+    # Asegurar cuentas iniciales
+    c_nequi = db.query(Cuenta).filter(Cuenta.nombre.ilike("%nequi%")).first()
+    if not c_nequi:
+        c_nequi = Cuenta(nombre="Nequi", tipo=TipoCuenta.DEBITO, saldo_actual=100000.0)
+        db.add(c_nequi)
+        db.commit()
+    else:
+        c_nequi.saldo_actual = 100000.0
+        db.commit()
+
+    c_efectivo = db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.EFECTIVO).first()
+    c_efectivo.saldo_actual = 50000.0
+    db.commit()
+    db.close()
+
+    # 1. Gasto por voz en Nequi (usando tilde 'Nequí' común en dictado Siri)
+    res_neq = client.post("/api/v1/transacciones/ia-rapida", json={"texto": "Pagué 20 mil de almuerzo en Nequí"})
+    assert res_neq.status_code == 200
+    data_neq = res_neq.json()
+    assert data_neq["status"] == "registrado"
+    assert data_neq["cuenta"] == "Nequi"
+    assert data_neq["saldo_cuenta_actual"] == 80000.0  # 100k - 20k
+
+    # Verificar que Efectivo no se tocó
+    db = TestingSessionLocal()
+    ef_check = db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.EFECTIVO).first()
+    assert ef_check.saldo_actual == 50000.0
+    db.close()
+
+    # 2. Gasto por voz en Efectivo
+    res_ef = client.post("/api/v1/transacciones/ia-rapida", json={"texto": "Pagué 10 mil de taxi en efectivo"})
+    assert res_ef.status_code == 200
+    data_ef = res_ef.json()
+    assert data_ef["status"] == "registrado"
+    assert "efectivo" in data_ef["cuenta"].lower()
+    assert data_ef["saldo_cuenta_actual"] == 40000.0  # 50k - 10k
+
+    # Verificar que Nequi no se tocó en el segundo movimiento
+    db = TestingSessionLocal()
+    neq_check = db.query(Cuenta).filter(Cuenta.nombre.ilike("%nequi%")).first()
+    assert neq_check.saldo_actual == 80000.0
+    db.close()
+
+
+def test_auto_aprovisionar_nequi_si_no_existe_y_evitar_efectivo(client):
+    """
+    Si el usuario sólo tiene Billetera Efectivo creada en su app y dice por voz
+    'Pagué 15 mil en Nequi', el sistema NO debe debitar de Efectivo; debe auto-aprovisionar
+    la cuenta Nequi para no corromper la plata física.
+    """
+    db = TestingSessionLocal()
+    # Dejar sólo la cuenta de efectivo
+    db.query(Cuenta).filter(Cuenta.nombre != "Billetera Efectivo").delete()
+    ef = db.query(Cuenta).filter(Cuenta.nombre == "Billetera Efectivo").first()
+    if not ef:
+        ef = Cuenta(nombre="Billetera Efectivo", tipo=TipoCuenta.EFECTIVO, saldo_actual=50000.0)
+        db.add(ef)
+    ef.saldo_actual = 50000.0
+    db.commit()
+    db.close()
+
+    # El usuario envía comando por voz mencionando Nequi
+    res = client.post("/api/v1/transacciones/ia-rapida", json={"texto": "Pagué 15 mil en Nequí"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "registrado"
+    assert data["cuenta"] == "Nequi"
+
+    # Verificar que Efectivo quedó INTACTO en 50.000
+    db = TestingSessionLocal()
+    ef_despues = db.query(Cuenta).filter(Cuenta.nombre == "Billetera Efectivo").first()
+    assert ef_despues.saldo_actual == 50000.0
+    db.close()
+
+

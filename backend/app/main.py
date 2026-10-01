@@ -629,6 +629,10 @@ def mobile_dashboard_preview():
                     <span id="badge-db" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#1C1C1E] text-slate-300 border border-white/10">...</span>
                 </div>
                 <div class="flex items-center gap-2">
+                    <!-- Botón Rápido Dictar por Voz con IA / Siri -->
+                    <button id="btn-quick-voice" onclick="abrirModalGastoConVoz()" class="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center text-white transition active:scale-90 shadow-md shadow-purple-500/25" title="Dictar Gasto con Voz (Nequi, Efectivo...)">
+                        <i class="fa-solid fa-microphone text-xs"></i>
+                    </button>
                     <!-- Botón Rápido de Cambio de Tema (Sol / Luna) -->
                     <button id="btn-theme-toggle" onclick="alternarTema()" class="w-7 h-7 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center text-[#8E8E93] hover:text-white transition active:scale-90" title="Cambiar Tema (Claro / Oscuro)">
                         <i id="theme-toggle-icon" class="fa-solid fa-moon text-xs"></i>
@@ -888,11 +892,26 @@ def mobile_dashboard_preview():
                     </div>
                     
                     <div class="space-y-3 text-xs">
+                        <!-- URL Webhook Apple Pay / SMS -->
                         <div class="p-3 rounded-2xl bg-[#000000] border border-white/5 space-y-2">
-                            <span class="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">URL Webhook para Atajos</span>
+                            <span class="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">URL Webhook Apple Pay / SMS</span>
                             <div class="flex items-center gap-2">
                                 <input type="text" id="url-webhook-endpoint" readonly class="w-full bg-[#1C1C1E] border border-white/10 rounded-xl px-2.5 py-2 text-[10px] text-blue-400 font-mono select-all">
                                 <button onclick="copiarUrlWebhook()" class="px-3.5 py-2 rounded-xl bg-[#0A84FF] text-white font-bold text-xs shrink-0 active:scale-95 transition">
+                                    Copiar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- URL Atajo Siri & Voz Inteligente (NLP) -->
+                        <div class="p-3 rounded-2xl bg-[#000000] border border-purple-500/20 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">Atajo de Voz / Siri & Apple Intelligence</span>
+                                <span class="text-[9px] text-[#8E8E93]">Con token seguro</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="url-siri-voz-endpoint" readonly class="w-full bg-[#1C1C1E] border border-white/10 rounded-xl px-2.5 py-2 text-[10px] text-purple-400 font-mono select-all">
+                                <button onclick="copiarUrlSiriVoz()" class="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shrink-0 active:scale-95 transition">
                                     Copiar
                                 </button>
                             </div>
@@ -1026,6 +1045,31 @@ def mobile_dashboard_preview():
                     <button onclick="cerrarModalGasto()" class="text-[#8E8E93] hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="space-y-3">
+                    <!-- Entrada Rápida por Voz / Dictado NLP -->
+                    <div class="p-3 rounded-2xl bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/25 mb-1">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-[10px] font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i>
+                                <span>Dictar por Voz (Nequi, Efectivo...)</span>
+                            </span>
+                            <span id="voz-estado" class="text-[9px] text-[#8E8E93]">Toca el micro</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="input-voz-rapida" placeholder="Ej: Pagué 15 mil en Nequi de taxi" class="w-full bg-[#000000] border border-white/10 rounded-xl px-3 py-2 text-white text-xs placeholder-[#636366] focus:border-purple-500 outline-none" onkeydown="if(event.key === 'Enter') enviarGastoPorVoz()">
+                            <button type="button" id="btn-mic-voz" onclick="toggleReconocimientoVoz()" class="w-8 h-8 rounded-xl bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center shrink-0 active:scale-95 transition shadow-lg shadow-purple-500/25" title="Grabar Voz">
+                                <i class="fa-solid fa-microphone text-xs" id="icono-mic"></i>
+                            </button>
+                            <button type="button" onclick="enviarGastoPorVoz()" class="px-3 py-1.5 rounded-xl bg-[#0A84FF] hover:bg-blue-600 text-white font-bold text-xs shrink-0 active:scale-95 transition">
+                                Enviar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="relative flex items-center justify-center my-2">
+                        <div class="border-t border-white/10 w-full"></div>
+                        <span class="bg-[#1C1C1E] px-2 text-[9px] text-[#8E8E93] font-bold uppercase">O formulario manual</span>
+                    </div>
+
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Tipo</label>
                         <div class="grid grid-cols-2 gap-2">
@@ -3067,6 +3111,13 @@ def mobile_dashboard_preview():
                     const origin = window.location.origin;
                     const elWebhook = document.getElementById('url-webhook-endpoint');
                     if(elWebhook) elWebhook.value = origin + '/api/v1/webhooks/ios-shortcut';
+
+                    const elSiri = document.getElementById('url-siri-voz-endpoint');
+                    if(elSiri) {
+                        const tokenParam = usuarioActualToken ? `?token=${encodeURIComponent(usuarioActualToken)}` : '';
+                        elSiri.value = `${origin}/api/v1/transacciones/ia-rapida${tokenParam}`;
+                    }
+
                     const segUser = document.getElementById('ajustes-seguridad-username');
                     if(segUser) segUser.innerText = `Conectado como ${usuarioActual || 'Usuario'}`;
                     actualizarSelectorTemaAjustes(temaActualConfig);
@@ -3108,6 +3159,141 @@ def mobile_dashboard_preview():
                     document.execCommand('copy');
                     alert('✓ ¡URL copiada!');
                 });
+            }
+
+            function copiarUrlSiriVoz() {
+                const input = document.getElementById('url-siri-voz-endpoint');
+                if(!input) return;
+                navigator.clipboard.writeText(input.value).then(() => {
+                    alert('✓ ¡URL de Siri y Voz copiada con tu token personal!');
+                }).catch(() => {
+                    input.select();
+                    document.execCommand('copy');
+                    alert('✓ ¡URL de Siri y Voz copiada!');
+                });
+            }
+
+            // ==========================================
+            // RECONOCIMIENTO DE VOZ E INTELIGENCIA ARTIFICIAL
+            // ==========================================
+            let recognition = null;
+            let grabacionActiva = false;
+
+            function inicializarReconocimientoVoz() {
+                const SpeechRecog = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecog) return null;
+
+                const recog = new SpeechRecog();
+                recog.lang = 'es-CO'; // Español de Colombia
+                recog.continuous = false;
+                recog.interimResults = false;
+
+                recog.onstart = function() {
+                    grabacionActiva = true;
+                    const btn = document.getElementById('btn-mic-voz');
+                    const ic = document.getElementById('icono-mic');
+                    const estado = document.getElementById('voz-estado');
+                    if (btn) btn.className = 'w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 animate-pulse';
+                    if (ic) ic.className = 'fa-solid fa-circle text-[10px] text-white';
+                    if (estado) estado.innerText = 'Escuchando... habla ahora';
+                };
+
+                recog.onresult = function(event) {
+                    const texto = event.results[0][0].transcript;
+                    const input = document.getElementById('input-voz-rapida');
+                    if (input) input.value = texto;
+                    const estado = document.getElementById('voz-estado');
+                    if (estado) estado.innerText = 'Procesando...';
+                    setTimeout(() => enviarGastoPorVoz(), 300);
+                };
+
+                recog.onerror = function() {
+                    grabacionActiva = false;
+                    resetearBotonMic();
+                    const estado = document.getElementById('voz-estado');
+                    if (estado) estado.innerText = 'Micrófono no disponible';
+                };
+
+                recog.onend = function() {
+                    grabacionActiva = false;
+                    resetearBotonMic();
+                };
+
+                return recog;
+            }
+
+            function resetearBotonMic() {
+                const btn = document.getElementById('btn-mic-voz');
+                const ic = document.getElementById('icono-mic');
+                const estado = document.getElementById('voz-estado');
+                if (btn) btn.className = 'w-8 h-8 rounded-xl bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center shrink-0 active:scale-95 transition shadow-lg shadow-purple-500/25';
+                if (ic) ic.className = 'fa-solid fa-microphone text-xs';
+                if (estado && estado.innerText.includes('Escuchando')) estado.innerText = 'Listo para escuchar';
+            }
+
+            function toggleReconocimientoVoz() {
+                if (!recognition) {
+                    recognition = inicializarReconocimientoVoz();
+                }
+                if (!recognition) {
+                    alert("Tu navegador no soporta reconocimiento de voz directo. Puedes escribir el texto en el campo (ej: 'Pagué 15 mil en Nequi').");
+                    return;
+                }
+                if (grabacionActiva) {
+                    recognition.stop();
+                } else {
+                    try {
+                        recognition.start();
+                    } catch(e) {
+                        recognition.stop();
+                    }
+                }
+            }
+
+            function abrirModalGastoConVoz() {
+                abrirModalGasto();
+                setTimeout(() => {
+                    const input = document.getElementById('input-voz-rapida');
+                    if (input) input.focus();
+                    toggleReconocimientoVoz();
+                }, 200);
+            }
+
+            async function enviarGastoPorVoz() {
+                const input = document.getElementById('input-voz-rapida');
+                const texto = (input ? input.value : '').trim();
+                if (!texto) {
+                    alert("Di o escribe lo que gastaste (ej. 'Pagué 15 mil en Nequi de taxi' o 'Almuerzo 20 mil en efectivo')");
+                    return;
+                }
+
+                try {
+                    const estado = document.getElementById('voz-estado');
+                    if (estado) estado.innerText = 'Registrando...';
+
+                    const res = await fetch('/api/v1/transacciones/ia-rapida', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ texto: texto })
+                    });
+
+                    const data = await res.json();
+                    if (res.ok && data.status === 'registrado') {
+                        if (input) input.value = '';
+                        cerrarModalGasto();
+                        await fetchDashboard();
+                        alert(data.mensaje || '¡Movimiento registrado con éxito!');
+                    } else if (data.status === 'requiere_cuenta') {
+                        alert(data.mensaje);
+                    } else {
+                        alert(data.detail || 'Error al procesar el gasto por voz.');
+                    }
+                } catch(e) {
+                    alert('Error de conexión al registrar por voz.');
+                } finally {
+                    const estado = document.getElementById('voz-estado');
+                    if (estado) estado.innerText = 'Toca el micro';
+                }
             }
 
             // ==========================================

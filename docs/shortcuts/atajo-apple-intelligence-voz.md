@@ -9,12 +9,13 @@ Esta guía explica cómo registrar gastos por voz con **Siri y Apple Intelligenc
 1. Dices: **"Oye Siri, registrar gasto"** (o mantienes presionado el botón lateral / Botón de Acción del iPhone).
 2. Siri o Apple Intelligence te pregunta: **"¿Qué gastaste?"**
 3. Dices de forma natural:
-   * *"Pagué 15 mil de taxi en efectivo"*
-   * *"Almuerzo 28000 con Bancolombia"*
-   * *"Mercado 65 mil con Nu"*
-   * *"Café 8500"*
+   * *"Pagué 15 mil en Nequi"* (descuenta de Nequi)
+   * *"Pagué 15 mil de taxi en efectivo"* (descuenta de Billetera Efectivo)
+   * *"Almuerzo 28000 con Bancolombia"* (descuenta de Bancolombia)
+   * *"Mandé plata por Nequi 25 mil"* (descuenta de Nequi)
+   * *"Mercado 65 mil con Nu"* (descuenta de Nu)
 4. El atajo procesa tu voz en segundo plano y envía la frase directamente a tu backend de AUREA.
-5. Siri te responde: **"¡Listo! Registrado egreso de $15.000 COP en taxi con Billetera Efectivo"**.
+5. Siri te responde confirmando la cuenta exacta: **"¡Listo! Registrado egreso de 15.000 pesos en 'Almuerzo' con Nequi."**
 6. Tu saldo y tu semáforo diario quedan actualizados automáticamente.
 
 ---
@@ -37,8 +38,9 @@ Abre la app nativa **Atajos** (Shortcuts) en tu iPhone y pulsa el botón **+** (
 ### 3. Acción 2: Enviar al Backend de AUREA
 * Busca la acción: **Obtener contenido de URL** (*Get Contents of URL*).
 * Configuración:
-  * **URL:** `https://<TU-DOMINIO-VERCEL>/api/v1/transacciones/ia-rapida`  
-    *(Reemplaza `<TU-DOMINIO-VERCEL>` por tu URL de Vercel o tu túnel ngrok local)*.
+  * **URL:** Copia la URL directa desde tu app AUREA en **Ajustes** -> **Automatizaciones de iOS** -> **Atajo de Voz / Siri** (que ya viene con tu token personal):  
+    `https://<TU-DOMINIO-VERCEL>/api/v1/transacciones/ia-rapida?token=<TU-TOKEN>`  
+    *(O si usas ngrok local: `https://xxxx.ngrok-free.app/api/v1/transacciones/ia-rapida?token=<TU-TOKEN>`)*.
   * Toca en **Mostrar más / Avanzado**:
     * **Método:** `POST`
     * **Encabezados (Headers):**
