@@ -2034,6 +2034,36 @@ def mobile_dashboard_preview():
                 return '$ ' + Math.round(monto || 0).toLocaleString('es-CO');
             }
 
+            // Formateo de fecha y hora oficial de Colombia (UTC-5 / America/Bogota)
+            function formatearFechaHoraCO(fechaStr, esDetalle = false) {
+                if(!fechaStr) return '';
+                try {
+                    const d = new Date(fechaStr);
+                    if(isNaN(d.getTime())) return '';
+                    if(esDetalle) {
+                        return d.toLocaleString('es-CO', {
+                            timeZone: 'America/Bogota',
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                        });
+                    }
+                    return d.toLocaleString('es-CO', {
+                        timeZone: 'America/Bogota',
+                        day: 'numeric',
+                        month: 'short',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    });
+                } catch(e) {
+                    return '';
+                }
+            }
+
             // Utilidades para formateo de inputs numéricos en Pesos Colombianos (COP)
             function formatearInputMoneda(input) {
                 if(!input) return;
@@ -2425,7 +2455,7 @@ def mobile_dashboard_preview():
                                 </div>
                                 <div class="text-right">
                                     <span class="text-xs font-extrabold text-rose-300 block">- ${formatearCOP(t.monto)}</span>
-                                    <span class="text-[9px] text-[#8E8E93]">Toca para ver detalle</span>
+                                    <span class="text-[9px] text-[#8E8E93]">${formatearFechaHoraCO(t.fecha) || 'Toca para ver detalle'}</span>
                                 </div>
                             `;
                             containerTcList.appendChild(item);
@@ -2472,7 +2502,7 @@ def mobile_dashboard_preview():
                                     <span class="text-xs font-black ${t.tipo === 'INGRESO' ? 'text-[#30D158]' : t.tipo === 'EGRESO' ? 'text-[#FF453A]' : 'text-blue-400'} block">
                                         ${t.tipo === 'INGRESO' ? '+' : '-'} ${formatearCOP(t.monto)}
                                     </span>
-                                    <span class="text-[9px] text-[#8E8E93]">Toca para editar</span>
+                                    <span class="text-[9px] text-[#8E8E93]">${formatearFechaHoraCO(t.fecha) || 'Toca para editar'}</span>
                                 </div>
                             `;
                             containerTx.appendChild(item);
@@ -2497,10 +2527,7 @@ def mobile_dashboard_preview():
                     document.getElementById('dtx-comercio').value = tx.comercio;
                     fijarValorMoneda('dtx-monto', tx.monto);
                     
-                    const fechaObj = tx.fecha ? new Date(tx.fecha) : new Date();
-                    document.getElementById('dtx-fecha-hora').innerText = fechaObj.toLocaleString('es-CO', {
-                        weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-                    });
+                    document.getElementById('dtx-fecha-hora').innerText = formatearFechaHoraCO(tx.fecha, true) || 'Reciente';
 
                     const selCuenta = document.getElementById('dtx-cuenta');
                     if(selCuenta) selCuenta.value = tx.cuenta_origen_id;

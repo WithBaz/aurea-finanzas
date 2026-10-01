@@ -195,6 +195,18 @@ export default function App() {
                     <View style={styles.tagRow}>
                       <Text style={styles.txTag}>{t.medio}</Text>
                       {t.es_gasto_hormiga && <Text style={[styles.txTag, { color: '#F59E0B' }]}>Hormiga</Text>}
+                      {t.fecha ? (
+                        <Text style={[styles.txTag, { color: '#9CA3AF' }]}>
+                          {new Date(t.fecha).toLocaleString('es-CO', {
+                            timeZone: 'America/Bogota',
+                            day: 'numeric',
+                            month: 'short',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                          })}
+                        </Text>
+                      ) : null}
                     </View>
                   </View>
                   <Text

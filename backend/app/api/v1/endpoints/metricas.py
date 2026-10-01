@@ -11,6 +11,8 @@ from backend.app.schemas import (
 )
 from backend.app.models import PerfilFinanciero, Transaccion, Cuenta
 from backend.app.services.financial_engine import FinancialEngine
+from backend.app.timezone import formatear_fecha_iso_colombia
+
 
 router = APIRouter()
 
@@ -175,7 +177,7 @@ def obtener_resumen_dashboard(
                 "monto": t.monto,
                 "tipo": t.tipo.value if hasattr(t.tipo, "value") else str(t.tipo),
                 "comercio": t.comercio,
-                "fecha": t.fecha.isoformat() if t.fecha else None,
+                "fecha": formatear_fecha_iso_colombia(t.fecha),
                 "medio": t.medio.value if hasattr(t.medio, "value") else str(t.medio),
                 "es_gasto_hormiga": t.es_gasto_hormiga,
                 "cuenta_nombre": t.cuenta_origen.nombre if t.cuenta_origen else "General",

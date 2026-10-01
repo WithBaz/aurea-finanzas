@@ -3,6 +3,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
+from backend.app.timezone import ahora_colombia
+
 from backend.app.models import Cuenta, Transaccion, TipoCuenta, TipoTransaccion, MedioCaptura
 from backend.app.schemas import (
     CuentaCreate,
@@ -201,7 +203,7 @@ def registrar_corte_tarjeta(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo las tarjetas de crédito tienen fecha de corte")
 
     cuenta.saldo_al_corte = max(0.0, cuenta.saldo_actual)
-    cuenta.fecha_ultimo_corte = datetime.now(timezone.utc)
+    cuenta.fecha_ultimo_corte = ahora_colombia()
     cuenta.estado_corte = "PENDIENTE_PAGO" if cuenta.saldo_al_corte > 0 else "AL_DIA"
     db.commit()
     db.refresh(cuenta)
@@ -250,7 +252,7 @@ def registrar_pago_tarjeta(
             monto=monto,
             tipo=TipoTransaccion.TRANSFERENCIA_INTERNA,
             medio=MedioCaptura.MANUAL,
-            fecha=datetime.now(timezone.utc),
+            fecha=ahora_colombia(),
             comercio=f"Pago {cuenta.nombre}",
             descripcion=pago_in.descripcion or f"Pago de tarjeta {cuenta.nombre} con fondos de {cuenta_origen.nombre}",
             cuenta_origen_id=cuenta_origen.id,
@@ -271,7 +273,7 @@ def registrar_pago_tarjeta(
         cuenta.saldo_al_corte = 0.0
         cuenta.estado_corte = "AL_DIA"
 
-    cuenta.fecha_ultimo_pago = datetime.now(timezone.utc)
+    cuenta.fecha_ultimo_pago = ahora_colombia()
     db.commit()
     db.refresh(cuenta)
 

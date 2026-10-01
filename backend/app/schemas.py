@@ -1,7 +1,9 @@
 from datetime import datetime, date
 from typing import Optional, List
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_serializer, field_validator
 from backend.app.models import TipoCuenta, TipoTransaccion, MedioCaptura
+from backend.app.timezone import formatear_fecha_iso_colombia, parsear_fecha_colombia
+
 
 
 # --- Cuentas ---
@@ -18,6 +20,14 @@ class CuentaBase(BaseModel):
     dia_corte: Optional[int] = Field(None, ge=1, le=31)
     dia_limite_pago: Optional[int] = Field(None, ge=1, le=31)
     activa: bool = True
+
+    @field_serializer("fecha_ultimo_corte")
+    def serialize_corte(self, dt: Optional[datetime]) -> Optional[str]:
+        return formatear_fecha_iso_colombia(dt)
+
+    @field_serializer("fecha_ultimo_pago")
+    def serialize_pago(self, dt: Optional[datetime]) -> Optional[str]:
+        return formatear_fecha_iso_colombia(dt)
 
 
 class CuentaCreate(CuentaBase):
@@ -64,6 +74,10 @@ class CuentaResponse(CuentaBase):
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
+    @field_serializer("created_at")
+    def serialize_created_at(self, dt: Optional[datetime]) -> Optional[str]:
+        return formatear_fecha_iso_colombia(dt)
+
 
 # --- Categorias ---
 class CategoriaBase(BaseModel):
@@ -97,6 +111,17 @@ class TransaccionBase(BaseModel):
     cuota_actual: int = Field(1, ge=1)
     es_gasto_hormiga: bool = False
 
+    @field_validator("fecha", mode="before")
+    @classmethod
+    def validar_fecha(cls, v):
+        if v is None:
+            return None
+        return parsear_fecha_colombia(v)
+
+    @field_serializer("fecha")
+    def serialize_fecha(self, dt: Optional[datetime]) -> Optional[str]:
+        return formatear_fecha_iso_colombia(dt)
+
 
 class TransaccionCreate(TransaccionBase):
     pass
@@ -121,6 +146,10 @@ class TransaccionResponse(TransaccionBase):
     categoria: Optional[CategoriaResponse] = None
     model_config = ConfigDict(from_attributes=True)
 
+    @field_serializer("created_at")
+    def serialize_created_at(self, dt: Optional[datetime]) -> Optional[str]:
+        return formatear_fecha_iso_colombia(dt)
+
 
 # --- Metas de Ahorro ---
 class MetaAhorroBase(BaseModel):
@@ -140,6 +169,10 @@ class MetaAhorroResponse(MetaAhorroBase):
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
+    @field_serializer("created_at")
+    def serialize_created_at(self, dt: Optional[datetime]) -> Optional[str]:
+        return formatear_fecha_iso_colombia(dt)
+
 
 # --- Webhooks iOS Shortcuts ---
 class ApplePayWebhookPayload(BaseModel):
@@ -149,12 +182,26 @@ class ApplePayWebhookPayload(BaseModel):
     tarjeta: Optional[str] = None
     fecha: Optional[datetime] = None
 
+    @field_validator("fecha", mode="before")
+    @classmethod
+    def validar_fecha(cls, v):
+        if v is None:
+            return None
+        return parsear_fecha_colombia(v)
+
 
 class SMSWebhookPayload(BaseModel):
     medio: str = "SMS"
     texto_sms: str
     remitente: Optional[str] = None
     fecha: Optional[datetime] = None
+
+    @field_validator("fecha", mode="before")
+    @classmethod
+    def validar_fecha(cls, v):
+        if v is None:
+            return None
+        return parsear_fecha_colombia(v)
 
 
 class WebhookIngestResponse(BaseModel):

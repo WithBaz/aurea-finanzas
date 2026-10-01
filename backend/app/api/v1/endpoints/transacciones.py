@@ -8,6 +8,13 @@ from backend.app.schemas import TransaccionCreate, TransaccionResponse, Transacc
 from backend.app.services.categorizer import CategorizadorComercios
 from backend.app.services.nlp_expense_parser import NLPSmartExpenseParser
 from backend.app.api.deps import get_current_user_id, check_auth_if_users_exist
+from backend.app.timezone import (
+    ahora_colombia,
+    to_colombia_tz,
+    formatear_fecha_iso_colombia,
+    parsear_fecha_colombia,
+)
+
 
 router = APIRouter()
 
@@ -95,7 +102,7 @@ def crear_transaccion_manual(
         monto=tx_in.monto,
         tipo=tx_in.tipo,
         medio=tx_in.medio,
-        fecha=tx_in.fecha or datetime.now(timezone.utc),
+        fecha=to_colombia_tz(tx_in.fecha) if tx_in.fecha else ahora_colombia(),
         comercio=tx_in.comercio,
         descripcion=tx_in.descripcion,
         cuenta_origen_id=tx_in.cuenta_origen_id,
@@ -118,6 +125,7 @@ async def registrar_gasto_ia_rapida(
     texto: Optional[str] = Query(None),
     cuenta_id: Optional[int] = Query(None),
     tipo: Optional[str] = Query(None),
+    fecha: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -130,6 +138,7 @@ async def registrar_gasto_ia_rapida(
     texto_final = texto
     cuenta_id_final = cuenta_id
     tipo_final = tipo
+    fecha_final = fecha
     token_val = None
 
     if request.method == "POST":
@@ -143,6 +152,8 @@ async def registrar_gasto_ia_rapida(
                     cuenta_id_final = int(body.get("cuenta_id"))
                 if not tipo_final and body.get("tipo"):
                     tipo_final = str(body.get("tipo"))
+                if not fecha_final and body.get("fecha"):
+                    fecha_final = str(body.get("fecha"))
                 if body.get("token"):
                     token_val = str(body.get("token")).strip()
         except Exception:
@@ -158,6 +169,8 @@ async def registrar_gasto_ia_rapida(
                     cuenta_id_final = int(form.get("cuenta_id"))
                 if not tipo_final and form.get("tipo"):
                     tipo_final = str(form.get("tipo"))
+                if not fecha_final and form.get("fecha"):
+                    fecha_final = str(form.get("fecha"))
                 if not token_val and form.get("token"):
                     token_val = str(form.get("token")).strip()
             except Exception:
@@ -178,6 +191,8 @@ async def registrar_gasto_ia_rapida(
                             token_val = qs["token"][0]
                         if not tipo_final and qs.get("tipo"):
                             tipo_final = qs["tipo"][0]
+                        if not fecha_final and qs.get("fecha"):
+                            fecha_final = qs["fecha"][0]
                     elif not raw_str.startswith("{"):
                         if not texto_final:
                             texto_final = raw_str
@@ -329,11 +344,13 @@ async def registrar_gasto_ia_rapida(
 
     es_hormiga = CategorizadorComercios.es_gasto_hormiga(monto)
 
+    fecha_dt = parsear_fecha_colombia(fecha_final) if fecha_final else ahora_colombia()
+
     tx = Transaccion(
         monto=monto,
         tipo=TipoTransaccion[tipo],
         medio=MedioCaptura.MANUAL,
-        fecha=datetime.now(timezone.utc),
+        fecha=fecha_dt,
         comercio=comercio,
         descripcion=f"Registrado con voz / NLP: '{texto_final}'",
         cuenta_origen_id=cuenta.id,
@@ -355,7 +372,8 @@ async def registrar_gasto_ia_rapida(
         "tipo": tipo,
         "comercio": comercio,
         "cuenta": cuenta.nombre,
-        "saldo_cuenta_actual": cuenta.saldo_actual
+        "saldo_cuenta_actual": cuenta.saldo_actual,
+        "fecha": formatear_fecha_iso_colombia(tx.fecha)
     }
 
 

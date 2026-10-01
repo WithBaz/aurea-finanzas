@@ -11,6 +11,7 @@ from backend.app.models import (
     PerfilFinanciero,
     GastoFijo,
 )
+from backend.app.timezone import ahora_colombia, to_colombia_tz
 
 
 class FinancialEngine:
@@ -25,7 +26,7 @@ class FinancialEngine:
         fecha_referencia: Optional[datetime] = None,
         usuario_id: Optional[int] = None
     ) -> Dict[str, Any]:
-        ahora = fecha_referencia or datetime.now(timezone.utc)
+        ahora = to_colombia_tz(fecha_referencia) if fecha_referencia else ahora_colombia()
         hoy_inicio = datetime(ahora.year, ahora.month, ahora.day, 0, 0, 0)
         hoy_fin = datetime(ahora.year, ahora.month, ahora.day, 23, 59, 59)
 
@@ -164,7 +165,7 @@ class FinancialEngine:
         fecha_referencia: Optional[datetime] = None,
         usuario_id: Optional[int] = None
     ) -> Dict[str, Any]:
-        ahora = fecha_referencia or datetime.now(timezone.utc)
+        ahora = to_colombia_tz(fecha_referencia) if fecha_referencia else ahora_colombia()
         _, total_dias_mes = calendar.monthrange(ahora.year, ahora.month)
         inicio_mes = datetime(ahora.year, ahora.month, 1, 0, 0, 0)
         fin_mes = datetime(ahora.year, ahora.month, total_dias_mes, 23, 59, 59)

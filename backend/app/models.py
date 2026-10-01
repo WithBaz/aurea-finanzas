@@ -14,6 +14,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from backend.app.database import Base
+from backend.app.timezone import ahora_colombia
+
 
 
 class TipoCuenta(str, enum.Enum):
@@ -53,8 +55,8 @@ class Cuenta(Base):
     dia_limite_pago = Column(Integer, nullable=True)        # Día límite de pago para tarjetas de crédito
     activa = Column(Boolean, default=True, nullable=False)
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=True, index=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=ahora_colombia, nullable=False)
+    updated_at = Column(DateTime, default=ahora_colombia, onupdate=ahora_colombia)
 
     usuario = relationship("Usuario", foreign_keys=[usuario_id])
     transacciones_origen = relationship("Transaccion", foreign_keys="Transaccion.cuenta_origen_id", back_populates="cuenta_origen")
@@ -80,7 +82,7 @@ class Transaccion(Base):
     monto = Column(Float, nullable=False)
     tipo = Column(Enum(TipoTransaccion), nullable=False)
     medio = Column(Enum(MedioCaptura), default=MedioCaptura.MANUAL, nullable=False)
-    fecha = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+    fecha = Column(DateTime, default=ahora_colombia, nullable=False, index=True)
     comercio = Column(String(150), nullable=False)
     descripcion = Column(String(255), nullable=True)
     cuenta_origen_id = Column(Integer, ForeignKey("cuentas.id"), nullable=False)
@@ -92,7 +94,7 @@ class Transaccion(Base):
     raw_payload = Column(Text, nullable=True)
     hash_idempotencia = Column(String(64), unique=True, index=True, nullable=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=True, index=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=ahora_colombia, nullable=False)
 
     usuario = relationship("Usuario", foreign_keys=[usuario_id])
     cuenta_origen = relationship("Cuenta", foreign_keys=[cuenta_origen_id], back_populates="transacciones_origen")
@@ -110,7 +112,7 @@ class MetaAhorro(Base):
     fecha_limite = Column(Date, nullable=True)
     icono = Column(String(50), default="target", nullable=False)
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=True, index=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=ahora_colombia, nullable=False)
 
     usuario = relationship("Usuario", foreign_keys=[usuario_id])
 
@@ -140,7 +142,7 @@ class GastoFijo(Base):
     activo = Column(Boolean, default=True, nullable=False)
     pagado_este_mes = Column(Boolean, default=False, nullable=False)
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=True, index=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=ahora_colombia, nullable=False)
 
     usuario = relationship("Usuario", foreign_keys=[usuario_id])
 
@@ -154,6 +156,6 @@ class Usuario(Base):
     face_id_enabled = Column(Boolean, default=False, nullable=False)
     face_id_credential_id = Column(Text, nullable=True)
     biometric_token = Column(String(256), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=ahora_colombia, nullable=False)
 
 
