@@ -37,9 +37,12 @@ Tienes dos formas de tener tu atajo en la app **Atajos**:
 2. **Acción 1:** **Solicitar entrada** (*Ask for Input*):
    * Pregunta: `¿Qué movimiento hiciste?` (Tipo: Texto)
 3. **Acción 2:** **Obtener contenido de URL** (*Get Contents of URL*):
-   * URL: `https://<TU-DOMINIO>/api/v1/transacciones/ia-rapida?texto=` y tocas la variable **Entrada provista**.
+   * URL: `https://<TU-DOMINIO>/api/v1/transacciones/ia-rapida?texto=` y tocas la variable **Entrada provista** (si tienes autenticación con PIN/token activada, la URL en Ajustes de la app ya incluye tu parámetro `&token=...`).
    * Método: `GET`.
-4. **Acción 3:** **Mostrar resultado** o **Leer texto con Siri** con la variable **Contenido de URL**.
+4. **Acción 3:** **Obtener valor de diccionario** (*Get Dictionary Value*):
+   * Obtener `Valor` de `mensaje` en **Contenido de URL**.
+5. **Acción 4:** **Mostrar resultado** (*Show Result*) o **Leer texto con Siri** (*Speak Text*):
+   * Variable: **Valor del diccionario**. (Esto dirá o mostrará directamente: *"¡Listo! Registrado gasto de $ 15.000 en 'Almuerzo' con Nequi"*).
 
 ### 📋 Opción 2: Atajo con Menú ("Gasto" / "Ingreso")
 Si prefieres que el atajo te pregunte primero si es Gasto o Ingreso con una lista:

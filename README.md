@@ -3,7 +3,7 @@
 [![Python 3.12](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![PWA Ready](https://img.shields.io/badge/PWA-iOS%20Standalone-000000?style=flat&logo=apple&logoColor=white)](https://apple.com)
-[![Tests Passing](https://img.shields.io/badge/Tests-59%2F59%20Passing-success?style=flat&logo=pytest&logoColor=white)](tests/)
+[![Tests Passing](https://img.shields.io/badge/Tests-73%2F73%20Passing-success?style=flat&logo=pytest&logoColor=white)](tests/)
 [![Security Audited](https://img.shields.io/badge/Security-OWASP%20Hardened-blueviolet?style=flat&logo=shield)](tests/test_security_audit.py)
 
 Plataforma financiera personal integral y de alta seguridad, adaptada al contexto bancario colombiano en Pesos Colombianos (COP) y diseñada para una experiencia nativa en **iPhone** (PWA autónoma con soporte Face ID y cliente móvil en React Native / Expo). 
@@ -92,7 +92,7 @@ Accede a:
 
 ### Opción 3: Ejecutar la Suite de Pruebas Automatizadas
 
-AUREA cuenta con **59 pruebas automatizadas** que cubren reglas de negocio en COP, parsers bancarios, cálculos financieros y auditoría estricta de seguridad:
+AUREA cuenta con **73 pruebas automatizadas** que cubren reglas de negocio en COP, parsers bancarios, cálculos financieros, sincronización horaria de Colombia y auditoría estricta de seguridad:
 
 ```bash
 # Ejecutar todas las pruebas con reporte detallado
@@ -138,11 +138,15 @@ Escanea el código QR resultante con la cámara de tu iPhone para abrir el proye
 ### 4. Cuentas Remuneradas de Alto Rendimiento
 * Cálculo y proyección diaria de intereses devengados para cuentas colombianas de alto rendimiento (ej: **Nu Colombia**, **Lulo Bank**, **Pibank**) aplicando la fórmula de tasa Efectiva Anual (E.A.) convertida a tasa diaria.
 
-### 5. Asistente por Dictado de Voz / Siri (NLP Smart Parser)
-* Registro rápido de transacciones mediante lenguaje natural (ej. *"Pagué 15 mil de taxi en efectivo"*, *"Almuerzo 22k con Bancolombia"*, *"Recibí 100 mil de nómina"*).
+### 5. Asistente por Dictado de Voz y Siri vía Atajos de iOS (NLP Smart Parser)
+* Registro desatendido de transacciones mediante lenguaje natural usando **Atajos de Apple**, **Siri** o el **Botón de Acción** del iPhone (ej. *"Pagué 15 mil de taxi en efectivo"*, *"Almuerzo 22k con Bancolombia"*, *"Recibí 100 mil de nómina"*).
 * Endpoint `/api/v1/transacciones/ia-rapida` con detección inteligente de montos en miles, comercios y cuentas asociadas.
+* Experiencia minimalista dentro de la aplicación: el modal de registro manual se mantiene limpio, directo y sin elementos innecesarios, reservando la interacción por voz al flujo nativo del sistema operativo iOS.
 
-### 6. Experiencia Visual Apple (Modo Claro / Modo Oscuro)
+### 6. Precisión Horaria Oficial de Colombia (America/Bogota, UTC-5)
+* Persistencia consistente en base de datos bajo estándar UTC y proyección matemática exacta a hora colombiana (`COT`, UTC-5) en todas las lecturas, serializadores y ventanas de corte diario del motor financiero.
+
+### 7. Experiencia Visual Apple (Modo Claro / Modo Oscuro)
 * Interfaz con diseño nativo de Apple: soporte completo para **Modo Oscuro OLED** (`#000000`) y **Modo Claro** (`#F2F2F7`), con selector persistente y tipografía SF Pro.
 
 ---
