@@ -11,7 +11,7 @@ from backend.app.models import (
     PerfilFinanciero,
     GastoFijo,
 )
-from backend.app.timezone import ahora_colombia, to_colombia_tz
+from backend.app.timezone import COLOMBIA_TZ, ahora_colombia, db_dt_to_colombia
 
 
 class FinancialEngine:
@@ -26,9 +26,9 @@ class FinancialEngine:
         fecha_referencia: Optional[datetime] = None,
         usuario_id: Optional[int] = None
     ) -> Dict[str, Any]:
-        ahora = to_colombia_tz(fecha_referencia) if fecha_referencia else ahora_colombia()
-        hoy_inicio = datetime(ahora.year, ahora.month, ahora.day, 0, 0, 0)
-        hoy_fin = datetime(ahora.year, ahora.month, ahora.day, 23, 59, 59)
+        ahora_col = db_dt_to_colombia(fecha_referencia) if fecha_referencia else ahora_colombia()
+        col_hoy_inicio = datetime(ahora_col.year, ahora_col.month, ahora_col.day, 0, 0, 0, tzinfo=COLOMBIA_TZ)
+        col_hoy_fin = datetime(ahora_col.year, ahora_col.month, ahora_col.day, 23, 59, 59, 999999, tzinfo=COLOMBIA_TZ)
 
         # 1. Obtener perfil financiero
         perfil_q = db.query(PerfilFinanciero)
@@ -50,21 +50,27 @@ class FinancialEngine:
             db.commit()
             db.refresh(perfil)
 
-        # 2. Días del mes y días restantes
-        _, total_dias_mes = calendar.monthrange(ahora.year, ahora.month)
-        dia_actual = ahora.day
+        # 2. Días del mes y días restantes en Colombia
+        _, total_dias_mes = calendar.monthrange(ahora_col.year, ahora_col.month)
+        dia_actual = ahora_col.day
         # Días restantes incluyendo hoy
         dias_restantes = max(1, total_dias_mes - dia_actual + 1)
 
-        # 3. Calcular ingresos y egresos del mes actual
-        inicio_mes = datetime(ahora.year, ahora.month, 1, 0, 0, 0)
-        fin_mes = datetime(ahora.year, ahora.month, total_dias_mes, 23, 59, 59)
+        # 3. Ventana del mes en curso en Colombia
+        col_inicio_mes = datetime(ahora_col.year, ahora_col.month, 1, 0, 0, 0, tzinfo=COLOMBIA_TZ)
+        col_fin_mes = datetime(ahora_col.year, ahora_col.month, total_dias_mes, 23, 59, 59, 999999, tzinfo=COLOMBIA_TZ)
+
+        # Trasladar ventanas a UTC naive para consultar en BD (donde Transaccion.fecha está en UTC)
+        db_hoy_inicio = col_hoy_inicio.astimezone(timezone.utc).replace(tzinfo=None)
+        db_hoy_fin = col_hoy_fin.astimezone(timezone.utc).replace(tzinfo=None)
+        db_inicio_mes = col_inicio_mes.astimezone(timezone.utc).replace(tzinfo=None)
+        db_fin_mes = col_fin_mes.astimezone(timezone.utc).replace(tzinfo=None)
 
         # Suma de egresos del mes (excluyendo transferencias internas)
         egresos_q = db.query(func.sum(Transaccion.monto)).filter(
             Transaccion.tipo == TipoTransaccion.EGRESO,
-            Transaccion.fecha >= inicio_mes,
-            Transaccion.fecha <= fin_mes
+            Transaccion.fecha >= db_inicio_mes,
+            Transaccion.fecha <= db_fin_mes
         )
         if usuario_id:
             egresos_q = egresos_q.filter((Transaccion.usuario_id == usuario_id) | (Transaccion.usuario_id == None))
@@ -73,8 +79,8 @@ class FinancialEngine:
         # Gasto de hoy
         gasto_hoy_q = db.query(func.sum(Transaccion.monto)).filter(
             Transaccion.tipo == TipoTransaccion.EGRESO,
-            Transaccion.fecha >= hoy_inicio,
-            Transaccion.fecha <= hoy_fin
+            Transaccion.fecha >= db_hoy_inicio,
+            Transaccion.fecha <= db_hoy_fin
         )
         if usuario_id:
             gasto_hoy_q = gasto_hoy_q.filter((Transaccion.usuario_id == usuario_id) | (Transaccion.usuario_id == None))
@@ -84,8 +90,8 @@ class FinancialEngine:
         hormiga_q = db.query(func.sum(Transaccion.monto)).filter(
             Transaccion.tipo == TipoTransaccion.EGRESO,
             Transaccion.es_gasto_hormiga == True,
-            Transaccion.fecha >= inicio_mes,
-            Transaccion.fecha <= fin_mes
+            Transaccion.fecha >= db_inicio_mes,
+            Transaccion.fecha <= db_fin_mes
         )
         if usuario_id:
             hormiga_q = hormiga_q.filter((Transaccion.usuario_id == usuario_id) | (Transaccion.usuario_id == None))
@@ -108,8 +114,8 @@ class FinancialEngine:
         # Detección de cobro de nómina (inicio de mes o ingreso recibido)
         ingresos_q = db.query(func.sum(Transaccion.monto)).filter(
             Transaccion.tipo == TipoTransaccion.INGRESO,
-            Transaccion.fecha >= inicio_mes,
-            Transaccion.fecha <= fin_mes
+            Transaccion.fecha >= db_inicio_mes,
+            Transaccion.fecha <= db_fin_mes
         )
         if usuario_id:
             ingresos_q = ingresos_q.filter((Transaccion.usuario_id == usuario_id) | (Transaccion.usuario_id == None))
@@ -165,10 +171,12 @@ class FinancialEngine:
         fecha_referencia: Optional[datetime] = None,
         usuario_id: Optional[int] = None
     ) -> Dict[str, Any]:
-        ahora = to_colombia_tz(fecha_referencia) if fecha_referencia else ahora_colombia()
-        _, total_dias_mes = calendar.monthrange(ahora.year, ahora.month)
-        inicio_mes = datetime(ahora.year, ahora.month, 1, 0, 0, 0)
-        fin_mes = datetime(ahora.year, ahora.month, total_dias_mes, 23, 59, 59)
+        ahora_col = db_dt_to_colombia(fecha_referencia) if fecha_referencia else ahora_colombia()
+        _, total_dias_mes = calendar.monthrange(ahora_col.year, ahora_col.month)
+        col_inicio_mes = datetime(ahora_col.year, ahora_col.month, 1, 0, 0, 0, tzinfo=COLOMBIA_TZ)
+        col_fin_mes = datetime(ahora_col.year, ahora_col.month, total_dias_mes, 23, 59, 59, 999999, tzinfo=COLOMBIA_TZ)
+        db_inicio_mes = col_inicio_mes.astimezone(timezone.utc).replace(tzinfo=None)
+        db_fin_mes = col_fin_mes.astimezone(timezone.utc).replace(tzinfo=None)
 
         perfil_q = db.query(PerfilFinanciero)
         if usuario_id:
@@ -179,13 +187,13 @@ class FinancialEngine:
 
         ingresos_q = db.query(func.sum(Transaccion.monto)).filter(
             Transaccion.tipo == TipoTransaccion.INGRESO,
-            Transaccion.fecha >= inicio_mes,
-            Transaccion.fecha <= fin_mes
+            Transaccion.fecha >= db_inicio_mes,
+            Transaccion.fecha <= db_fin_mes
         )
         if usuario_id:
             ingresos_q = ingresos_q.filter((Transaccion.usuario_id == usuario_id) | (Transaccion.usuario_id == None))
         ingresos_mes = ingresos_q.scalar()
-        nomina_recibida = (ahora.day >= dia_pago) or (float(ingresos_mes or 0.0) > 0)
+        nomina_recibida = (ahora_col.day >= dia_pago) or (float(ingresos_mes or 0.0) > 0)
 
         items_q = db.query(GastoFijo).filter(GastoFijo.activo == True)
         if usuario_id:

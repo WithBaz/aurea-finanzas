@@ -19,7 +19,8 @@ from backend.app.schemas import (
 )
 from backend.app.services.sms_parser import SMSParser, limpiar_monto
 from backend.app.services.categorizer import CategorizadorComercios
-from backend.app.timezone import ahora_colombia, parsear_fecha_colombia
+from backend.app.timezone import ahora_colombia, ahora_utc_db, parsear_fecha_para_db
+
 
 
 router = APIRouter()
@@ -77,7 +78,7 @@ def procesar_atajo_ios(
 
     target_user_id = user_from_token.id if user_from_token else payload.get("usuario_id")
     medio_raw = str(payload.get("medio", "SMS")).upper()
-    fecha_movimiento = parsear_fecha_colombia(payload.get("fecha")) if payload.get("fecha") else ahora_colombia()
+    fecha_movimiento = parsear_fecha_para_db(payload.get("fecha")) if payload.get("fecha") else ahora_utc_db()
 
     def _filtrar_cuenta(query):
         if target_user_id:

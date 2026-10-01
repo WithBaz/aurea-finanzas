@@ -10,9 +10,10 @@ from backend.app.services.nlp_expense_parser import NLPSmartExpenseParser
 from backend.app.api.deps import get_current_user_id, check_auth_if_users_exist
 from backend.app.timezone import (
     ahora_colombia,
-    to_colombia_tz,
+    ahora_utc_db,
+    db_dt_to_colombia,
     formatear_fecha_iso_colombia,
-    parsear_fecha_colombia,
+    parsear_fecha_para_db,
 )
 
 
@@ -102,7 +103,7 @@ def crear_transaccion_manual(
         monto=tx_in.monto,
         tipo=tx_in.tipo,
         medio=tx_in.medio,
-        fecha=to_colombia_tz(tx_in.fecha) if tx_in.fecha else ahora_colombia(),
+        fecha=parsear_fecha_para_db(tx_in.fecha) if tx_in.fecha else ahora_utc_db(),
         comercio=tx_in.comercio,
         descripcion=tx_in.descripcion,
         cuenta_origen_id=tx_in.cuenta_origen_id,
@@ -344,7 +345,7 @@ async def registrar_gasto_ia_rapida(
 
     es_hormiga = CategorizadorComercios.es_gasto_hormiga(monto)
 
-    fecha_dt = parsear_fecha_colombia(fecha_final) if fecha_final else ahora_colombia()
+    fecha_dt = parsear_fecha_para_db(fecha_final) if fecha_final else ahora_utc_db()
 
     tx = Transaccion(
         monto=monto,

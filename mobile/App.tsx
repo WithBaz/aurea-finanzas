@@ -197,14 +197,20 @@ export default function App() {
                       {t.es_gasto_hormiga && <Text style={[styles.txTag, { color: '#F59E0B' }]}>Hormiga</Text>}
                       {t.fecha ? (
                         <Text style={[styles.txTag, { color: '#9CA3AF' }]}>
-                          {new Date(t.fecha).toLocaleString('es-CO', {
-                            timeZone: 'America/Bogota',
-                            day: 'numeric',
-                            month: 'short',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true,
-                          })}
+                          {(() => {
+                            let str = String(t.fecha).trim();
+                            if (str.includes('T') && !str.endsWith('Z') && !str.slice(10).includes('+') && !str.slice(10).includes('-')) {
+                              str = str + 'Z';
+                            }
+                            return new Date(str).toLocaleString('es-CO', {
+                              timeZone: 'America/Bogota',
+                              day: 'numeric',
+                              month: 'short',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true,
+                            });
+                          })()}
                         </Text>
                       ) : null}
                     </View>

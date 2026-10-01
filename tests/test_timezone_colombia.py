@@ -6,6 +6,7 @@ from backend.app.timezone import (
     to_colombia_tz,
     formatear_fecha_iso_colombia,
     parsear_fecha_colombia,
+    parsear_fecha_para_db,
 )
 from backend.app.models import Transaccion, TipoTransaccion, MedioCaptura
 from backend.app.services.financial_engine import FinancialEngine
@@ -25,16 +26,20 @@ def test_colombia_tz_offset():
 
 
 def test_to_colombia_tz_conversions():
-    """Valida la conversión de datetimes naive y timezone-aware a Colombia."""
+    """Valida la conversión de datetimes naive (de BD en UTC) y timezone-aware a Colombia."""
     # 1. None
     assert to_colombia_tz(None) is None
 
-    # 2. Naive (asume Colombia)
-    dt_naive = datetime(2026, 9, 30, 21, 45, 0)
-    col_dt = to_colombia_tz(dt_naive)
+    # 2. Naive proveniente de la base de datos (almacenado en UTC)
+    # ej: 2:45 AM del 1 de octubre UTC en BD -> 9:45 PM del 30 de septiembre en Colombia
+    dt_naive_db = datetime(2026, 10, 1, 2, 45, 0)
+    col_dt = to_colombia_tz(dt_naive_db)
     assert col_dt.tzinfo == COLOMBIA_TZ
-    assert col_dt.hour == 21
+    assert col_dt.year == 2026
+    assert col_dt.month == 9
     assert col_dt.day == 30
+    assert col_dt.hour == 21
+    assert col_dt.minute == 45
 
     # 3. UTC aware (ej: 2:45 AM del 1 de octubre UTC -> 9:45 PM del 30 de septiembre en Colombia)
     dt_utc = datetime(2026, 10, 1, 2, 45, 0, tzinfo=timezone.utc)
@@ -49,8 +54,8 @@ def test_to_colombia_tz_conversions():
 
 def test_formatear_fecha_iso_colombia():
     """Valida que el string ISO contenga el offset explícito -05:00."""
-    dt = datetime(2026, 9, 30, 21, 30, 0)
-    iso_str = formatear_fecha_iso_colombia(dt)
+    dt_db = datetime(2026, 10, 1, 2, 30, 0)
+    iso_str = formatear_fecha_iso_colombia(dt_db)
     assert iso_str == "2026-09-30T21:30:00-05:00"
     assert iso_str.endswith("-05:00")
 
@@ -120,12 +125,12 @@ def test_financial_engine_corte_medianoche_colombia():
         db_session.commit()
 
         # Transacción a las 9:30 PM del 30 de septiembre en Colombia
-        # (en UTC sería 2:30 AM del 1 de octubre)
+        # (en BD se persiste como UTC: 2:30 AM del 1 de octubre)
         tx_noche = Transaccion(
             monto=50000.0,
             tipo=TipoTransaccion.EGRESO,
             medio=MedioCaptura.MANUAL,
-            fecha=datetime(2026, 9, 30, 21, 30, 0),
+            fecha=parsear_fecha_para_db(datetime(2026, 9, 30, 21, 30, 0)),
             comercio="Restaurante Noche",
             cuenta_origen_id=cuenta.id
         )

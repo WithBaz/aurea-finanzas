@@ -2038,7 +2038,11 @@ def mobile_dashboard_preview():
             function formatearFechaHoraCO(fechaStr, esDetalle = false) {
                 if(!fechaStr) return '';
                 try {
-                    const d = new Date(fechaStr);
+                    let str = fechaStr.toString().trim();
+                    if (str.includes('T') && !str.endsWith('Z') && !str.slice(10).includes('+') && !str.slice(10).includes('-')) {
+                        str = str + 'Z';
+                    }
+                    const d = new Date(str);
                     if(isNaN(d.getTime())) return '';
                     if(esDetalle) {
                         return d.toLocaleString('es-CO', {
