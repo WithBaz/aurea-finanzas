@@ -3,27 +3,62 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 
 
-def limpiar_monto(monto_str: str) -> float:
+def limpiar_monto(monto_val: Any) -> float:
     """
-    Convierte cadenas como '$45.000', '45.000,00', '$ 1.250.000' a float limpio.
+    Convierte cadenas o números en montos float limpios en Pesos Colombianos (COP).
+    Soporta formato colombiano (150.000 o 150.000,00), formato estadounidense/iOS (150,000 o 150,000.00),
+    símbolos de moneda ('$', 'COP'), y valores numéricos directos.
     """
-    if not monto_str:
+    if monto_val is None:
         return 0.0
-    # Eliminar símbolo de pesos y espacios
-    limpio = monto_str.replace("$", "").replace("COP", "").strip()
-    # Si tiene puntos como separadores de miles (estilo colombiano: 150.000)
-    # y comas para decimales si los hubiera
-    if "." in limpio and "," in limpio:
-        limpio = limpio.replace(".", "").replace(",", ".")
-    elif "." in limpio and not "," in limpio:
-        # En Colombia 50.000 suele ser cincuenta mil, no cincuenta con cero decimales
-        # Si hay un solo punto y tiene exactamente 3 digitos después, es separador de miles
-        partes = limpio.split(".")
+    if isinstance(monto_val, (int, float)):
+        return float(monto_val)
+    s = str(monto_val).strip()
+    if not s:
+        return 0.0
+    
+    # Remover símbolos de moneda y caracteres no numéricos excepto puntos, comas y guiones
+    s = re.sub(r"[^\d\.,\-]", "", s)
+    if not s:
+        return 0.0
+
+    has_dot = "." in s
+    has_comma = "," in s
+
+    if has_dot and has_comma:
+        # Si el punto está antes de la coma: 15.000,00 (formato CO/ES)
+        if s.rfind(".") < s.rfind(","):
+            s = s.replace(".", "").replace(",", ".")
+        else:
+            # Coma antes de punto: 15,000.00 (formato US/iOS)
+            s = s.replace(",", "")
+    elif has_comma and not has_dot:
+        # Solo coma: ej: 15,000 o 1,250,000 o 15,50
+        partes = s.split(",")
         if len(partes) == 2 and len(partes[1]) == 3:
-            limpio = partes[0] + partes[1]
+            # Miles: 15,000
+            s = partes[0] + partes[1]
         elif len(partes) > 2:
-            limpio = "".join(partes)
-    return float(limpio)
+            # Miles: 1,250,000
+            s = "".join(partes)
+        elif len(partes) == 2 and len(partes[1]) in (1, 2):
+            # Decimales: 15,50
+            s = partes[0] + "." + partes[1]
+        else:
+            s = s.replace(",", "")
+    elif has_dot and not has_comma:
+        partes = s.split(".")
+        if len(partes) == 2 and len(partes[1]) == 3:
+            # Miles en Colombia: 15.000
+            s = partes[0] + partes[1]
+        elif len(partes) > 2:
+            # Miles: 1.250.000
+            s = "".join(partes)
+
+    try:
+        return float(s)
+    except Exception:
+        return 0.0
 
 
 class SMSParser:

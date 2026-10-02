@@ -1,7 +1,7 @@
 import hashlib
 from datetime import datetime, timezone
 from typing import Union, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Query, Request
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models import (
@@ -31,9 +31,10 @@ def calcular_hash_idempotencia(monto: float, comercio: str, fecha_str: str) -> s
     return hashlib.sha256(cadena.encode("utf-8")).hexdigest()
 
 
-@router.post("/ios-shortcut", response_model=WebhookIngestResponse)
-def procesar_atajo_ios(
-    payload: Dict[str, Any],
+@router.api_route("/ios-shortcut", methods=["GET", "POST"], response_model=WebhookIngestResponse)
+async def procesar_atajo_ios(
+    request: Request,
+    payload: Optional[Dict[str, Any]] = None,
     token: Optional[str] = Query(None),
     authorization: Optional[str] = Header(None),
     x_aurea_token: Optional[str] = Header(None, alias="X-Aurea-Token"),
@@ -42,8 +43,31 @@ def procesar_atajo_ios(
     """
     Endpoint receptor para las Automatizaciones de Atajos de iOS (Apple Shortcuts).
     Procesa tanto pagos con Apple Pay como mensajes SMS de bancos colombianos con verificación opcional de token.
+    Soporta POST (JSON, Form) y GET (Query params) para pruebas inmediatas sin costo.
     """
-    # Verificación de token criptográfico si se suministra
+    # 1. Extraer payload de JSON, Form o Query Params
+    final_payload: Dict[str, Any] = {}
+    if request.method == "POST":
+        try:
+            parsed_json = await request.json()
+            if isinstance(parsed_json, dict):
+                final_payload.update(parsed_json)
+        except Exception:
+            try:
+                form = await request.form()
+                final_payload.update(dict(form))
+            except Exception:
+                pass
+
+    # Combinar con query parameters
+    for k, v in request.query_params.items():
+        if k not in final_payload or final_payload[k] is None or final_payload[k] == "":
+            final_payload[k] = v
+
+    if payload and isinstance(payload, dict):
+        final_payload.update(payload)
+
+    # 2. Verificación de token criptográfico
     token_val = None
     if authorization and authorization.lower().startswith("bearer "):
         token_val = authorization[7:].strip()
@@ -51,8 +75,10 @@ def procesar_atajo_ios(
         token_val = x_aurea_token.strip()
     elif token:
         token_val = token.strip()
-    elif payload.get("token"):
-        token_val = str(payload.get("token")).strip()
+    elif final_payload.get("token"):
+        token_val = str(final_payload.get("token")).strip()
+    elif request.query_params.get("token"):
+        token_val = str(request.query_params.get("token")).strip()
 
     user_from_token = None
     if token_val:
@@ -64,21 +90,57 @@ def procesar_atajo_ios(
             )
 
     total_usuarios = db.query(Usuario).count()
-    if total_usuarios > 0 and not user_from_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token de autorización requerido para ejecutar atajos de iOS."
-        )
+    if not user_from_token:
+        if total_usuarios == 1:
+            # En instalación de un único usuario (caso personal), asociar automáticamente sin exigir token
+            user_from_token = db.query(Usuario).first()
+        elif total_usuarios > 1:
+            # En multi-usuario, permitir ?usuario=username o exigir token
+            user_param = (
+                final_payload.get("usuario")
+                or final_payload.get("user")
+                or final_payload.get("username")
+            )
+            if user_param:
+                user_from_token = db.query(Usuario).filter(Usuario.username.ilike(str(user_param).strip())).first()
+            if not user_from_token:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token de autorización requerido para ejecutar atajos de iOS en entorno multi-usuario."
+                )
 
-    if user_from_token and payload.get("usuario_id") and int(payload.get("usuario_id")) != user_from_token.id:
+    if user_from_token and final_payload.get("usuario_id") and int(final_payload.get("usuario_id")) != user_from_token.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para ejecutar atajos para otro usuario."
         )
 
-    target_user_id = user_from_token.id if user_from_token else payload.get("usuario_id")
-    medio_raw = str(payload.get("medio", "SMS")).upper()
-    fecha_movimiento = parsear_fecha_para_db(payload.get("fecha")) if payload.get("fecha") else ahora_utc_db()
+    target_user_id = user_from_token.id if user_from_token else final_payload.get("usuario_id")
+
+    # Detección inteligente de medio (APPLE_PAY vs SMS)
+    medio_raw = str(
+        final_payload.get("medio")
+        or final_payload.get("source")
+        or final_payload.get("channel")
+        or final_payload.get("tipo")
+        or ""
+    ).upper().strip()
+
+    tiene_tarjeta = any(k in final_payload for k in ("tarjeta", "card", "card_name", "cardName", "account", "cuenta"))
+    tiene_monto = any(k in final_payload for k in ("monto", "amount", "valor", "precio", "total"))
+    es_sms = "texto_sms" in final_payload or "sms" in final_payload or "body" in final_payload
+
+    if not medio_raw:
+        if tiene_tarjeta or (tiene_monto and not es_sms):
+            medio_raw = "APPLE_PAY"
+        else:
+            medio_raw = "SMS"
+
+    if medio_raw in ("APPLE_PAY", "APPLEPAY", "WALLET", "APPLE PAY"):
+        medio_raw = "APPLE_PAY"
+
+    fecha_param = final_payload.get("fecha") or final_payload.get("date")
+    fecha_movimiento = parsear_fecha_para_db(fecha_param) if fecha_param else ahora_utc_db()
 
     def _filtrar_cuenta(query):
         if target_user_id:
@@ -87,16 +149,34 @@ def procesar_atajo_ios(
 
     # 1. Rama Apple Pay
     if medio_raw == "APPLE_PAY":
-        monto_raw = payload.get("monto", 0.0)
-        try:
-            if isinstance(monto_raw, str):
-                monto = limpiar_monto(monto_raw)
-            else:
-                monto = float(monto_raw or 0.0)
-        except Exception:
-            monto = 0.0
-        comercio = str(payload.get("comercio", "Comercio Apple Pay")).strip()
-        tarjeta_nombre = payload.get("tarjeta")
+        monto_raw = (
+            final_payload.get("monto")
+            or final_payload.get("amount")
+            or final_payload.get("valor")
+            or final_payload.get("precio")
+            or final_payload.get("total")
+            or 0.0
+        )
+        monto = limpiar_monto(monto_raw)
+
+        comercio = str(
+            final_payload.get("comercio")
+            or final_payload.get("merchant")
+            or final_payload.get("store")
+            or final_payload.get("tienda")
+            or final_payload.get("establecimiento")
+            or final_payload.get("nombre")
+            or "Comercio Apple Pay"
+        ).strip()
+
+        tarjeta_nombre = (
+            final_payload.get("tarjeta")
+            or final_payload.get("card")
+            or final_payload.get("card_name")
+            or final_payload.get("cardName")
+            or final_payload.get("cuenta")
+            or final_payload.get("account")
+        )
 
         if monto <= 0:
             raise HTTPException(
@@ -130,20 +210,30 @@ def procesar_atajo_ios(
                         cuenta = c
                         break
 
-            # 4. Si no existe ninguna coincidencia, crear la tarjeta de crédito automáticamente (Zero-Setup)
-            if not cuenta and tarjeta_clean:
-                cuenta = Cuenta(
-                    nombre=tarjeta_clean,
-                    tipo=TipoCuenta.CREDITO,
-                    saldo_actual=0.0,
-                    cupo_total=0.0,
-                    activa=True,
-                    usuario_id=target_user_id
-                )
-                db.add(cuenta)
-                db.commit()
-                db.refresh(cuenta)
+            # 4. Si la tarjeta enviada es genérica (ej: "Visa", "Mastercard", "Tarjeta de Crédito")
+            # y el usuario ya tiene una tarjeta de crédito activa, asociarla directamente en vez de crear una duplicada
+            if not cuenta:
+                es_generica = all(p.lower() in STOPWORDS_TARJETA for p in tarjeta_clean.split())
+                if es_generica:
+                    cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.CREDITO, Cuenta.activa == True)).first()
 
+            # 5. Si no existe ninguna coincidencia y no es puramente genérica, crear la tarjeta de crédito automáticamente (Zero-Setup)
+            if not cuenta and tarjeta_clean:
+                es_generica = all(p.lower() in STOPWORDS_TARJETA for p in tarjeta_clean.split())
+                if not es_generica:
+                    cuenta = Cuenta(
+                        nombre=tarjeta_clean,
+                        tipo=TipoCuenta.CREDITO,
+                        saldo_actual=0.0,
+                        cupo_total=0.0,
+                        activa=True,
+                        usuario_id=target_user_id
+                    )
+                    db.add(cuenta)
+                    db.commit()
+                    db.refresh(cuenta)
+
+        # 6. Fallback final: Si no se especificó o no se encontró tarjeta, asociar a la tarjeta de crédito activa principal
         if not cuenta:
             cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.CREDITO, Cuenta.activa == True)).first()
             if not cuenta:
@@ -155,21 +245,36 @@ def procesar_atajo_ios(
                 detail="No hay cuentas activas registradas para asociar el pago de Apple Pay"
             )
 
-        # Idempotencia
-        fecha_clave = fecha_movimiento.strftime("%Y-%m-%d_%H:%M")
-        hash_idemp = calcular_hash_idempotencia(monto, comercio, fecha_clave)
-        transaccion_existente = db.query(Transaccion).filter(Transaccion.hash_idempotencia == hash_idemp).first()
-        if transaccion_existente:
+        # Idempotencia (se omite para pruebas manuales si test=True)
+        es_prueba = bool(final_payload.get("test"))
+        es_dry_run = bool(final_payload.get("dry_run") or final_payload.get("simular"))
+        if es_dry_run:
+            monto_pesos = f"{int(monto):,}".replace(",", ".") + " pesos"
             return WebhookIngestResponse(
-                status="ignorado_duplicado",
-                mensaje="Transacción ya registrada previamente (Idempotencia)",
-                transaccion_id=transaccion_existente.id,
-                tipo_detectado=transaccion_existente.tipo.value,
-                monto_cop=transaccion_existente.monto,
-                comercio=transaccion_existente.comercio,
+                status="simulacion_exitosa",
+                mensaje=f"Simulación de Apple Pay exitosa ({monto_pesos} en {comercio}). Cuenta vinculada: {cuenta.nombre}. Saldo intacto.",
+                transaccion_id=-1,
+                tipo_detectado="EGRESO",
+                monto_cop=monto,
+                comercio=comercio,
                 cuenta_afectada=cuenta.nombre,
                 es_transferencia_interna=False
             )
+        fecha_clave = fecha_movimiento.strftime("%Y-%m-%d_%H:%M")
+        hash_idemp = None if es_prueba else calcular_hash_idempotencia(monto, comercio, fecha_clave)
+        if hash_idemp:
+            transaccion_existente = db.query(Transaccion).filter(Transaccion.hash_idempotencia == hash_idemp).first()
+            if transaccion_existente:
+                return WebhookIngestResponse(
+                    status="ignorado_duplicado",
+                    mensaje="Transacción ya registrada previamente (Idempotencia)",
+                    transaccion_id=transaccion_existente.id,
+                    tipo_detectado=transaccion_existente.tipo.value,
+                    monto_cop=transaccion_existente.monto,
+                    comercio=transaccion_existente.comercio,
+                    cuenta_afectada=cuenta.nombre,
+                    es_transferencia_interna=False
+                )
 
         # Categorizar
         cat_nombre, cat_id = CategorizadorComercios.sugerir_categoria(comercio, db)
@@ -192,7 +297,7 @@ def procesar_atajo_ios(
             categoria_id=cat_id,
             es_gasto_hormiga=es_hormiga,
             hash_idempotencia=hash_idemp,
-            raw_payload=str(payload),
+            raw_payload=str(final_payload),
             usuario_id=cuenta.usuario_id if (cuenta and cuenta.usuario_id) else target_user_id,
         )
         db.add(transaccion)
@@ -212,7 +317,7 @@ def procesar_atajo_ios(
         )
 
     # 2. Rama SMS Bancario
-    texto_sms = payload.get("texto_sms", "")
+    texto_sms = final_payload.get("texto_sms", final_payload.get("sms", final_payload.get("body", "")))
     if not texto_sms:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -377,3 +482,52 @@ def procesar_atajo_ios(
         cuenta_afectada=cuenta_ingreso.nombre if cuenta_ingreso else "Cuenta Principal",
         es_transferencia_interna=False
     )
+
+
+@router.api_route("/test-apple-pay", methods=["GET", "POST"], response_model=WebhookIngestResponse)
+async def simular_prueba_apple_pay(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint de prueba y simulación inmediata para Apple Pay ($0 costo).
+    Permite validar la conexión con AUREA desde Atajos de iOS, navegador o cURL sin realizar compras reales.
+    Acepta parámetros opcionales por query string o JSON:
+      ?monto=1000&comercio=Prueba+Datáfono&tarjeta=Visa&dry_run=true
+    """
+    params: Dict[str, Any] = dict(request.query_params)
+    if request.method == "POST":
+        try:
+            body = await request.json()
+            if isinstance(body, dict):
+                params.update(body)
+        except Exception:
+            try:
+                form = await request.form()
+                params.update(dict(form))
+            except Exception:
+                pass
+
+    monto_val = params.get("monto") or params.get("amount") or 1000.0
+    comercio_val = params.get("comercio") or params.get("merchant") or "Prueba Datáfono Apple Pay"
+    tarjeta_val = params.get("tarjeta") or params.get("card")
+    dry_run_val = str(params.get("dry_run", "")).lower() in ("true", "1", "yes")
+
+    payload_simulado = {
+        "medio": "APPLE_PAY",
+        "monto": monto_val,
+        "comercio": comercio_val,
+        "tarjeta": tarjeta_val,
+        "test": True,
+        "dry_run": dry_run_val,
+    }
+
+    return await procesar_atajo_ios(
+        request=request,
+        payload=payload_simulado,
+        token=params.get("token"),
+        authorization=request.headers.get("authorization"),
+        x_aurea_token=request.headers.get("x-aurea-token"),
+        db=db
+    )
+

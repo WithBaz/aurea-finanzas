@@ -157,6 +157,24 @@ def test_webhook_apple_pay_auto_crea_tarjeta_nueva(client):
     assert nueva_tarjeta["saldo_actual"] == 80000.0
 
 
+def test_webhook_apple_pay_test_endpoint_get_y_post(client):
+    # Probar simulación GET por defecto ($1.000 COP)
+    res_get = client.get("/api/v1/webhooks/test-apple-pay")
+    assert res_get.status_code == 200
+    data_get = res_get.json()
+    assert data_get["status"] == "exitoso"
+    assert data_get["monto_cop"] == 1000.0
+    assert "Prueba" in data_get["comercio"]
+
+    # Probar simulación con parámetros personalizados y dry_run=True (saldo intacto)
+    res_dry = client.post("/api/v1/webhooks/test-apple-pay?monto=5000&comercio=Starbucks&dry_run=true")
+    assert res_dry.status_code == 200
+    data_dry = res_dry.json()
+    assert data_dry["status"] == "simulacion_exitosa"
+    assert data_dry["monto_cop"] == 5000.0
+    assert data_dry["transaccion_id"] == -1
+
+
 def test_apple_touch_icon_y_manifest_pwa(client):
     """Valida que los endpoints de iconos nativos iOS y PWA respondan correctamente."""
     # 1. Apple Touch Icon
