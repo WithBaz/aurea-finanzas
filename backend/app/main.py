@@ -3026,7 +3026,6 @@ def mobile_dashboard_preview():
             // ==========================================
             // GASTOS FIJOS & FRECUENTES
             // ==========================================
-            let nuevoFijoPagado = true;
             let nuevoFijoEsFrecuente = false;
             let gastoFijoPagoSeleccionado = null;
 
