@@ -290,18 +290,27 @@ class PerfilFinancieroResponse(PerfilFinancieroBase):
 class GastoFijoBase(BaseModel):
     nombre: str = Field(...)
     monto: float = Field(..., gt=0)
-    dia_pago: int = Field(5, ge=1, le=31)
+    dia_pago: Optional[int] = Field(1, ge=1, le=31)
     categoria: Optional[str] = "Hogar y Servicios"
     activo: bool = True
     pagado_este_mes: bool = False
+    es_frecuente: bool = False
+    frecuencia_veces: int = Field(1, ge=1, le=31)
+    veces_pagadas: int = Field(0, ge=0)
+    ultimo_mes_pagado: Optional[str] = None
+    ultima_transaccion_id: Optional[int] = None
 
 
 class GastoFijoCreate(BaseModel):
     nombre: str = Field(...)
     monto: float = Field(..., gt=0)
-    dia_pago: Optional[int] = Field(5, ge=1, le=31)
+    dia_pago: Optional[int] = Field(1, ge=1, le=31)
     categoria: Optional[str] = "Hogar y Servicios"
     pagado_este_mes: Optional[bool] = False
+    es_frecuente: Optional[bool] = False
+    frecuencia_veces: Optional[int] = Field(1, ge=1, le=31)
+    veces_pagadas: Optional[int] = Field(0, ge=0)
+    ultimo_mes_pagado: Optional[str] = None
 
 
 class GastoFijoUpdate(BaseModel):
@@ -311,6 +320,16 @@ class GastoFijoUpdate(BaseModel):
     categoria: Optional[str] = None
     activo: Optional[bool] = None
     pagado_este_mes: Optional[bool] = None
+    es_frecuente: Optional[bool] = None
+    frecuencia_veces: Optional[int] = None
+    veces_pagadas: Optional[int] = None
+    ultimo_mes_pagado: Optional[str] = None
+    ultima_transaccion_id: Optional[int] = None
+
+
+class GastoFijoPagarRequest(BaseModel):
+    cuenta_id: int
+    monto: Optional[float] = None
 
 
 class GastoFijoResponse(GastoFijoBase):

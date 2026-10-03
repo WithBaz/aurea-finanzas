@@ -198,15 +198,44 @@ class FinancialEngine:
         items_q = db.query(GastoFijo).filter(GastoFijo.activo == True)
         if usuario_id:
             items_q = items_q.filter((GastoFijo.usuario_id == usuario_id) | (GastoFijo.usuario_id == None))
-        items = items_q.order_by(GastoFijo.dia_pago.asc()).all()
+        items = items_q.order_by(GastoFijo.id.asc()).all()
+
+        # Reset mensual automático según calendario de Colombia:
+        # Apenas inicia el mes (00:00 del 1er día en Colombia), todos pasan a 'por pagar'
+        mes_actual_col = ahora_col.strftime("%Y-%m")
+        hubo_cambio_mes = False
+        for i in items:
+            if i.pagado_este_mes and not i.ultimo_mes_pagado:
+                i.ultimo_mes_pagado = mes_actual_col
+                hubo_cambio_mes = True
+            elif i.ultimo_mes_pagado and i.ultimo_mes_pagado != mes_actual_col:
+                i.pagado_este_mes = False
+                i.veces_pagadas = 0
+                i.ultima_transaccion_id = None
+                hubo_cambio_mes = True
+        if hubo_cambio_mes:
+            db.commit()
+
         total_fijos = sum(i.monto for i in items) if items else (perfil.compromisos_fijos_mensual if perfil else 0.0)
-        total_apartado = sum(i.monto for i in items if i.pagado_este_mes)
-        total_pendiente = sum(i.monto for i in items if not i.pagado_este_mes)
+
+        # Calcular montos apartados y pendientes considerando gastos frecuentes
+        total_apartado = 0.0
+        for i in items:
+            if i.es_frecuente:
+                frec = max(1, i.frecuencia_veces or 1)
+                monto_unitario = i.monto / frec
+                pagados = min(frec, i.veces_pagadas or 0)
+                total_apartado += (pagados * monto_unitario)
+            else:
+                if i.pagado_este_mes:
+                    total_apartado += i.monto
+
+        total_pendiente = max(0.0, total_fijos - total_apartado)
 
         return {
             "total_fijos": total_fijos,
-            "total_apartado_nomina": total_apartado,
-            "total_pendiente": total_pendiente,
+            "total_apartado_nomina": round(total_apartado, 2),
+            "total_pendiente": round(total_pendiente, 2),
             "cantidad_compromisos": len(items),
             "nomina_recibida": nomina_recibida,
             "items": [
@@ -218,6 +247,11 @@ class FinancialEngine:
                     "categoria": i.categoria,
                     "activo": i.activo,
                     "pagado_este_mes": bool(i.pagado_este_mes),
+                    "es_frecuente": bool(i.es_frecuente),
+                    "frecuencia_veces": i.frecuencia_veces or 1,
+                    "veces_pagadas": i.veces_pagadas or 0,
+                    "ultimo_mes_pagado": i.ultimo_mes_pagado,
+                    "ultima_transaccion_id": i.ultima_transaccion_id,
                     "created_at": i.created_at.isoformat() if i.created_at else None,
                 }
                 for i in items

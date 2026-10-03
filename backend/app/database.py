@@ -99,6 +99,11 @@ def migrar_esquema_multi_usuario(eng=engine):
             "gastos_fijos": [
                 ("usuario_id", int_type),
                 ("pagado_este_mes", f"{bool_type} DEFAULT FALSE"),
+                ("es_frecuente", f"{bool_type} DEFAULT FALSE"),
+                ("frecuencia_veces", f"{int_type} DEFAULT 1"),
+                ("veces_pagadas", f"{int_type} DEFAULT 0"),
+                ("ultimo_mes_pagado", "VARCHAR(7)"),
+                ("ultima_transaccion_id", int_type),
             ],
             "perfil_financiero": [
                 ("usuario_id", int_type),

@@ -138,14 +138,20 @@ class GastoFijo(Base):
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
     monto = Column(Float, nullable=False)
-    dia_pago = Column(Integer, default=5, nullable=False)  # Día habitual de pago en el mes (ej: 5)
+    dia_pago = Column(Integer, default=1, nullable=False)
     categoria = Column(String(50), default="Hogar y Servicios", nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
     pagado_este_mes = Column(Boolean, default=False, nullable=False)
+    es_frecuente = Column(Boolean, default=False, nullable=False)
+    frecuencia_veces = Column(Integer, default=1, nullable=False)
+    veces_pagadas = Column(Integer, default=0, nullable=False)
+    ultimo_mes_pagado = Column(String(7), nullable=True)
+    ultima_transaccion_id = Column(Integer, ForeignKey("transacciones.id", ondelete="SET NULL"), nullable=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=True, index=True)
     created_at = Column(DateTime, default=ahora_utc_db, nullable=False)
 
     usuario = relationship("Usuario", foreign_keys=[usuario_id])
+    ultima_transaccion = relationship("Transaccion", foreign_keys=[ultima_transaccion_id])
 
 
 class Usuario(Base):

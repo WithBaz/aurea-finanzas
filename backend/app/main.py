@@ -1129,21 +1129,41 @@ def mobile_dashboard_preview():
             <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#1C1C1E] border border-white/10">
                 <div class="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4"></div>
                 <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-base font-extrabold text-white">Agregar Gasto Fijo Mensual</h3>
+                    <h3 class="text-base font-extrabold text-white">Agregar Gasto Fijo</h3>
                     <button onclick="cerrarModalNuevoGastoFijo()" class="text-[#8E8E93] hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="space-y-3">
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Concepto / Nombre</label>
-                        <input type="text" id="nuevo-fijo-nombre" placeholder="Ej: Arriendo, Internet, Servicios Públicos, Seguro" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white text-sm focus:border-blue-500 outline-none">
+                        <input type="text" id="nuevo-fijo-nombre" placeholder="Ej: Arriendo, Internet, Gasolina, Supermercado" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white text-sm focus:border-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Monto Mensual ($)</label>
-                        <input type="text" inputmode="numeric" id="nuevo-fijo-monto" oninput="formatearInputMoneda(this)" placeholder="Ej: $ 1.200.000" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
+                        <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Tipo de Compromiso</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" id="btn-tipo-fijo-unico" onclick="setTipoFrecuenciaFijo(false)" class="py-2.5 px-2 rounded-xl text-[11px] font-bold bg-[#0A84FF]/20 text-[#0A84FF] border border-[#0A84FF]/40 transition">
+                                📅 Pago Único Mensual
+                            </button>
+                            <button type="button" id="btn-tipo-fijo-frecuente" onclick="setTipoFrecuenciaFijo(true)" class="py-2.5 px-2 rounded-xl text-[11px] font-bold bg-[#000000] text-[#8E8E93] border border-white/10 transition">
+                                ⛽ Frecuente (ej. Gasolina)
+                            </button>
+                        </div>
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Día Habitual de Pago (1 - 31)</label>
-                        <input type="number" id="nuevo-fijo-dia" min="1" max="31" placeholder="Ej: 5" value="5" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
+                        <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Presupuesto Mensual Total ($)</label>
+                        <input type="text" inputmode="numeric" id="nuevo-fijo-monto" oninput="formatearInputMoneda(this); actualizarCalculoCuotaFija();" placeholder="Ej: $ 300.000" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2 text-white font-bold text-sm focus:border-blue-500 outline-none">
+                    </div>
+                    <div id="seccion-frecuencia-veces" class="hidden p-3 rounded-2xl bg-white/5 border border-white/10">
+                        <label class="text-[10px] font-bold text-amber-400 block mb-1.5">¿Cuántas veces al mes realizas este gasto?</label>
+                        <div class="flex items-center gap-2">
+                            <select id="nuevo-fijo-veces" onchange="actualizarCalculoCuotaFija()" class="w-full bg-[#000000] border border-white/10 rounded-xl px-3 py-2 text-white text-xs font-bold focus:border-blue-500 outline-none">
+                                <option value="2">2 veces en el mes (Quincenal)</option>
+                                <option value="3" selected>3 veces en el mes</option>
+                                <option value="4">4 veces en el mes (Semanal)</option>
+                                <option value="5">5 veces en el mes</option>
+                                <option value="6">6 veces en el mes</option>
+                            </select>
+                        </div>
+                        <p id="calculo-cuota-fija" class="text-[11px] text-slate-300 mt-2 font-medium">💡 Cada pago será de aprox. $ 100.000 COP</p>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">¿Ya cubriste este pago este mes?</label>
@@ -1161,8 +1181,28 @@ def mobile_dashboard_preview():
                     </div>
                     <div class="pt-2 flex gap-2">
                         <button onclick="cerrarModalNuevoGastoFijo()" class="w-1/2 py-3 rounded-2xl bg-[#2C2C2E] hover:bg-[#3A3A3C] text-white text-xs font-bold transition">Cancelar</button>
-                        <button onclick="guardarNuevoGastoFijo()" class="w-1/2 py-3 rounded-2xl bg-[#0A84FF] hover:bg-blue-600 text-white text-xs font-black shadow-lg shadow-blue-500/20 transition">Crear Gasto Fijo</button>
+                        <button onclick="guardarNuevoGastoFijo()" class="w-1/2 py-3 rounded-2xl bg-[#0A84FF] hover:bg-blue-600 text-white text-xs font-black shadow-lg shadow-blue-500/20 transition">Guardar Compromiso</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Seleccionar Método de Pago para Gasto Fijo 💳 -->
+        <div id="modal-seleccionar-cuenta-pago" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#1C1C1E] border border-white/10">
+                <div class="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4"></div>
+                <div class="flex justify-between items-center mb-3">
+                    <div>
+                        <h3 class="text-base font-extrabold text-white">¿Con qué método pagaste?</h3>
+                        <p id="subtitulo-pago-fijo" class="text-xs text-[#8E8E93] mt-0.5">Elige la cuenta o tarjeta que utilizaste</p>
+                    </div>
+                    <button onclick="cerrarModalSeleccionarCuentaPago()" class="text-[#8E8E93] hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div id="lista-cuentas-pago-fijo" class="space-y-2 mt-3 max-h-64 overflow-y-auto pr-1">
+                    <!-- Dinámico -->
+                </div>
+                <div class="pt-3">
+                    <button onclick="cerrarModalSeleccionarCuentaPago()" class="w-full py-3 rounded-2xl bg-[#2C2C2E] hover:bg-[#3A3A3C] text-white text-xs font-bold transition">Cancelar</button>
                 </div>
             </div>
         </div>
@@ -2149,8 +2189,8 @@ def mobile_dashboard_preview():
                 if(gfData) {
                     itemsFijos = gfData.items || [];
                     totalFijos = gfData.total_fijos || 0;
-                    totalFijosPendientes = itemsFijos.filter(i => !i.pagado_este_mes).reduce((sum, i) => sum + i.monto, 0);
-                    totalFijosCubiertos = itemsFijos.filter(i => i.pagado_este_mes).reduce((sum, i) => sum + i.monto, 0);
+                    totalFijosPendientes = gfData.total_pendiente !== undefined ? gfData.total_pendiente : itemsFijos.filter(i => !i.pagado_este_mes).reduce((sum, i) => sum + i.monto, 0);
+                    totalFijosCubiertos = gfData.total_apartado_nomina !== undefined ? gfData.total_apartado_nomina : itemsFijos.filter(i => i.pagado_este_mes).reduce((sum, i) => sum + i.monto, 0);
 
                     const totalGfEl = document.getElementById('total-gastos-fijos');
                     if(totalGfEl) totalGfEl.innerText = formatearCOP(totalFijos);
@@ -2176,43 +2216,152 @@ def mobile_dashboard_preview():
                             containerGf.innerHTML = `
                                 <div class="text-center py-4 px-3 rounded-2xl bg-[#000000]/40 border border-white/5">
                                     <p class="text-xs text-white/80 font-bold mb-1">Sin compromisos fijos registrados</p>
-                                    <p class="text-[11px] text-[#8E8E93] mb-2">Registra arriendo, servicios o suscripciones fijas.</p>
+                                    <p class="text-[11px] text-[#8E8E93] mb-2">Registra arriendo, servicios, suscripciones o gasolina.</p>
                                     <button onclick="abrirModalNuevoGastoFijo()" class="text-xs text-blue-400 font-bold underline hover:text-white">Agregar Mi Primer Fijo</button>
                                 </div>
                             `;
                         } else {
-                            itemsFijos.forEach(item => {
-                                let icon = 'fa-house';
-                                const nom = (item.nombre || '').toLowerCase();
-                                if(nom.includes('servicio') || nom.includes('luz') || nom.includes('agua') || nom.includes('gas') || nom.includes('enel') || nom.includes('epm')) icon = 'fa-bolt';
-                                else if(nom.includes('internet') || nom.includes('wifi') || nom.includes('celular') || nom.includes('plan') || nom.includes('claro') || nom.includes('tigo') || nom.includes('movistar')) icon = 'fa-wifi';
-                                else if(nom.includes('gym') || nom.includes('gimnasio') || nom.includes('smart fit')) icon = 'fa-dumbbell';
-                                else if(nom.includes('netflix') || nom.includes('spotify') || nom.includes('sub') || nom.includes('youtube') || nom.includes('apple')) icon = 'fa-star';
+                            const unicos = itemsFijos.filter(i => !i.es_frecuente);
+                            const frecuentes = itemsFijos.filter(i => i.es_frecuente);
 
-                                const el = document.createElement('div');
-                                el.className = 'p-3 rounded-2xl bg-[#000000]/50 border border-white/5 flex items-center justify-between';
-                                el.innerHTML = `
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-slate-300 text-xs">
-                                            <i class="fa-solid ${icon}"></i>
-                                        </div>
-                                        <div>
-                                            <span class="text-xs font-bold text-white block leading-tight">${item.nombre}</span>
-                                            <span class="text-[10px] text-[#8E8E93]">Día ${item.dia_pago} de cada mes</span>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-xs font-black text-slate-200">${formatearCOP(item.monto)}</span>
-                                        <button onclick="togglePagadoGastoFijo(${item.id})" class="px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${item.pagado_este_mes ? 'bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/40' : 'bg-[#FF9F0A]/20 text-[#FF9F0A] border border-[#FF9F0A]/40'}" title="Toca para alternar">
-                                            ${item.pagado_este_mes ? '✓ Cubierto' : '⏳ Por pagar'}
-                                        </button>
-                                        <button onclick="eliminarGastoFijo(${item.id})" class="w-6 h-6 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 flex items-center justify-center text-[10px] transition" title="Eliminar">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </button>
+                            // 1. Mensuales Únicos
+                            if(unicos.length > 0) {
+                                const secUnicos = document.createElement('div');
+                                secUnicos.className = 'space-y-2';
+                                secUnicos.innerHTML = `
+                                    <div class="flex items-center justify-between px-1 pt-1 pb-0.5">
+                                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                                            <i class="fa-regular fa-calendar-check text-blue-400"></i> Mensuales Únicos
+                                        </span>
+                                        <span class="text-[10px] text-[#8E8E93]">${unicos.filter(i => i.pagado_este_mes).length}/${unicos.length} cubiertos</span>
                                     </div>
                                 `;
-                                containerGf.appendChild(el);
-                            });
+
+                                unicos.forEach(item => {
+                                    let icon = 'fa-house';
+                                    const nom = (item.nombre || '').toLowerCase();
+                                    if(nom.includes('servicio') || nom.includes('luz') || nom.includes('agua') || nom.includes('gas') || nom.includes('enel') || nom.includes('epm')) icon = 'fa-bolt';
+                                    else if(nom.includes('internet') || nom.includes('wifi') || nom.includes('celular') || nom.includes('plan') || nom.includes('claro') || nom.includes('tigo') || nom.includes('movistar')) icon = 'fa-wifi';
+                                    else if(nom.includes('gym') || nom.includes('gimnasio') || nom.includes('smart fit')) icon = 'fa-dumbbell';
+                                    else if(nom.includes('netflix') || nom.includes('spotify') || nom.includes('sub') || nom.includes('youtube') || nom.includes('apple')) icon = 'fa-star';
+
+                                    const safeName = (item.nombre || 'Gasto Fijo').replace(/'/g, "\\'");
+                                    const el = document.createElement('div');
+                                    el.className = 'p-3 rounded-2xl bg-[#000000]/50 border border-white/5 flex items-center justify-between';
+                                    el.innerHTML = `
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-slate-300 text-xs">
+                                                <i class="fa-solid ${icon}"></i>
+                                            </div>
+                                            <div>
+                                                <span class="text-xs font-bold text-white block leading-tight">${item.nombre}</span>
+                                                <span class="text-[10px] text-[#8E8E93]">${item.categoria || 'Compromiso Mensual'}</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-black text-slate-200">${formatearCOP(item.monto)}</span>
+                                            ${!item.pagado_este_mes ? `
+                                                <button onclick="abrirModalSeleccionarCuentaPago(${item.id}, '${safeName}', ${item.monto})" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#FF9F0A]/20 text-[#FF9F0A] border border-[#FF9F0A]/40 transition hover:bg-[#FF9F0A]/30 active:scale-95" title="Toca para pagar y descontar de tu cuenta">
+                                                    ⏳ Por pagar
+                                                </button>
+                                            ` : `
+                                                <button onclick="revertirPagoGastoFijoUI(${item.id}, '${safeName}')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/40 transition hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/40 active:scale-95" title="Toca para anular pago y devolver saldo">
+                                                    ✓ Cubierto
+                                                </button>
+                                            `}
+                                            <button onclick="eliminarGastoFijo(${item.id})" class="w-6 h-6 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 flex items-center justify-center text-[10px] transition" title="Eliminar">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    `;
+                                    secUnicos.appendChild(el);
+                                });
+                                containerGf.appendChild(secUnicos);
+                            }
+
+                            // 2. Frecuentes del Mes (Multicobro - ej. Gasolina)
+                            if(frecuentes.length > 0) {
+                                const secFrec = document.createElement('div');
+                                secFrec.className = 'space-y-2 mt-3';
+                                secFrec.innerHTML = `
+                                    <div class="flex items-center justify-between px-1 pt-1 pb-0.5">
+                                        <span class="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-gas-pump text-amber-400"></i> Frecuentes del Mes (Multicobro)
+                                        </span>
+                                        <span class="text-[10px] text-[#8E8E93]">Gasolina, compras periódicas</span>
+                                    </div>
+                                `;
+
+                                frecuentes.forEach(item => {
+                                    const nom = (item.nombre || '').toLowerCase();
+                                    let icon = 'fa-repeat';
+                                    if(nom.includes('gas') || nom.includes('combustible')) icon = 'fa-gas-pump';
+                                    else if(nom.includes('mercado') || nom.includes('comida') || nom.includes('super')) icon = 'fa-cart-shopping';
+
+                                    const frec = Math.max(1, item.frecuencia_veces || 1);
+                                    const montoUnitario = Math.round(item.monto / frec);
+                                    const vecesPagadas = Math.min(frec, item.veces_pagadas || 0);
+                                    const safeName = (item.nombre || 'Gasto Frecuente').replace(/'/g, "\\'");
+
+                                    let dotsHtml = '';
+                                    for(let d = 1; d <= frec; d++) {
+                                        if(d <= vecesPagadas) {
+                                            dotsHtml += `<span class="w-2.5 h-2.5 rounded-full bg-[#30D158] inline-block shadow-sm shadow-[#30D158]/50" title="Vez ${d} pagada"></span>`;
+                                        } else {
+                                            dotsHtml += `<span class="w-2.5 h-2.5 rounded-full bg-white/20 border border-white/10 inline-block" title="Vez ${d} pendiente"></span>`;
+                                        }
+                                    }
+
+                                    const el = document.createElement('div');
+                                    el.className = 'p-3.5 rounded-2xl bg-[#000000]/60 border border-amber-500/20 space-y-2.5';
+                                    el.innerHTML = `
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xs">
+                                                    <i class="fa-solid ${icon}"></i>
+                                                </div>
+                                                <div>
+                                                    <span class="text-xs font-bold text-white block leading-tight">${item.nombre}</span>
+                                                    <span class="text-[10px] text-[#8E8E93]">${frec} veces en el mes • ${formatearCOP(montoUnitario)} c/u</span>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <span class="text-xs font-black text-amber-300 block">${formatearCOP(item.monto)}</span>
+                                                <span class="text-[9px] text-[#8E8E93]">presupuesto</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between pt-1 border-t border-white/5">
+                                            <div class="flex items-center gap-2">
+                                                <div class="flex items-center gap-1.5">
+                                                    ${dotsHtml}
+                                                </div>
+                                                <span class="text-[10px] font-bold text-slate-300">${vecesPagadas} de ${frec}</span>
+                                            </div>
+                                            <div class="flex items-center gap-1.5">
+                                                ${vecesPagadas < frec ? `
+                                                    <button onclick="abrirModalSeleccionarCuentaPago(${item.id}, '${safeName} (Vez ${vecesPagadas + 1}/${frec})', ${montoUnitario})" class="px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold bg-[#0A84FF] text-white shadow-md shadow-blue-500/20 hover:bg-blue-600 transition flex items-center gap-1 active:scale-95">
+                                                        <i class="fa-solid fa-plus text-[9px]"></i> Pagar vez ${vecesPagadas + 1} (${formatearCOP(montoUnitario)})
+                                                    </button>
+                                                ` : `
+                                                    <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/40">
+                                                        ✓ Todas cubiertas (${frec}/${frec})
+                                                    </span>
+                                                `}
+                                                ${vecesPagadas > 0 ? `
+                                                    <button onclick="revertirPagoGastoFijoUI(${item.id}, '${safeName}')" class="w-6 h-6 rounded-lg bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 flex items-center justify-center text-[10px] transition" title="Deshacer última vez pagada">
+                                                        <i class="fa-solid fa-rotate-left"></i>
+                                                    </button>
+                                                ` : ''}
+                                                <button onclick="eliminarGastoFijo(${item.id})" class="w-6 h-6 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 flex items-center justify-center text-[10px] transition" title="Eliminar">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `;
+                                    secFrec.appendChild(el);
+                                });
+                                containerGf.appendChild(secFrec);
+                            }
                         }
                     }
                 }
@@ -2875,8 +3024,44 @@ def mobile_dashboard_preview():
             }
 
             // ==========================================
-            // GASTOS FIJOS
+            // GASTOS FIJOS & FRECUENTES
             // ==========================================
+            let nuevoFijoPagado = true;
+            let nuevoFijoEsFrecuente = false;
+            let gastoFijoPagoSeleccionado = null;
+
+            function setTipoFrecuenciaFijo(esFrec) {
+                nuevoFijoEsFrecuente = esFrec;
+                const btnUnico = document.getElementById('btn-tipo-fijo-unico');
+                const btnFrec = document.getElementById('btn-tipo-fijo-frecuente');
+                const secVeces = document.getElementById('seccion-frecuencia-veces');
+                if(!btnUnico || !btnFrec) return;
+
+                if(esFrec) {
+                    btnFrec.className = 'py-2.5 px-2 rounded-xl text-[11px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40 transition';
+                    btnUnico.className = 'py-2.5 px-2 rounded-xl text-[11px] font-bold bg-[#000000] text-[#8E8E93] border border-white/10 transition';
+                    if(secVeces) secVeces.classList.remove('hidden');
+                } else {
+                    btnUnico.className = 'py-2.5 px-2 rounded-xl text-[11px] font-bold bg-[#0A84FF]/20 text-[#0A84FF] border border-[#0A84FF]/40 transition';
+                    btnFrec.className = 'py-2.5 px-2 rounded-xl text-[11px] font-bold bg-[#000000] text-[#8E8E93] border border-white/10 transition';
+                    if(secVeces) secVeces.classList.add('hidden');
+                }
+                actualizarCalculoCuotaFija();
+            }
+
+            function actualizarCalculoCuotaFija() {
+                const p = document.getElementById('calculo-cuota-fija');
+                if(!p) return;
+                const monto = obtenerValorMoneda('nuevo-fijo-monto') || 0;
+                const veces = parseInt(document.getElementById('nuevo-fijo-veces')?.value || '3');
+                if(monto > 0 && veces > 0) {
+                    const cuota = Math.round(monto / veces);
+                    p.innerText = '💡 ' + veces + ' pagos presupuestados de aprox. ' + formatearCOP(cuota) + ' c/u';
+                } else {
+                    p.innerText = '💡 Define el presupuesto mensual total y las veces que pagarás';
+                }
+            }
+
             function setEstadoNuevoFijo(cubierto) {
                 nuevoFijoPagado = cubierto;
                 const btnCubierto = document.getElementById('btn-fijo-cubierto');
@@ -2895,7 +3080,8 @@ def mobile_dashboard_preview():
             }
 
             function abrirModalNuevoGastoFijo() {
-                setEstadoNuevoFijo(true);
+                setTipoFrecuenciaFijo(false);
+                setEstadoNuevoFijo(false);
                 document.getElementById('modal-nuevo-gasto-fijo').classList.remove('hidden');
                 document.getElementById('nuevo-fijo-nombre').focus();
             }
@@ -2908,7 +3094,7 @@ def mobile_dashboard_preview():
             async function guardarNuevoGastoFijo() {
                 const nombre = document.getElementById('nuevo-fijo-nombre').value.trim();
                 const monto = obtenerValorMoneda('nuevo-fijo-monto');
-                const diaPago = parseInt(document.getElementById('nuevo-fijo-dia').value) || 5;
+                const frecuenciaVeces = nuevoFijoEsFrecuente ? (parseInt(document.getElementById('nuevo-fijo-veces').value) || 3) : 1;
 
                 if(!nombre || !monto || isNaN(monto) || monto <= 0) {
                     alert('Por favor ingresa un concepto y monto válido.');
@@ -2922,8 +3108,9 @@ def mobile_dashboard_preview():
                         body: JSON.stringify({ 
                             nombre: nombre, 
                             monto: monto, 
-                            dia_pago: diaPago,
-                            pagado_este_mes: nuevoFijoPagado
+                            pagado_este_mes: nuevoFijoPagado,
+                            es_frecuente: nuevoFijoEsFrecuente,
+                            frecuencia_veces: frecuenciaVeces
                         })
                     });
                     if(res.ok) {
@@ -2931,6 +3118,102 @@ def mobile_dashboard_preview():
                         fetchDashboard();
                     } else {
                         alert('Error al guardar gasto fijo.');
+                    }
+                } catch(e) {
+                    alert('Error de conexión.');
+                }
+            }
+
+            function abrirModalSeleccionarCuentaPago(gastoId, nombre, monto) {
+                gastoFijoPagoSeleccionado = { id: gastoId, nombre: nombre, monto: monto };
+                const sub = document.getElementById('subtitulo-pago-fijo');
+                if(sub) sub.innerText = nombre + ' • ' + formatearCOP(monto);
+
+                const lista = document.getElementById('lista-cuentas-pago-fijo');
+                if(lista) {
+                    lista.innerHTML = '';
+                    if(!cuentasData || cuentasData.length === 0) {
+                        lista.innerHTML = '<p class="text-xs text-[#8E8E93] text-center py-4">No tienes cuentas registradas.</p>';
+                    } else {
+                        cuentasData.forEach(c => {
+                            let icon = 'fa-building-columns';
+                            let iconColor = 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+                            let saldoTexto = 'Saldo: ' + formatearCOP(c.saldo_actual || 0);
+
+                            if(c.tipo === 'CREDITO') {
+                                icon = 'fa-credit-card';
+                                iconColor = 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+                                const cupoDisp = c.cupo_disponible !== undefined ? c.cupo_disponible : Math.max(0, (c.cupo_total || 0) - (c.saldo_actual || 0));
+                                saldoTexto = 'Cupo disp: ' + formatearCOP(cupoDisp);
+                            } else if(c.tipo === 'ALTO_RENDIMIENTO') {
+                                icon = 'fa-piggy-bank';
+                                iconColor = 'text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/20';
+                            } else if(c.tipo === 'EFECTIVO') {
+                                icon = 'fa-money-bill-wave';
+                                iconColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+                            }
+
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.className = 'w-full p-3 rounded-2xl bg-[#000000] border border-white/10 hover:border-blue-500 flex items-center justify-between transition text-left active:scale-[0.99]';
+                            btn.onclick = () => confirmarPagoGastoFijoConCuenta(c.id);
+                            btn.innerHTML = `
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl ${iconColor} border flex items-center justify-center text-sm">
+                                        <i class="fa-solid ${icon}"></i>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs font-bold text-white block leading-tight">${c.nombre}</span>
+                                        <span class="text-[10px] text-[#8E8E93] capitalize">${c.tipo.toLowerCase().replace('_', ' ')}</span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-xs font-black text-slate-200 block">${saldoTexto}</span>
+                                    <span class="text-[9px] text-blue-400 font-bold">Pagar con esta <i class="fa-solid fa-chevron-right text-[8px]"></i></span>
+                                </div>
+                            `;
+                            lista.appendChild(btn);
+                        });
+                    }
+                }
+                document.getElementById('modal-seleccionar-cuenta-pago').classList.remove('hidden');
+            }
+
+            function cerrarModalSeleccionarCuentaPago() {
+                document.getElementById('modal-seleccionar-cuenta-pago').classList.add('hidden');
+                gastoFijoPagoSeleccionado = null;
+            }
+
+            async function confirmarPagoGastoFijoConCuenta(cuentaId) {
+                if(!gastoFijoPagoSeleccionado) return;
+                const gastoId = gastoFijoPagoSeleccionado.id;
+                cerrarModalSeleccionarCuentaPago();
+
+                try {
+                    const res = await fetch('/api/v1/gastos-fijos/' + gastoId + '/pagar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cuenta_id: cuentaId })
+                    });
+                    if(res.ok) {
+                        fetchDashboard();
+                    } else {
+                        const err = await res.json().catch(() => ({}));
+                        alert(err.detail || 'Error al procesar el pago del compromiso.');
+                    }
+                } catch(e) {
+                    alert('Error de conexión al procesar el pago.');
+                }
+            }
+
+            async function revertirPagoGastoFijoUI(id, nombre) {
+                if(!confirm('¿Deseas anular el pago de "' + nombre + '" y reintegrar el saldo a tu cuenta?')) return;
+                try {
+                    const res = await fetch('/api/v1/gastos-fijos/' + id + '/revertir', { method: 'POST' });
+                    if(res.ok) {
+                        fetchDashboard();
+                    } else {
+                        alert('Error al anular el pago.');
                     }
                 } catch(e) {
                     alert('Error de conexión.');
@@ -2947,7 +3230,7 @@ def mobile_dashboard_preview():
             }
 
             async function eliminarGastoFijo(id) {
-                if(!confirm('¿Deseas eliminar este gasto fijo?')) return;
+                if(!confirm('¿Deseas eliminar este compromiso fijo?')) return;
                 try {
                     await fetch('/api/v1/gastos-fijos/' + id, { method: 'DELETE' });
                     fetchDashboard();
