@@ -927,26 +927,25 @@ def mobile_dashboard_preview():
         </nav>
 
         <!-- ========================================== -->
-        <!-- MODALES DE ACCIÓN (iOS Bottom Sheet Style) -->
+        <!-- MODALES DE ACCIÓN (iOS Dialog Pop-Up Style) -->
         <!-- ========================================== -->
 
-        <!-- Modal: Detalle y Edición de Movimiento 📝 -->
-        <div id="modal-detalle-tx" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#1C1C1E] border border-white/10 max-h-[90vh] overflow-y-auto">
-                <div class="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4"></div>
+        <!-- Modal: Detalle y Edición de Movimiento 📝 (Pop-Up) -->
+        <div id="modal-detalle-tx" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-3xl p-5 sm:p-6 bg-[#1C1C1E] border border-white/10 max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div class="flex justify-between items-start mb-4">
                     <div>
                         <span class="text-[10px] font-bold uppercase text-[#8E8E93] tracking-wider block">Detalle de Movimiento</span>
                         <h3 class="text-xl font-extrabold text-white mt-0.5" id="dtx-comercio-titulo">Movimiento</h3>
                         <span class="text-xs text-[#8E8E93]" id="dtx-fecha-hora">Fecha</span>
                     </div>
-                    <button onclick="cerrarDetalleTransaccion()" class="text-[#8E8E93] hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="cerrarDetalleTransaccion()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-[#8E8E93] hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <input type="hidden" id="dtx-id">
                 <div class="space-y-3 text-xs">
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Monto ($)</label>
-                        <input type="text" inputmode="numeric" id="dtx-monto" oninput="formatearInputMoneda(this)" placeholder="$ 0" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white font-extrabold text-lg focus:border-blue-500 outline-none">
+                        <input type="text" inputmode="numeric" id="dtx-monto" oninput="formatearInputMoneda(this); actualizarPrevisualizacionCuotas();" placeholder="$ 0" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white font-extrabold text-lg focus:border-blue-500 outline-none">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Comercio / Detalle</label>
@@ -961,13 +960,14 @@ def mobile_dashboard_preview():
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Cuenta / Tarjeta Origen</label>
-                        <select id="dtx-cuenta" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white text-xs focus:border-blue-500 outline-none">
+                        <select id="dtx-cuenta" onchange="onDtxCuentaChange()" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white text-xs focus:border-blue-500 outline-none">
                             <!-- Dinámico -->
                         </select>
                     </div>
-                    <div id="dtx-cuotas-container" class="space-y-1.5 pt-1">
+                    <!-- Solo visible si la cuenta es Tarjeta de Crédito (CREDITO) y tipo EGRESO -->
+                    <div id="dtx-cuotas-container" class="space-y-1.5 pt-1 hidden">
                         <div class="flex justify-between items-center">
-                            <label class="text-[10px] font-bold uppercase text-[#8E8E93]">Número de Cuotas</label>
+                            <label class="text-[10px] font-bold uppercase text-[#8E8E93]">Número de Cuotas (Tarjeta de Crédito)</label>
                             <span class="text-[10px] font-bold text-blue-400" id="dtx-cuotas-preview">1 cuota</span>
                         </div>
                         <div class="flex items-center gap-2">
@@ -995,13 +995,15 @@ def mobile_dashboard_preview():
             </div>
         </div>
 
-        <!-- Modal: Registrar Gasto / Ingreso Manual -->
-        <div id="modal-gasto" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#1C1C1E] border border-white/10">
-                <div class="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4"></div>
+        <!-- Modal: Registrar Gasto / Ingreso Manual (Pop-Up) -->
+        <div id="modal-gasto" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-3xl p-5 sm:p-6 bg-[#1C1C1E] border border-white/10 max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-extrabold text-white">Registrar Movimiento</h3>
-                    <button onclick="cerrarModalGasto()" class="text-[#8E8E93] hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                    <div>
+                        <span class="text-[10px] font-bold uppercase text-[#8E8E93] tracking-wider block">Nuevo Registro</span>
+                        <h3 class="text-lg font-extrabold text-white">Registrar Movimiento</h3>
+                    </div>
+                    <button onclick="cerrarModalGasto()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-[#8E8E93] hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="space-y-3">
                     <div>
@@ -1013,17 +1015,49 @@ def mobile_dashboard_preview():
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Monto ($)</label>
-                        <input type="text" inputmode="numeric" id="input-monto" oninput="formatearInputMoneda(this)" placeholder="$ 0" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white font-extrabold text-lg focus:border-blue-500 outline-none">
+                        <input type="text" inputmode="numeric" id="input-monto" oninput="formatearInputMoneda(this); actualizarPrevisualizacionCuotasGasto();" placeholder="$ 0" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white font-extrabold text-lg focus:border-blue-500 outline-none">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Comercio / Detalle</label>
                         <input type="text" id="input-comercio" placeholder="Ej: Supermercado D1, Taxi, Almuerzo" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white text-sm focus:border-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Cuenta o Tarjeta</label>
-                        <select id="select-cuenta" class="w-full bg-[#000000] border border-white/10 rounded-2xl px-3 py-2.5 text-white text-sm focus:border-blue-500 outline-none">
-                            <!-- Dinámico -->
-                        </select>
+                        <label class="text-[10px] font-bold uppercase text-[#8E8E93] block mb-1">Cuenta o Método de Pago</label>
+                        <button type="button" onclick="abrirPopUpSeleccionarCuentaGasto()" id="btn-selector-cuenta-gasto" class="w-full bg-[#000000] border border-white/10 hover:border-blue-500/50 rounded-2xl px-3.5 py-2.5 text-white flex items-center justify-between text-left transition active:scale-[0.99]">
+                            <div class="flex items-center gap-2.5">
+                                <div id="gasto-cuenta-icono-wrapper" class="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">
+                                    <i id="gasto-cuenta-icono" class="fa-solid fa-building-columns"></i>
+                                </div>
+                                <div>
+                                    <span id="gasto-cuenta-nombre" class="text-xs font-bold text-white block leading-tight">Seleccionar cuenta</span>
+                                    <span id="gasto-cuenta-detalle" class="text-[10px] text-[#8E8E93] block">Toca para elegir</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5 text-blue-400 text-xs font-semibold">
+                                <span>Cambiar</span>
+                                <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                            </div>
+                        </button>
+                        <input type="hidden" id="select-cuenta" value="">
+                    </div>
+                    <!-- Sección de Cuotas: Solo visible si la cuenta elegida es Tarjeta de Crédito y es EGRESO -->
+                    <div id="gasto-cuotas-container" class="space-y-1.5 pt-1 hidden">
+                        <div class="flex justify-between items-center">
+                            <label class="text-[10px] font-bold uppercase text-[#8E8E93]">Número de Cuotas (Tarjeta de Crédito)</label>
+                            <span class="text-[10px] font-bold text-blue-400" id="gasto-cuotas-preview">1 cuota</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="gasto-cuotas" min="1" max="48" value="1" oninput="actualizarPrevisualizacionCuotasGasto()" class="w-16 bg-[#000000] border border-white/10 rounded-xl px-2 py-1.5 text-white font-bold text-xs text-center focus:border-blue-500 outline-none">
+                            <div class="flex gap-1 overflow-x-auto py-0.5">
+                                <button type="button" onclick="setPresetCuotasGasto(1)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-slate-300 active:scale-95 transition">1</button>
+                                <button type="button" onclick="setPresetCuotasGasto(2)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-slate-300 active:scale-95 transition">2</button>
+                                <button type="button" onclick="setPresetCuotasGasto(3)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-slate-300 active:scale-95 transition">3</button>
+                                <button type="button" onclick="setPresetCuotasGasto(6)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-slate-300 active:scale-95 transition">6</button>
+                                <button type="button" onclick="setPresetCuotasGasto(12)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-slate-300 active:scale-95 transition">12</button>
+                                <button type="button" onclick="setPresetCuotasGasto(24)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] font-bold text-slate-300 active:scale-95 transition">24</button>
+                            </div>
+                        </div>
+                        <div id="gasto-cuotas-calc" class="hidden text-[11px] text-blue-300 bg-blue-500/10 p-2 rounded-xl border border-blue-500/20 font-medium"></div>
                     </div>
                     <div class="pt-2 flex gap-2">
                         <button onclick="cerrarModalGasto()" class="w-1/2 py-3 rounded-2xl bg-[#2C2C2E] hover:bg-[#3A3A3C] text-white text-xs font-bold transition">Cancelar</button>
@@ -1033,13 +1067,35 @@ def mobile_dashboard_preview():
             </div>
         </div>
 
-        <!-- Modal: Agregar Nueva Tarjeta / Cuenta (Con soporte de Cupo Total y Cupo Disponible) -->
-        <div id="modal-nueva-cuenta" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#1C1C1E] border border-white/10">
-                <div class="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4"></div>
+        <!-- Modal Pop-Up: Seleccionar Cuenta para Movimiento Manual -->
+        <div id="modal-pop-up-cuentas-gasto" class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+            <div class="ios-card w-full max-w-sm rounded-3xl p-5 bg-[#1C1C1E] border border-white/10 shadow-2xl">
+                <div class="flex justify-between items-center mb-3">
+                    <div>
+                        <h3 class="text-base font-extrabold text-white">Seleccionar Cuenta</h3>
+                        <p class="text-[11px] text-[#8E8E93]">Elige la cuenta o tarjeta utilizada</p>
+                    </div>
+                    <button type="button" onclick="cerrarPopUpSeleccionarCuentaGasto()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-[#8E8E93] hover:text-white flex items-center justify-center text-sm transition">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div id="lista-cuentas-gasto-popup" class="space-y-2 max-h-[60vh] overflow-y-auto pr-0.5">
+                    <!-- Dinámico -->
+                </div>
+                <div class="pt-3">
+                    <button type="button" onclick="cerrarPopUpSeleccionarCuentaGasto()" class="w-full py-2.5 rounded-2xl bg-[#2C2C2E] hover:bg-[#3A3A3C] text-white text-xs font-bold transition">
+                        Listo
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Agregar Nueva Tarjeta / Cuenta (Pop-Up) -->
+        <div id="modal-nueva-cuenta" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-3xl p-5 sm:p-6 bg-[#1C1C1E] border border-white/10 max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-base font-extrabold text-white" id="modal-cuenta-titulo">Agregar Instrumento</h3>
-                    <button onclick="cerrarModalNuevaCuenta()" class="text-[#8E8E93] hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="cerrarModalNuevaCuenta()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-[#8E8E93] hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="space-y-3">
                     <div>
@@ -1085,16 +1141,15 @@ def mobile_dashboard_preview():
             </div>
         </div>
 
-        <!-- Modal: Editar Saldo / Cupo de Cuenta -->
-        <div id="modal-editar-cuenta" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#1C1C1E] border border-white/10">
-                <div class="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4"></div>
+        <!-- Modal: Editar Saldo / Cupo de Cuenta (Pop-Up) -->
+        <div id="modal-editar-cuenta" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-3xl p-5 sm:p-6 bg-[#1C1C1E] border border-white/10 max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div class="flex justify-between items-center mb-3">
                     <div>
                         <h3 class="text-base font-extrabold text-white" id="edit-nombre-cuenta">Editar Cuenta</h3>
                         <span class="text-[11px] text-[#8E8E93]" id="edit-tipo-cuenta">Cuenta</span>
                     </div>
-                    <button onclick="cerrarModalEditarCuenta()" class="text-[#8E8E93] hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="cerrarModalEditarCuenta()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-[#8E8E93] hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <input type="hidden" id="edit-cuenta-id">
                 <div class="space-y-3">
@@ -1124,13 +1179,12 @@ def mobile_dashboard_preview():
             </div>
         </div>
 
-        <!-- Modal: Agregar Nuevo Gasto Fijo 📌 -->
-        <div id="modal-nuevo-gasto-fijo" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#1C1C1E] border border-white/10">
-                <div class="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4"></div>
+        <!-- Modal: Agregar Nuevo Gasto Fijo 📌 (Pop-Up) -->
+        <div id="modal-nuevo-gasto-fijo" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-3xl p-5 sm:p-6 bg-[#1C1C1E] border border-white/10 max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-base font-extrabold text-white">Agregar Gasto Fijo</h3>
-                    <button onclick="cerrarModalNuevoGastoFijo()" class="text-[#8E8E93] hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="cerrarModalNuevoGastoFijo()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-[#8E8E93] hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="space-y-3">
                     <div>
@@ -1187,16 +1241,15 @@ def mobile_dashboard_preview():
             </div>
         </div>
 
-        <!-- Modal: Seleccionar Método de Pago para Gasto Fijo 💳 -->
-        <div id="modal-seleccionar-cuenta-pago" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#1C1C1E] border border-white/10">
-                <div class="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4"></div>
+        <!-- Modal: Seleccionar Método de Pago para Gasto Fijo 💳 (Pop-Up) -->
+        <div id="modal-seleccionar-cuenta-pago" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-3xl p-5 sm:p-6 bg-[#1C1C1E] border border-white/10 max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div class="flex justify-between items-center mb-3">
                     <div>
                         <h3 class="text-base font-extrabold text-white">¿Con qué método pagaste?</h3>
                         <p id="subtitulo-pago-fijo" class="text-xs text-[#8E8E93] mt-0.5">Elige la cuenta o tarjeta que utilizaste</p>
                     </div>
-                    <button onclick="cerrarModalSeleccionarCuentaPago()" class="text-[#8E8E93] hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="cerrarModalSeleccionarCuentaPago()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-[#8E8E93] hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="lista-cuentas-pago-fijo" class="space-y-2 mt-3 max-h-64 overflow-y-auto pr-1">
                     <!-- Dinámico -->
@@ -1207,16 +1260,15 @@ def mobile_dashboard_preview():
             </div>
         </div>
 
-        <!-- Modal: Pagar / Abonar a Tarjeta de Crédito 💳 -->
-        <div id="modal-pagar-tarjeta" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#1C1C1E] border border-white/10">
-                <div class="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4"></div>
+        <!-- Modal: Pagar / Abonar a Tarjeta de Crédito 💳 (Pop-Up) -->
+        <div id="modal-pagar-tarjeta" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-3xl p-5 sm:p-6 bg-[#1C1C1E] border border-white/10 max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div class="flex justify-between items-center mb-3">
                     <div>
                         <h3 class="text-base font-extrabold text-white" id="pago-tc-nombre">Pagar Tarjeta</h3>
                         <span class="text-[11px] text-[#8E8E93]" id="pago-tc-info-deuda">Deuda total actual: $ 0</span>
                     </div>
-                    <button onclick="cerrarModalPagarTarjeta()" class="text-[#8E8E93] hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="cerrarModalPagarTarjeta()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-[#8E8E93] hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <input type="hidden" id="pago-tc-id">
                 <input type="hidden" id="pago-tc-val-corte">
@@ -1247,13 +1299,12 @@ def mobile_dashboard_preview():
             </div>
         </div>
 
-        <!-- Modal: Cambiar Contraseña -->
-        <div id="modal-cambiar-pin" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-            <div class="ios-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 bg-[#1C1C1E] border border-white/10">
-                <div class="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4"></div>
+        <!-- Modal: Cambiar Contraseña (Pop-Up) -->
+        <div id="modal-cambiar-pin" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+            <div class="ios-card w-full max-w-md rounded-3xl p-5 sm:p-6 bg-[#1C1C1E] border border-white/10 max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-base font-extrabold text-white">Cambiar Contraseña</h3>
-                    <button onclick="cerrarModalCambiarPin()" class="text-[#8E8E93] hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="cerrarModalCambiarPin()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-[#8E8E93] hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="space-y-3">
                     <div>
@@ -1281,6 +1332,7 @@ def mobile_dashboard_preview():
             let modoPrivacidad = false;
             let tipoMovimientoActual = 'EGRESO';
             let nuevoFijoPagado = true;
+            let gastoManualCuentaId = null;
             let sesionAutenticada = false;
             let usuarioActual = localStorage.getItem('aurea_usuario_actual_nombre') || null;
             let usuarioActualId = localStorage.getItem('aurea_usuario_actual_id') ? parseInt(localStorage.getItem('aurea_usuario_actual_id')) : null;
@@ -2109,7 +2161,8 @@ def mobile_dashboard_preview():
                 const selectCuenta = document.getElementById('select-cuenta');
                 const selectDtxCuenta = document.getElementById('dtx-cuenta');
                 if(containerCuentas) containerCuentas.innerHTML = '';
-                if(selectCuenta) selectCuenta.innerHTML = '';
+                
+                const prevDtxVal = selectDtxCuenta ? selectDtxCuenta.value : null;
                 if(selectDtxCuenta) selectDtxCuenta.innerHTML = '';
 
                 cuentasData.forEach(c => {
@@ -2156,20 +2209,33 @@ def mobile_dashboard_preview():
                         containerCuentas.appendChild(item);
                     }
 
-                    // Selectores de modales
-                    if(selectCuenta) {
-                        const opt = document.createElement('option');
-                        opt.value = c.id;
-                        opt.innerText = c.nombre + (c.tipo === 'CREDITO' ? ' (TC)' : '');
-                        selectCuenta.appendChild(opt);
-                    }
+                    // Selector de Detalle Movimiento
                     if(selectDtxCuenta) {
                         const opt = document.createElement('option');
                         opt.value = c.id;
-                        opt.innerText = c.nombre;
+                        opt.innerText = c.nombre + (c.tipo === 'CREDITO' ? ' (Tarjeta de Crédito)' : '');
                         selectDtxCuenta.appendChild(opt);
                     }
                 });
+
+                if(selectDtxCuenta && prevDtxVal) {
+                    selectDtxCuenta.value = prevDtxVal;
+                }
+
+                // Sincronizar cuenta seleccionada para gasto manual sin reiniciar si ya existe
+                if(!gastoManualCuentaId && cuentasData.length > 0) {
+                    const pref = cuentasData.find(c => c.tipo !== 'CREDITO') || cuentasData[0];
+                    gastoManualCuentaId = pref.id;
+                } else if(gastoManualCuentaId && !cuentasData.some(c => c.id === gastoManualCuentaId) && cuentasData.length > 0) {
+                    gastoManualCuentaId = cuentasData[0].id;
+                }
+                if(selectCuenta) selectCuenta.value = gastoManualCuentaId || '';
+                actualizarUiCuentaGastoManual();
+
+                const popupEl = document.getElementById('modal-pop-up-cuentas-gasto');
+                if(popupEl && !popupEl.classList.contains('hidden')) {
+                    renderizarCuentasEnPopUpGasto();
+                }
 
                 const elSubCuentas = document.getElementById('subtotal-cuentas');
                 if(elSubCuentas) elSubCuentas.innerText = formatearCOP(totalCuentas);
@@ -2603,6 +2669,25 @@ def mobile_dashboard_preview():
             // ==========================================
             let detalleTipoActual = 'EGRESO';
 
+            function onDtxCuentaChange() {
+                const selCuenta = document.getElementById('dtx-cuenta');
+                const cuentaId = selCuenta ? parseInt(selCuenta.value) : null;
+                const cuenta = cuentasData.find(c => c.id === cuentaId);
+                const contCuotas = document.getElementById('dtx-cuotas-container');
+                if(!contCuotas) return;
+
+                if(cuenta && cuenta.tipo === 'CREDITO' && detalleTipoActual === 'EGRESO') {
+                    contCuotas.classList.remove('hidden');
+                    actualizarPrevisualizacionCuotas();
+                } else {
+                    contCuotas.classList.add('hidden');
+                    const inputCuotas = document.getElementById('dtx-cuotas');
+                    if(inputCuotas) inputCuotas.value = 1;
+                    const calc = document.getElementById('dtx-cuotas-calc');
+                    if(calc) calc.classList.add('hidden');
+                }
+            }
+
             async function abrirDetalleTransaccion(txId) {
                 try {
                     const res = await fetch('/api/v1/transacciones/' + txId);
@@ -2624,8 +2709,9 @@ def mobile_dashboard_preview():
                     const inputCuotas = document.getElementById('dtx-cuotas');
                     if(inputCuotas) {
                         inputCuotas.value = tx.cuotas_totales || 1;
-                        actualizarPrevisualizacionCuotas();
                     }
+
+                    onDtxCuentaChange();
 
                     document.getElementById('modal-detalle-tx').classList.remove('hidden');
                 } catch(e) {
@@ -2676,14 +2762,18 @@ def mobile_dashboard_preview():
                     btnIngreso.className = 'py-2.5 rounded-xl font-bold bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/50';
                     btnEgreso.className = 'py-2.5 rounded-xl font-bold bg-[#000000] text-[#8E8E93] border border-white/5';
                 }
+                onDtxCuentaChange();
             }
 
             async function guardarCambiosDetalleMovimiento() {
                 const txId = document.getElementById('dtx-id').value;
                 const monto = obtenerValorMoneda('dtx-monto');
                 const comercio = document.getElementById('dtx-comercio').value.trim();
-                const cuentaId = parseInt(document.getElementById('dtx-cuenta').value);
-                const cuotasTot = parseInt(document.getElementById('dtx-cuotas').value) || 1;
+                const selCuenta = document.getElementById('dtx-cuenta');
+                const cuentaId = parseInt(selCuenta.value);
+                const cuenta = cuentasData.find(c => c.id === cuentaId);
+                const esCredito = cuenta && cuenta.tipo === 'CREDITO' && detalleTipoActual === 'EGRESO';
+                const cuotasTot = esCredito ? (parseInt(document.getElementById('dtx-cuotas').value) || 1) : 1;
 
                 if(!monto || !comercio || !cuentaId) {
                     alert("Ingresa monto, comercio y cuenta válidos.");
@@ -2884,10 +2974,9 @@ def mobile_dashboard_preview():
             }
 
             function abrirGastoConTarjetaEspecifica(cuentaId) {
-                abrirModalGasto();
-                const sel = document.getElementById('select-cuenta');
-                if(sel) sel.value = cuentaId;
+                seleccionarCuentaParaGasto(cuentaId);
                 setTipoMovimiento('EGRESO');
+                abrirModalGasto();
             }
 
             function abrirModalGastoTC() {
@@ -2898,10 +2987,9 @@ def mobile_dashboard_preview():
                     }
                     return;
                 }
-                abrirModalGasto();
-                const sel = document.getElementById('select-cuenta');
-                if(sel) sel.value = tcs[0].id;
+                seleccionarCuentaParaGasto(tcs[0].id);
                 setTipoMovimiento('EGRESO');
+                abrirModalGasto();
             }
 
             function abrirModalNuevaCuenta() {
@@ -3239,14 +3327,201 @@ def mobile_dashboard_preview():
             }
 
             // ==========================================
-            // MODAL GASTO MANUAL
+            // MODAL GASTO MANUAL & SELECTOR POP-UP DE CUENTAS
             // ==========================================
-            function abrirModalGasto() {
-                document.getElementById('modal-gasto').classList.remove('hidden');
-                document.getElementById('input-monto').focus();
+            function abrirPopUpSeleccionarCuentaGasto() {
+                renderizarCuentasEnPopUpGasto();
+                document.getElementById('modal-pop-up-cuentas-gasto').classList.remove('hidden');
             }
+
+            function cerrarPopUpSeleccionarCuentaGasto() {
+                document.getElementById('modal-pop-up-cuentas-gasto').classList.add('hidden');
+            }
+
+            function renderizarCuentasEnPopUpGasto() {
+                const lista = document.getElementById('lista-cuentas-gasto-popup');
+                if(!lista) return;
+                lista.innerHTML = '';
+
+                if(!cuentasData || cuentasData.length === 0) {
+                    lista.innerHTML = '<p class="text-xs text-[#8E8E93] text-center py-4">No tienes cuentas registradas.</p>';
+                    return;
+                }
+
+                cuentasData.forEach(c => {
+                    let icon = 'fa-building-columns';
+                    let iconColor = 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+                    let saldoTexto = 'Saldo: ' + formatearCOP(c.saldo_actual || 0);
+                    let tipoLabel = 'Cuenta Débito / Ahorros';
+
+                    if(c.tipo === 'CREDITO') {
+                        icon = 'fa-credit-card';
+                        iconColor = 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+                        const cupoDisp = c.cupo_disponible !== undefined ? c.cupo_disponible : Math.max(0, (c.cupo_total || 0) - (c.saldo_actual || 0));
+                        saldoTexto = 'Cupo disp: ' + formatearCOP(cupoDisp);
+                        tipoLabel = 'Tarjeta de Crédito';
+                    } else if(c.tipo === 'ALTO_RENDIMIENTO') {
+                        icon = 'fa-piggy-bank';
+                        iconColor = 'text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/20';
+                        tipoLabel = 'Alto Rendimiento';
+                    } else if(c.tipo === 'EFECTIVO') {
+                        icon = 'fa-money-bill-wave';
+                        iconColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+                        tipoLabel = 'Efectivo Físico';
+                    }
+
+                    const isSelected = (c.id === gastoManualCuentaId);
+                    const card = document.createElement('button');
+                    card.type = 'button';
+                    card.className = `w-full p-3 rounded-2xl border transition text-left flex items-center justify-between active:scale-[0.99] ${
+                        isSelected 
+                        ? 'bg-blue-500/15 border-blue-500/50 shadow-md shadow-blue-500/10' 
+                        : 'bg-[#000000] border-white/10 hover:border-white/20'
+                    }`;
+                    card.onclick = () => seleccionarCuentaParaGasto(c.id);
+
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl ${iconColor} border flex items-center justify-center text-sm">
+                                <i class="fa-solid ${icon}"></i>
+                            </div>
+                            <div>
+                                <span class="text-xs font-bold text-white block leading-tight">${c.nombre}</span>
+                                <span class="text-[10px] text-[#8E8E93]">${tipoLabel}</span>
+                            </div>
+                        </div>
+                        <div class="text-right flex items-center gap-2">
+                            <div>
+                                <span class="text-xs font-black text-slate-200 block">${saldoTexto}</span>
+                                ${isSelected ? '<span class="text-[9px] text-blue-400 font-bold block">✓ Seleccionada</span>' : ''}
+                            </div>
+                            ${isSelected ? '<i class="fa-solid fa-circle-check text-blue-400 text-sm ml-1"></i>' : ''}
+                        </div>
+                    `;
+                    lista.appendChild(card);
+                });
+            }
+
+            function seleccionarCuentaParaGasto(cuentaId) {
+                gastoManualCuentaId = cuentaId;
+                const hiddenInput = document.getElementById('select-cuenta');
+                if(hiddenInput) hiddenInput.value = cuentaId;
+
+                actualizarUiCuentaGastoManual();
+                actualizarVisibilidadCuotasGasto();
+                cerrarPopUpSeleccionarCuentaGasto();
+            }
+
+            function actualizarUiCuentaGastoManual() {
+                if(!gastoManualCuentaId && cuentasData.length > 0) {
+                    const pref = cuentasData.find(c => c.tipo !== 'CREDITO') || cuentasData[0];
+                    gastoManualCuentaId = pref.id;
+                }
+                const c = cuentasData.find(x => x.id === gastoManualCuentaId);
+                const hiddenInput = document.getElementById('select-cuenta');
+                if(hiddenInput && c) hiddenInput.value = c.id;
+
+                const elNombre = document.getElementById('gasto-cuenta-nombre');
+                const elDetalle = document.getElementById('gasto-cuenta-detalle');
+                const elIcono = document.getElementById('gasto-cuenta-icono');
+                const elIconoWrapper = document.getElementById('gasto-cuenta-icono-wrapper');
+
+                if(!c) {
+                    if(elNombre) elNombre.innerText = 'Seleccionar cuenta';
+                    if(elDetalle) elDetalle.innerText = 'Toca para elegir';
+                    return;
+                }
+
+                if(elNombre) elNombre.innerText = c.nombre;
+
+                let icon = 'fa-building-columns';
+                let iconColor = 'bg-blue-500/20 text-blue-400';
+                let detalle = 'Saldo: ' + formatearCOP(c.saldo_actual || 0);
+
+                if(c.tipo === 'CREDITO') {
+                    icon = 'fa-credit-card';
+                    iconColor = 'bg-rose-500/20 text-rose-400';
+                    const cupoDisp = c.cupo_disponible !== undefined ? c.cupo_disponible : Math.max(0, (c.cupo_total || 0) - (c.saldo_actual || 0));
+                    detalle = 'Tarjeta de Crédito • Cupo: ' + formatearCOP(cupoDisp);
+                } else if(c.tipo === 'ALTO_RENDIMIENTO') {
+                    icon = 'fa-piggy-bank';
+                    iconColor = 'bg-fuchsia-500/20 text-fuchsia-400';
+                    detalle = 'Alto Rendimiento • ' + formatearCOP(c.saldo_actual || 0);
+                } else if(c.tipo === 'EFECTIVO') {
+                    icon = 'fa-money-bill-wave';
+                    iconColor = 'bg-emerald-500/20 text-emerald-400';
+                    detalle = 'Efectivo • ' + formatearCOP(c.saldo_actual || 0);
+                } else {
+                    detalle = 'Débito / Ahorros • ' + formatearCOP(c.saldo_actual || 0);
+                }
+
+                if(elDetalle) elDetalle.innerText = detalle;
+                if(elIcono) elIcono.className = 'fa-solid ' + icon;
+                if(elIconoWrapper) elIconoWrapper.className = 'w-8 h-8 rounded-xl flex items-center justify-center text-xs ' + iconColor;
+            }
+
+            function actualizarVisibilidadCuotasGasto() {
+                const c = cuentasData.find(x => x.id === gastoManualCuentaId);
+                const contCuotas = document.getElementById('gasto-cuotas-container');
+                if(!contCuotas) return;
+
+                if(c && c.tipo === 'CREDITO' && tipoMovimientoActual === 'EGRESO') {
+                    contCuotas.classList.remove('hidden');
+                    actualizarPrevisualizacionCuotasGasto();
+                } else {
+                    contCuotas.classList.add('hidden');
+                    const inputCuotas = document.getElementById('gasto-cuotas');
+                    if(inputCuotas) inputCuotas.value = 1;
+                    const calc = document.getElementById('gasto-cuotas-calc');
+                    if(calc) calc.classList.add('hidden');
+                }
+            }
+
+            function setPresetCuotasGasto(n) {
+                const input = document.getElementById('gasto-cuotas');
+                if(input) {
+                    input.value = n;
+                    actualizarPrevisualizacionCuotasGasto();
+                }
+            }
+
+            function actualizarPrevisualizacionCuotasGasto() {
+                const input = document.getElementById('gasto-cuotas');
+                const prev = document.getElementById('gasto-cuotas-preview');
+                const calc = document.getElementById('gasto-cuotas-calc');
+                if(!input) return;
+                const cuotas = Math.max(1, parseInt(input.value) || 1);
+                input.value = cuotas;
+                if(prev) prev.innerText = cuotas === 1 ? '1 cuota (total)' : `${cuotas} cuotas`;
+                if(calc) {
+                    if(cuotas > 1) {
+                        const monto = obtenerValorMoneda('input-monto');
+                        const valorCuota = monto > 0 ? Math.round(monto / cuotas) : 0;
+                        calc.classList.remove('hidden');
+                        calc.innerHTML = `💳 <strong>${cuotas} cuotas</strong> de aprox. <strong class="text-white">${formatearCOP(valorCuota)}</strong> / mes`;
+                    } else {
+                        calc.classList.add('hidden');
+                    }
+                }
+            }
+
+            function abrirModalGasto() {
+                if(!gastoManualCuentaId && cuentasData.length > 0) {
+                    const pref = cuentasData.find(c => c.tipo !== 'CREDITO') || cuentasData[0];
+                    gastoManualCuentaId = pref.id;
+                }
+                actualizarUiCuentaGastoManual();
+                actualizarVisibilidadCuotasGasto();
+                document.getElementById('modal-gasto').classList.remove('hidden');
+                setTimeout(() => {
+                    const inputM = document.getElementById('input-monto');
+                    if(inputM) inputM.focus();
+                }, 50);
+            }
+
             function cerrarModalGasto() {
                 document.getElementById('modal-gasto').classList.add('hidden');
+                cerrarPopUpSeleccionarCuentaGasto();
             }
 
             function setTipoMovimiento(tipo) {
@@ -3260,20 +3535,25 @@ def mobile_dashboard_preview():
                     btnIngreso.className = 'py-2.5 rounded-xl text-xs font-bold bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/50';
                     btnEgreso.className = 'py-2.5 rounded-xl text-xs font-bold bg-[#2C2C2E] text-[#8E8E93] border border-white/5';
                 }
+                actualizarVisibilidadCuotasGasto();
             }
 
             async function guardarMovimientoManual() {
                 const monto = obtenerValorMoneda('input-monto');
                 const comercio = document.getElementById('input-comercio').value.trim();
-                const cuentaId = parseInt(document.getElementById('select-cuenta').value);
+                const cuentaId = gastoManualCuentaId || parseInt(document.getElementById('select-cuenta').value);
 
                 if(!monto || !comercio || !cuentaId) {
                     alert('Por favor ingresa monto, comercio y cuenta.');
                     return;
                 }
 
+                const cuenta = cuentasData.find(x => x.id === cuentaId);
+                const esCredito = cuenta && cuenta.tipo === 'CREDITO' && tipoMovimientoActual === 'EGRESO';
+                const cuotas = esCredito ? (parseInt(document.getElementById('gasto-cuotas')?.value) || 1) : 1;
+
                 try {
-                    await fetch('/api/v1/transacciones', {
+                    const res = await fetch('/api/v1/transacciones', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -3281,13 +3561,21 @@ def mobile_dashboard_preview():
                             comercio: comercio,
                             cuenta_origen_id: cuentaId,
                             tipo: tipoMovimientoActual,
-                            medio: 'MANUAL'
+                            medio: 'MANUAL',
+                            cuotas_totales: cuotas
                         })
                     });
-                    cerrarModalGasto();
-                    document.getElementById('input-monto').value = '';
-                    document.getElementById('input-comercio').value = '';
-                    fetchDashboard();
+                    if(res.ok) {
+                        cerrarModalGasto();
+                        document.getElementById('input-monto').value = '';
+                        document.getElementById('input-comercio').value = '';
+                        const inputCuotas = document.getElementById('gasto-cuotas');
+                        if(inputCuotas) inputCuotas.value = 1;
+                        fetchDashboard();
+                    } else {
+                        const err = await res.json().catch(() => ({}));
+                        alert(err.detail || 'Error al registrar movimiento.');
+                    }
                 } catch(e) {
                     alert('Error al registrar movimiento.');
                 }
