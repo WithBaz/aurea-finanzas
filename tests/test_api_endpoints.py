@@ -205,3 +205,88 @@ def test_apple_touch_icon_y_manifest_pwa(client):
     assert 'rel="manifest"' in res_html.text
 
 
+def test_webhook_apple_pay_pascal_case_keys(client):
+    """Valida que Atajos de iOS con claves en PascalCase (Monto, Comercio, Tarjeta) se procesen sin error."""
+    payload = {
+        "Monto": 25000,
+        "Comercio": "D1 Calle 53",
+        "Tarjeta": "Bancolombia",
+        "dry_run": True
+    }
+    res = client.post("/api/v1/webhooks/ios-shortcut", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "simulacion_exitosa"
+    assert data["monto_cop"] == 25000.0
+    assert data["comercio"] == "D1 Calle 53"
+    assert data["cuenta_afectada"] == "Bancolombia Principal"
+
+
+def test_webhook_apple_pay_nested_shortcut_input(client):
+    """Valida que Atajos de iOS con variable mágica 'Entrada de atajo' anidada se desanide correctamente."""
+    payload = {
+        "Entrada de atajo": {
+            "Monto": "35.000",
+            "Comercio": "Farmatodo",
+            "Tarjeta": "Bancolombia Débito"
+        },
+        "dry_run": True
+    }
+    res = client.post("/api/v1/webhooks/ios-shortcut", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "simulacion_exitosa"
+    assert data["monto_cop"] == 35000.0
+    assert data["comercio"] == "Farmatodo"
+    assert data["cuenta_afectada"] == "Bancolombia Principal"
+
+
+def test_webhook_apple_pay_nested_transaccion_english(client):
+    """Valida payloads anidados bajo 'transaccion' con claves en inglés."""
+    payload = {
+        "transaccion": {
+            "amount": 42000,
+            "merchant": "Crepes & Waffles",
+            "card": "Mastercard Bancolombia"
+        },
+        "dry_run": True
+    }
+    res = client.post("/api/v1/webhooks/ios-shortcut", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "simulacion_exitosa"
+    assert data["monto_cop"] == 42000.0
+    assert data["cuenta_afectada"] == "Bancolombia Principal"
+
+
+def test_webhook_apple_pay_formatted_amount_currency_string(client):
+    """Valida montos que contienen símbolos de moneda como '$ 45.000 COP' o comas internacionales."""
+    payload = {
+        "monto": "$ 55,000 COP",
+        "comercio": "Éxito Express",
+        "tarjeta": "Visa Bancolombia",
+        "dry_run": True
+    }
+    res = client.post("/api/v1/webhooks/ios-shortcut", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "simulacion_exitosa"
+    assert data["monto_cop"] == 55000.0
+    assert data["cuenta_afectada"] == "Bancolombia Principal"
+
+
+def test_webhook_apple_pay_raw_text_json(client):
+    """Valida recepción con Content-Type: text/plain conteniendo un string JSON."""
+    raw_json = '{"Monto": 12000, "Comercio": "Oxxo", "Tarjeta": "Bancolombia", "dry_run": true}'
+    res = client.post(
+        "/api/v1/webhooks/ios-shortcut",
+        content=raw_json.encode("utf-8"),
+        headers={"Content-Type": "text/plain"}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "simulacion_exitosa"
+    assert data["monto_cop"] == 12000.0
+
+
+

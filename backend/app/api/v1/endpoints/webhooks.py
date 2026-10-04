@@ -31,10 +31,147 @@ def calcular_hash_idempotencia(monto: float, comercio: str, fecha_str: str) -> s
     return hashlib.sha256(cadena.encode("utf-8")).hexdigest()
 
 
+def desanidar_y_normalizar_dict(obj: Any, nivel: int = 0) -> Dict[str, Any]:
+    """
+    Desanida recursivamente cualquier estructura enviada por Atajos de iOS,
+    manejando claves anidadas (ej. {"Entrada de atajo": {...}}, {"transaccion": {...}}),
+    cadenas con JSON serializado, o listas de diccionarios.
+    Normaliza todas las claves eliminando mayúsculas, espacios y acentos.
+    """
+    if nivel > 6 or obj is None:
+        return {}
+
+    resultado: Dict[str, Any] = {}
+
+    if isinstance(obj, str):
+        s = obj.strip()
+        if (s.startswith("{") and s.endswith("}")) or (s.startswith("[") and s.endswith("]")):
+            try:
+                import json
+                return desanidar_y_normalizar_dict(json.loads(s), nivel + 1)
+            except Exception:
+                pass
+        return {}
+
+    if isinstance(obj, list):
+        for item in obj:
+            if isinstance(item, (dict, list, str)):
+                sub = desanidar_y_normalizar_dict(item, nivel + 1)
+                resultado.update(sub)
+        return resultado
+
+    if not isinstance(obj, dict):
+        return {}
+
+    for k, v in obj.items():
+        if k is None:
+            continue
+        k_str = str(k).strip().lower()
+        k_norm = (
+            k_str.replace("á", "a")
+            .replace("é", "e")
+            .replace("í", "i")
+            .replace("ó", "o")
+            .replace("ú", "u")
+            .replace("ñ", "n")
+        )
+
+        # Si el valor es a su vez un diccionario, lista o string JSON, desanidar recursivamente
+        if isinstance(v, (dict, list)):
+            sub = desanidar_y_normalizar_dict(v, nivel + 1)
+            resultado.update(sub)
+        elif isinstance(v, str) and ((v.strip().startswith("{") and v.strip().endswith("}")) or (v.strip().startswith("[") and v.strip().endswith("]"))):
+            try:
+                import json
+                sub = desanidar_y_normalizar_dict(json.loads(v.strip()), nivel + 1)
+                resultado.update(sub)
+            except Exception:
+                pass
+
+        # Preservar el valor en el resultado si es significativo
+        if v is not None and v != "":
+            if k_norm not in resultado or resultado[k_norm] is None or resultado[k_norm] == "":
+                resultado[k_norm] = v
+            else:
+                if isinstance(v, (int, float)) or (isinstance(v, str) and not v.startswith("{")):
+                    resultado[k_norm] = v
+
+    return resultado
+
+
+def extraer_primer_valor(payload: Dict[str, Any], alias_list: list[str], default: Any = None) -> Any:
+    """Busca el primer valor disponible en payload según la lista priorizada de alias."""
+    for alias in alias_list:
+        alias_clean = alias.strip().lower()
+        alias_clean = (
+            alias_clean.replace("á", "a")
+            .replace("é", "e")
+            .replace("í", "i")
+            .replace("ó", "o")
+            .replace("ú", "u")
+            .replace("ñ", "n")
+        )
+        if alias_clean in payload:
+            val = payload[alias_clean]
+            if val is not None and str(val).strip() != "":
+                return val
+    return default
+
+
+ALIAS_MONTO = [
+    "monto", "amount", "valor", "precio", "total", "costo",
+    "value", "price", "sum", "cantidad", "pago", "payment",
+    "importe", "cobro", "charge"
+]
+
+ALIAS_COMERCIO = [
+    "comercio", "merchant", "store", "tienda", "establecimiento",
+    "nombre", "name", "vendor", "business", "lugar", "place",
+    "destinatario", "recipient", "payee", "descripcion", "description",
+    "titulo", "title", "concepto"
+]
+
+ALIAS_TARJETA = [
+    "tarjeta", "card", "card_name", "cardname", "card_title",
+    "cardtitle", "cuenta", "account", "banco", "bank",
+    "metodo", "metodo_pago", "payment_method", "paymentmethod",
+    "tarjeta_nombre", "tipo_tarjeta", "franquicia"
+]
+
+ALIAS_MEDIO = [
+    "medio", "source", "channel", "tipo", "type", "medio_captura", "channel_name"
+]
+
+ALIAS_SMS = [
+    "texto_sms", "textosms", "sms", "body", "mensaje", "message",
+    "texto", "text", "cuerpo", "raw_sms", "sms_body"
+]
+
+ALIAS_TOKEN = [
+    "token", "auth_token", "api_key", "key", "secret", "bearer", "biometric_token"
+]
+
+ALIAS_USUARIO = [
+    "usuario", "user", "username", "usuario_id", "user_id"
+]
+
+ALIAS_FECHA = [
+    "fecha", "date", "datetime", "time", "timestamp", "fecha_hora"
+]
+
+ALIAS_DRY_RUN = [
+    "dry_run", "dryrun", "simular", "simulacion", "dry"
+]
+
+ALIAS_TEST = [
+    "test", "prueba", "is_test"
+]
+
+
 @router.api_route("/ios-shortcut", methods=["GET", "POST"], response_model=WebhookIngestResponse)
 async def procesar_atajo_ios(
     request: Request,
-    payload: Optional[Dict[str, Any]] = None,
+    payload: Optional[Any] = None,
     token: Optional[str] = Query(None),
     authorization: Optional[str] = Header(None),
     x_aurea_token: Optional[str] = Header(None, alias="X-Aurea-Token"),
@@ -43,31 +180,65 @@ async def procesar_atajo_ios(
     """
     Endpoint receptor para las Automatizaciones de Atajos de iOS (Apple Shortcuts).
     Procesa tanto pagos con Apple Pay como mensajes SMS de bancos colombianos con verificación opcional de token.
-    Soporta POST (JSON, Form) y GET (Query params) para pruebas inmediatas sin costo.
+    Soporta POST (JSON, Form, Raw) y GET (Query params) para pruebas inmediatas sin costo.
     """
-    # 1. Extraer payload de JSON, Form o Query Params
-    final_payload: Dict[str, Any] = {}
+    # 1. Extraer fuentes crudas de datos
+    raw_sources: list[Any] = []
+
+    if payload and isinstance(payload, dict):
+        raw_sources.append(payload)
+
     if request.method == "POST":
         try:
             parsed_json = await request.json()
-            if isinstance(parsed_json, dict):
-                final_payload.update(parsed_json)
+            if parsed_json:
+                raw_sources.append(parsed_json)
         except Exception:
-            try:
-                form = await request.form()
-                final_payload.update(dict(form))
-            except Exception:
-                pass
+            pass
 
-    # Combinar con query parameters
-    for k, v in request.query_params.items():
-        if k not in final_payload or final_payload[k] is None or final_payload[k] == "":
-            final_payload[k] = v
+        try:
+            form = await request.form()
+            if form:
+                raw_sources.append(dict(form))
+        except Exception:
+            pass
 
-    if payload and isinstance(payload, dict):
-        final_payload.update(payload)
+        try:
+            body_bytes = await request.body()
+            if body_bytes:
+                body_str = body_bytes.decode("utf-8", errors="ignore").strip()
+                if body_str:
+                    if (body_str.startswith("{") and body_str.endswith("}")) or (body_str.startswith("[") and body_str.endswith("]")):
+                        import json
+                        try:
+                            raw_sources.append(json.loads(body_str))
+                        except Exception:
+                            pass
+                    elif "=" in body_str:
+                        import urllib.parse
+                        try:
+                            qs_dict = {k: v[0] if len(v) == 1 else v for k, v in urllib.parse.parse_qs(body_str).items()}
+                            if qs_dict:
+                                raw_sources.append(qs_dict)
+                        except Exception:
+                            pass
+        except Exception:
+            pass
 
-    # 2. Verificación de token criptográfico
+    if request.query_params:
+        raw_sources.append(dict(request.query_params))
+
+    # 2. Desanidar recursivamente y normalizar claves (eliminar mayúsculas, espacios y acentos)
+    final_payload: Dict[str, Any] = {}
+    for src in raw_sources:
+        aplanado = desanidar_y_normalizar_dict(src)
+        for k, v in aplanado.items():
+            if k not in final_payload or final_payload[k] is None or final_payload[k] == "":
+                final_payload[k] = v
+            elif v is not None and v != "":
+                final_payload[k] = v
+
+    # 3. Verificación de token criptográfico
     token_val = None
     if authorization and authorization.lower().startswith("bearer "):
         token_val = authorization[7:].strip()
@@ -75,10 +246,10 @@ async def procesar_atajo_ios(
         token_val = x_aurea_token.strip()
     elif token:
         token_val = token.strip()
-    elif final_payload.get("token"):
-        token_val = str(final_payload.get("token")).strip()
-    elif request.query_params.get("token"):
-        token_val = str(request.query_params.get("token")).strip()
+    else:
+        payload_token = extraer_primer_valor(final_payload, ALIAS_TOKEN)
+        if payload_token:
+            token_val = str(payload_token).strip()
 
     user_from_token = None
     if token_val:
@@ -96,11 +267,7 @@ async def procesar_atajo_ios(
             user_from_token = db.query(Usuario).first()
         elif total_usuarios > 1:
             # En multi-usuario, permitir ?usuario=username o exigir token
-            user_param = (
-                final_payload.get("usuario")
-                or final_payload.get("user")
-                or final_payload.get("username")
-            )
+            user_param = extraer_primer_valor(final_payload, ALIAS_USUARIO)
             if user_param:
                 user_from_token = db.query(Usuario).filter(Usuario.username.ilike(str(user_param).strip())).first()
             if not user_from_token:
@@ -109,37 +276,51 @@ async def procesar_atajo_ios(
                     detail="Token de autorización requerido para ejecutar atajos de iOS en entorno multi-usuario."
                 )
 
-    if user_from_token and final_payload.get("usuario_id") and int(final_payload.get("usuario_id")) != user_from_token.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permiso para ejecutar atajos para otro usuario."
-        )
+    payload_usuario_id = extraer_primer_valor(final_payload, ["usuario_id", "user_id"])
+    if user_from_token and payload_usuario_id:
+        try:
+            if int(payload_usuario_id) != user_from_token.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tienes permiso para ejecutar atajos para otro usuario."
+                )
+        except ValueError:
+            pass
 
-    target_user_id = user_from_token.id if user_from_token else final_payload.get("usuario_id")
+    target_user_id = user_from_token.id if user_from_token else payload_usuario_id
 
-    # Detección inteligente de medio (APPLE_PAY vs SMS)
-    medio_raw = str(
-        final_payload.get("medio")
-        or final_payload.get("source")
-        or final_payload.get("channel")
-        or final_payload.get("tipo")
-        or ""
-    ).upper().strip()
+    # 4. Extracción de variables normalizadas mediante alias
+    medio_raw = str(extraer_primer_valor(final_payload, ALIAS_MEDIO, "")).upper().strip()
+    sms_texto = str(extraer_primer_valor(final_payload, ALIAS_SMS, "")).strip()
+    monto_val = extraer_primer_valor(final_payload, ALIAS_MONTO)
+    comercio_val = extraer_primer_valor(final_payload, ALIAS_COMERCIO)
+    tarjeta_val = extraer_primer_valor(final_payload, ALIAS_TARJETA)
 
-    tiene_tarjeta = any(k in final_payload for k in ("tarjeta", "card", "card_name", "cardName", "account", "cuenta"))
-    tiene_monto = any(k in final_payload for k in ("monto", "amount", "valor", "precio", "total"))
-    es_sms = "texto_sms" in final_payload or "sms" in final_payload or "body" in final_payload
+    # Identificación inequívoca de medio (APPLE_PAY vs SMS)
+    es_apple_pay_explicito = any(x in medio_raw for x in ["APPLE", "PAY", "WALLET", "DATA"])
+    es_sms_explicito = medio_raw in ["SMS", "TEXTO", "MENSAJE"]
 
-    if not medio_raw:
-        if tiene_tarjeta or (tiene_monto and not es_sms):
-            medio_raw = "APPLE_PAY"
-        else:
-            medio_raw = "SMS"
+    # Detectar si el texto contiene patrones de SMS bancarios de Colombia
+    sms_lower = sms_texto.lower()
+    es_sms_bancario = bool(sms_texto and any(b in sms_lower for b in [
+        "le informa", "bancolombia le", "nequi:", "daviplata", "davivienda",
+        "banco de bogota", "compra por", "retiro por", "transferencia recibida"
+    ]))
 
-    if medio_raw in ("APPLE_PAY", "APPLEPAY", "WALLET", "APPLE PAY"):
-        medio_raw = "APPLE_PAY"
+    if es_apple_pay_explicito:
+        medio_final = "APPLE_PAY"
+    elif es_sms_explicito or es_sms_bancario:
+        medio_final = "SMS"
+    elif (monto_val is not None) or (comercio_val is not None) or (tarjeta_val is not None):
+        # Si trae monto, comercio o tarjeta estructurados, SIEMPRE es Apple Pay
+        medio_final = "APPLE_PAY"
+    elif sms_texto:
+        medio_final = "SMS"
+    else:
+        # Fallback predeterminado a Apple Pay
+        medio_final = "APPLE_PAY"
 
-    fecha_param = final_payload.get("fecha") or final_payload.get("date")
+    fecha_param = extraer_primer_valor(final_payload, ALIAS_FECHA)
     fecha_movimiento = parsear_fecha_para_db(fecha_param) if fecha_param else ahora_utc_db()
 
     def _filtrar_cuenta(query):
@@ -147,36 +328,13 @@ async def procesar_atajo_ios(
             return query.filter((Cuenta.usuario_id == target_user_id) | (Cuenta.usuario_id == None))
         return query
 
-    # 1. Rama Apple Pay
-    if medio_raw == "APPLE_PAY":
-        monto_raw = (
-            final_payload.get("monto")
-            or final_payload.get("amount")
-            or final_payload.get("valor")
-            or final_payload.get("precio")
-            or final_payload.get("total")
-            or 0.0
-        )
-        monto = limpiar_monto(monto_raw)
+    # 1. Rama Apple Pay (Receptor universal tolerante a cualquier tarjeta colombiana)
+    if medio_final == "APPLE_PAY":
+        monto_raw = monto_val if monto_val is not None else 0.0
+        monto = abs(limpiar_monto(monto_raw))
 
-        comercio = str(
-            final_payload.get("comercio")
-            or final_payload.get("merchant")
-            or final_payload.get("store")
-            or final_payload.get("tienda")
-            or final_payload.get("establecimiento")
-            or final_payload.get("nombre")
-            or "Comercio Apple Pay"
-        ).strip()
-
-        tarjeta_nombre = (
-            final_payload.get("tarjeta")
-            or final_payload.get("card")
-            or final_payload.get("card_name")
-            or final_payload.get("cardName")
-            or final_payload.get("cuenta")
-            or final_payload.get("account")
-        )
+        comercio = str(comercio_val or "Comercio Apple Pay").strip()
+        tarjeta_nombre = str(tarjeta_val).strip() if tarjeta_val else None
 
         if monto <= 0:
             raise HTTPException(
@@ -184,14 +342,18 @@ async def procesar_atajo_ios(
                 detail="El monto de la transacción de Apple Pay debe ser superior a 0 COP"
             )
 
-        # Buscar cuenta asociada (o auto-crear si es nueva / fallback)
-        STOPWORDS_TARJETA = {"visa", "mastercard", "tarjeta", "card", "credito", "crédito", "debito", "débito", "de", "the"}
+        # Buscar cuenta asociada (Bancolombia, Nu, o auto-crear si es nueva / fallback)
+        STOPWORDS_TARJETA = {
+            "visa", "mastercard", "tarjeta", "card", "credito", "crédito",
+            "debito", "débito", "de", "the", "cuenta", "ahorros", "corriente",
+            "banco", "bank", "digital", "unica", "única", "principal"
+        }
         cuenta = None
         if tarjeta_nombre:
             tarjeta_clean = str(tarjeta_nombre).strip()
-            # 1. Búsqueda directa (ej: cuenta="Bancolombia Principal", Apple Pay="Bancolombia")
+            # 1. Búsqueda directa por coincidencia de subcadena (ej: cuenta="Bancolombia Única", Apple Pay="Bancolombia")
             cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{tarjeta_clean}%"), Cuenta.activa == True)).first()
-            
+
             # 2. Búsqueda inversa: el nombre de la cuenta está dentro del string de Apple Pay (ej: cuenta="Nu", Apple Pay="Nu Mastercard")
             if not cuenta:
                 cuentas_activas = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.activa == True)).all()
@@ -201,23 +363,34 @@ async def procesar_atajo_ios(
                         cuenta = c
                         break
 
-            # 3. Búsqueda por palabras significativas descartando franquicias genéricas
+            # 3. Búsqueda cruzada por palabras significativas (ej. "Bancolombia" en "Mastercard Bancolombia" -> Bancolombia Única)
             if not cuenta:
-                palabras = [p for p in tarjeta_clean.split() if len(p) >= 3 and p.lower() not in STOPWORDS_TARJETA]
-                for p in palabras:
+                palabras_tarjeta = [p for p in tarjeta_clean.split() if len(p) >= 3 and p.lower() not in STOPWORDS_TARJETA]
+                for p in palabras_tarjeta:
                     c = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{p}%"), Cuenta.activa == True)).first()
                     if c:
                         cuenta = c
                         break
 
-            # 4. Si la tarjeta enviada es genérica (ej: "Visa", "Mastercard", "Tarjeta de Crédito")
-            # y el usuario ya tiene una tarjeta de crédito activa, asociarla directamente en vez de crear una duplicada
+            # 4. Búsqueda por palabras significativas de las cuentas existentes
+            if not cuenta:
+                cuentas_activas = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.activa == True)).all()
+                for c in cuentas_activas:
+                    palabras_c = [w for w in c.nombre.lower().split() if len(w) >= 3 and w not in STOPWORDS_TARJETA]
+                    if any(w in tarjeta_clean.lower() for w in palabras_c):
+                        cuenta = c
+                        break
+
+            # 5. Si la tarjeta enviada es genérica (ej: "Visa", "Mastercard", "Tarjeta de Crédito")
+            # asociarla a la tarjeta de crédito activa o débito activa
             if not cuenta:
                 es_generica = all(p.lower() in STOPWORDS_TARJETA for p in tarjeta_clean.split())
                 if es_generica:
                     cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.CREDITO, Cuenta.activa == True)).first()
+                    if not cuenta:
+                        cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.DEBITO, Cuenta.activa == True)).first()
 
-            # 5. Si no existe ninguna coincidencia y no es puramente genérica, crear la tarjeta de crédito automáticamente (Zero-Setup)
+            # 6. Si no existe ninguna coincidencia y no es puramente genérica, auto-crear la tarjeta de crédito (Zero-Setup)
             if not cuenta and tarjeta_clean:
                 es_generica = all(p.lower() in STOPWORDS_TARJETA for p in tarjeta_clean.split())
                 if not es_generica:
@@ -233,21 +406,23 @@ async def procesar_atajo_ios(
                     db.commit()
                     db.refresh(cuenta)
 
-        # 6. Fallback final: Si no se especificó o no se encontró tarjeta, asociar a la tarjeta de crédito activa principal
+        # 7. Fallback final: Si no se especificó o no se encontró tarjeta, asociar a la tarjeta de crédito o cuenta principal
         if not cuenta:
             cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.CREDITO, Cuenta.activa == True)).first()
             if not cuenta:
                 cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo.in_([TipoCuenta.DEBITO, TipoCuenta.ALTO_RENDIMIENTO, TipoCuenta.EFECTIVO]), Cuenta.activa == True)).first()
-        
+
         if not cuenta:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No hay cuentas activas registradas para asociar el pago de Apple Pay"
             )
 
-        # Idempotencia (se omite para pruebas manuales si test=True)
-        es_prueba = bool(final_payload.get("test"))
-        es_dry_run = bool(final_payload.get("dry_run") or final_payload.get("simular"))
+        # Idempotencia y modo prueba/dry_run
+        test_val = extraer_primer_valor(final_payload, ALIAS_TEST)
+        es_prueba = bool(test_val)
+        dry_run_val = extraer_primer_valor(final_payload, ALIAS_DRY_RUN)
+        es_dry_run = str(dry_run_val).lower() in ("true", "1", "yes") if dry_run_val is not None else False
         if es_dry_run:
             monto_pesos = f"{int(monto):,}".replace(",", ".") + " pesos"
             return WebhookIngestResponse(
@@ -317,14 +492,15 @@ async def procesar_atajo_ios(
         )
 
     # 2. Rama SMS Bancario
-    texto_sms = final_payload.get("texto_sms", final_payload.get("sms", final_payload.get("body", "")))
+    texto_sms = str(extraer_primer_valor(final_payload, ALIAS_SMS, "")).strip()
     if not texto_sms:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Se requiere el campo 'texto_sms' para procesar la automatización SMS"
+            detail="Se requiere el campo 'texto_sms' para procesar la automatización SMS o 'monto' para Apple Pay."
         )
 
-    resultado_parser = SMSParser.parse_sms(texto_sms, remitente=payload.get("remitente"))
+    remitente_val = extraer_primer_valor(final_payload, ["remitente", "sender", "from"])
+    resultado_parser = SMSParser.parse_sms(texto_sms, remitente=remitente_val)
     if not resultado_parser.get("es_valido"):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

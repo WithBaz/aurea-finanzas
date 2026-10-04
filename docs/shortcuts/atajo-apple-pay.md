@@ -66,8 +66,8 @@ Sigue estos pasos en la app **Atajos** de tu iPhone para que cada compra real se
 
 ---
 
-## 🛡️ ¿Por qué falló antes y qué se solucionó?
-1. **Validación de Token en Producción:** El webhook exigía un token biométrico cuando la base de datos tenía usuarios registrados. En la instalación personal de AUREA existe únicamente tu usuario (`WithBaz`), por lo que el servidor ahora auto-asocia la transacción a tu cuenta automáticamente sin rechazar con error 401.
-2. **Formato Numérico Internacional de iOS:** iOS a veces envía montos formateados con comas de miles (ej. `$ 15,000` o `15,000.00`). El limpiador de montos fue actualizado para normalizar tanto el estándar colombiano (`15.000`) como el estándar Apple Pay/iOS (`15,000`).
-3. **Mapeo Inteligente de Tarjetas (Zero-Setup):** Si en Apple Pay tu tarjeta reporta nombres genéricos (como "Visa" o "Mastercard"), el sistema la asocia directamente a tu tarjeta de crédito activa en vez de fallar o crear duplicados innecesarios.
-4. **Endpoint de Prueba y Dry-Run:** Ahora dispones de `/test-apple-pay` para simular y comprobar en cualquier momento sin costo.
+## 🛡️ ¿Por qué no te detectó las compras y qué se solucionó?
+1. **Error silencioso de mayúsculas y anidamiento en iOS (Solucionado al 100%):** Al configurar Atajos en un iPhone en español, Apple asigna nombres con mayúscula inicial (`Monto`, `Comercio`, `Tarjeta`) o empaqueta las propiedades dentro de un objeto `Entrada de atajo`. Anteriormente, el backend requería estrictamente minúsculas y rechazaba estas peticiones con HTTP 400 silencioso. Ahora el receptor cuenta con un desanidador y normalizador universal que acepta mayúsculas, minúsculas, inglés, español y estructuras anidadas.
+2. **Cero filtros contra Bancolombia:** En AUREA **no hay ningún bloqueo ni exclusión contra Bancolombia**. El sistema vincula automáticamente cualquier variación (`Bancolombia`, `Bancolombia Débito`, `Bancolombia Única`, `Mastercard Bancolombia`, `Visa Bancolombia`) a tu cuenta principal `Bancolombia Única`.
+3. **Punto crítico en tu iPhone — Disparador de iOS:** En la app **Atajos** de tu iPhone, al crear o editar la automatización **Transacción**, asegúrate de que el campo **Tarjeta** esté configurado como **"Cualquier tarjeta"**. Si en el pasado seleccionaste una tarjeta específica (por ejemplo Nu) y no Bancolombia, el propio sistema operativo iOS **nunca dispara la automatización** cuando pagas con Bancolombia en el datáfono.
+4. **Pruebas sin compras reales ($0 Costo):** Dispones del endpoint `/test-apple-pay` para comprobar la sincronización en 1 segundo desde Safari o directamente con el botón ▶️ Play en la app Atajos.
