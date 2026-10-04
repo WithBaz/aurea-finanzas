@@ -336,12 +336,6 @@ async def procesar_atajo_ios(
         comercio = str(comercio_val or "Comercio Apple Pay").strip()
         tarjeta_nombre = str(tarjeta_val).strip() if tarjeta_val else None
 
-        if monto <= 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El monto de la transacción de Apple Pay debe ser superior a 0 COP"
-            )
-
         # Buscar cuenta asociada (Bancolombia, Nu, o auto-crear si es nueva / fallback)
         STOPWORDS_TARJETA = {
             "visa", "mastercard", "tarjeta", "card", "credito", "crédito",
@@ -423,6 +417,30 @@ async def procesar_atajo_ios(
         es_prueba = bool(test_val)
         dry_run_val = extraer_primer_valor(final_payload, ALIAS_DRY_RUN)
         es_dry_run = str(dry_run_val).lower() in ("true", "1", "yes") if dry_run_val is not None else False
+
+        # Validación de monto y soporte de simulación al presionar Play en Atajos de iOS
+        if monto <= 0:
+            es_disparo_manual_play = (
+                (monto_val is None or str(monto_val).strip() in ("", "0", "0.0", "null", "None"))
+                and (comercio_val is None or str(comercio_val).strip() in ("", "Comercio Apple Pay", "null", "None"))
+            )
+            if es_disparo_manual_play or es_dry_run or es_prueba:
+                cuenta_mostrar = cuenta.nombre if cuenta else "Bancolombia Única"
+                return WebhookIngestResponse(
+                    status="simulacion_exitosa",
+                    mensaje=f"¡Conexión exitosa con AUREA! Tu atajo de Apple Pay está perfectamente enlazado a {cuenta_mostrar}. En una compra real con datáfono, el cobro se registrará automáticamente.",
+                    transaccion_id=-1,
+                    tipo_detectado="EGRESO",
+                    monto_cop=0.0,
+                    comercio="Prueba Atajo iOS",
+                    cuenta_afectada=cuenta_mostrar,
+                    es_transferencia_interna=False
+                )
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El monto de la transacción de Apple Pay debe ser superior a 0 COP"
+            )
         if es_dry_run:
             monto_pesos = f"{int(monto):,}".replace(",", ".") + " pesos"
             return WebhookIngestResponse(

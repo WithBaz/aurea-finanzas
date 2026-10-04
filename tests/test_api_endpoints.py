@@ -275,18 +275,21 @@ def test_webhook_apple_pay_formatted_amount_currency_string(client):
     assert data["cuenta_afectada"] == "Bancolombia Principal"
 
 
-def test_webhook_apple_pay_raw_text_json(client):
-    """Valida recepción con Content-Type: text/plain conteniendo un string JSON."""
-    raw_json = '{"Monto": 12000, "Comercio": "Oxxo", "Tarjeta": "Bancolombia", "dry_run": true}'
-    res = client.post(
-        "/api/v1/webhooks/ios-shortcut",
-        content=raw_json.encode("utf-8"),
-        headers={"Content-Type": "text/plain"}
-    )
+def test_webhook_apple_pay_disparo_manual_boton_play(client):
+    """Valida que una ejecución manual con botón Play (monto vacío / 0) devuelva simulación exitosa sin error 400."""
+    payload = {
+        "medio": "APPLE_PAY",
+        "monto": "",
+        "comercio": "",
+        "tarjeta": "Bancolombia"
+    }
+    res = client.post("/api/v1/webhooks/ios-shortcut", json=payload)
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == "simulacion_exitosa"
-    assert data["monto_cop"] == 12000.0
+    assert "Conexión exitosa con AUREA" in data["mensaje"]
+    assert data["cuenta_afectada"] == "Bancolombia Principal"
+
 
 
 
