@@ -642,22 +642,29 @@ async def procesar_atajo_ios(
         es_hormiga = CategorizadorComercios.es_gasto_hormiga(monto)
 
         # Conciliación desatendida Apple Pay + SMS Bancario:
-        # Si existe una transacción previa de Apple Pay con monto 0 en la misma cuenta,
+        # Si existe una transacción previa de Apple Pay con monto 0 en la misma cuenta o comercio,
         # conciliarla actualizando el monto real del SMS en vez de duplicar el gasto
-        tx_apple_pay_pendiente = (
+        comercio_clean = comercio.strip().lower()
+        txs_pendientes = (
             db.query(Transaccion)
             .filter(
                 Transaccion.medio == MedioCaptura.APPLE_PAY,
-                Transaccion.monto == 0.0,
-                Transaccion.cuenta_origen_id == (cuenta.id if cuenta else 1)
+                Transaccion.monto == 0.0
             )
             .order_by(Transaccion.id.desc())
-            .first()
+            .limit(10)
+            .all()
         )
+        tx_apple_pay_pendiente = None
+        for tx in txs_pendientes:
+            tx_com = (tx.comercio or "").lower()
+            if (comercio_clean and (comercio_clean in tx_com or tx_com in comercio_clean)) or (cuenta and tx.cuenta_origen_id == cuenta.id):
+                tx_apple_pay_pendiente = tx
+                break
+
         if tx_apple_pay_pendiente:
             tx_apple_pay_pendiente.monto = monto
-            tx_apple_pay_pendiente.comercio = comercio
-            tx_apple_pay_pendiente.descripcion = f"Pago Apple Pay en {comercio} (Conciliado con SMS Bancolombia)"
+            tx_apple_pay_pendiente.descripcion = f"Pago Apple Pay en {tx_apple_pay_pendiente.comercio} (Conciliado con SMS Bancolombia)"
             tx_apple_pay_pendiente.raw_payload = f"{tx_apple_pay_pendiente.raw_payload or ''} | SMS: {texto_sms}"
             if cat_id:
                 tx_apple_pay_pendiente.categoria_id = cat_id
@@ -670,7 +677,7 @@ async def procesar_atajo_ios(
                 transaccion_id=tx_apple_pay_pendiente.id,
                 tipo_detectado="EGRESO",
                 monto_cop=monto,
-                comercio=comercio,
+                comercio=tx_apple_pay_pendiente.comercio,
                 cuenta_afectada=cuenta.nombre if cuenta else "Cuenta Principal",
                 es_transferencia_interna=False
             )
