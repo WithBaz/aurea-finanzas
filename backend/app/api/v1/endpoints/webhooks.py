@@ -437,9 +437,37 @@ async def procesar_atajo_ios(
                     es_transferencia_interna=False
                 )
 
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El monto de la transacción de Apple Pay debe ser superior a 0 COP"
+            # Caso pago real de Apple Pay donde el banco/datáfono reportó monto 0 o vacío
+            # (típico en datáfonos colombianos al momento del tap NFC, antes de la liquidación bancaria).
+            # Registrar el movimiento en AUREA en vez de rechazarlo con HTTP 400.
+            cat_nombre, cat_id = CategorizadorComercios.sugerir_categoria(comercio, db)
+            transaccion = Transaccion(
+                monto=0.0,
+                tipo=TipoTransaccion.EGRESO,
+                medio=MedioCaptura.APPLE_PAY,
+                fecha=fecha_movimiento,
+                comercio=comercio,
+                descripcion=f"Pago Apple Pay en {comercio} con {cuenta.nombre} (Pendiente confirmar monto)",
+                cuenta_origen_id=cuenta.id,
+                categoria_id=cat_id,
+                es_gasto_hormiga=False,
+                hash_idempotencia=None,
+                raw_payload=str(final_payload),
+                usuario_id=cuenta.usuario_id if (cuenta and cuenta.usuario_id) else target_user_id,
+            )
+            db.add(transaccion)
+            db.commit()
+            db.refresh(transaccion)
+
+            return WebhookIngestResponse(
+                status="exitoso_monto_pendiente",
+                mensaje=f"Pago Apple Pay registrado en {comercio} ({cuenta.nombre}). Apple Pay notificó sin monto ($0 COP). Puedes confirmar el valor en AUREA o vía SMS.",
+                transaccion_id=transaccion.id,
+                tipo_detectado="EGRESO",
+                monto_cop=0.0,
+                comercio=comercio,
+                cuenta_afectada=cuenta.nombre,
+                es_transferencia_interna=False
             )
         if es_dry_run:
             monto_pesos = f"{int(monto):,}".replace(",", ".") + " pesos"
@@ -612,6 +640,40 @@ async def procesar_atajo_ios(
 
         cat_nombre, cat_id = CategorizadorComercios.sugerir_categoria(comercio, db)
         es_hormiga = CategorizadorComercios.es_gasto_hormiga(monto)
+
+        # Conciliación desatendida Apple Pay + SMS Bancario:
+        # Si existe una transacción previa de Apple Pay con monto 0 en la misma cuenta,
+        # conciliarla actualizando el monto real del SMS en vez de duplicar el gasto
+        tx_apple_pay_pendiente = (
+            db.query(Transaccion)
+            .filter(
+                Transaccion.medio == MedioCaptura.APPLE_PAY,
+                Transaccion.monto == 0.0,
+                Transaccion.cuenta_origen_id == (cuenta.id if cuenta else 1)
+            )
+            .order_by(Transaccion.id.desc())
+            .first()
+        )
+        if tx_apple_pay_pendiente:
+            tx_apple_pay_pendiente.monto = monto
+            tx_apple_pay_pendiente.comercio = comercio
+            tx_apple_pay_pendiente.descripcion = f"Pago Apple Pay en {comercio} (Conciliado con SMS Bancolombia)"
+            tx_apple_pay_pendiente.raw_payload = f"{tx_apple_pay_pendiente.raw_payload or ''} | SMS: {texto_sms}"
+            if cat_id:
+                tx_apple_pay_pendiente.categoria_id = cat_id
+            db.commit()
+            db.refresh(tx_apple_pay_pendiente)
+            monto_pesos = f"{int(monto):,}".replace(",", ".") + " pesos"
+            return WebhookIngestResponse(
+                status="exitoso_conciliado",
+                mensaje=f"Compra de {monto_pesos} en {comercio} conciliada exitosamente con el pago previo de Apple Pay",
+                transaccion_id=tx_apple_pay_pendiente.id,
+                tipo_detectado="EGRESO",
+                monto_cop=monto,
+                comercio=comercio,
+                cuenta_afectada=cuenta.nombre if cuenta else "Cuenta Principal",
+                es_transferencia_interna=False
+            )
 
         transaccion = Transaccion(
             monto=monto,

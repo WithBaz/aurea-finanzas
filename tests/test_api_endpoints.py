@@ -291,5 +291,33 @@ def test_webhook_apple_pay_disparo_manual_boton_play(client):
     assert data["cuenta_afectada"] == "Bancolombia Principal"
 
 
+def test_webhook_apple_pay_monto_cero_con_comercio_real(client):
+    """Valida que si Apple Pay envía un comercio real pero el monto viene vacío o en 0, no falle 400 y se guarde."""
+    payload = {
+        "medio": "APPLE_PAY",
+        "monto": "",
+        "comercio": "Eleganthome - Jardín Plaza Cúcuta",
+        "tarjeta": "Bancolombia"
+    }
+    res = client.post("/api/v1/webhooks/ios-shortcut", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "exitoso_monto_pendiente"
+    assert data["monto_cop"] == 0.0
+    assert "Eleganthome" in data["comercio"]
+    assert data["cuenta_afectada"] == "Bancolombia Principal"
+    assert data["transaccion_id"] is not None
+
+    # Ahora entra el SMS de Bancolombia con el monto real ($11.500)
+    sms_text = "Bancolombia le informa compra por $11.500 con T.Deb *1234 en ELEGANTHOME a las 18:20. 11/10/2026."
+    res_sms = client.post("/api/v1/webhooks/ios-shortcut", json={"texto_sms": sms_text})
+    assert res_sms.status_code == 200
+    data_sms = res_sms.json()
+    assert data_sms["status"] == "exitoso_conciliado"
+    assert data_sms["monto_cop"] == 11500.0
+    assert data_sms["transaccion_id"] == data["transaccion_id"]  # Mismo ID, no duplicó!
+
+
+
 
 
