@@ -318,6 +318,30 @@ def test_webhook_apple_pay_monto_cero_con_comercio_real(client):
     assert data_sms["transaccion_id"] == data["transaccion_id"]  # Mismo ID, no duplicó!
 
 
+def test_webhook_apple_pay_amount_priority_and_rescue(client):
+    """Valida que si monto viene como 0 pero otro alias o subobjeto trae el valor real, se rescate exitosamente."""
+    # Caso 1: monto es 0 pero amount trae el valor
+    payload1 = {
+        "medio": "APPLE_PAY",
+        "monto": 0,
+        "amount": 18500,
+        "comercio": "Starbucks",
+        "tarjeta": "Bancolombia",
+        "dry_run": True
+    }
+    res1 = client.post("/api/v1/webhooks/ios-shortcut", json=payload1)
+    assert res1.status_code == 200
+    assert res1.json()["monto_cop"] == 18500.0
 
-
+    # Caso 2: monto viene como diccionario serializado o anidado
+    payload2 = {
+        "medio": "APPLE_PAY",
+        "monto": {"amount": 22000, "currency": "COP"},
+        "comercio": "Juan Valdez",
+        "tarjeta": "Bancolombia",
+        "dry_run": True
+    }
+    res2 = client.post("/api/v1/webhooks/ios-shortcut", json=payload2)
+    assert res2.status_code == 200
+    assert res2.json()["monto_cop"] == 22000.0
 

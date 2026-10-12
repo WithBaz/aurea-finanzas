@@ -292,7 +292,28 @@ async def procesar_atajo_ios(
     # 4. Extracción de variables normalizadas mediante alias
     medio_raw = str(extraer_primer_valor(final_payload, ALIAS_MEDIO, "")).upper().strip()
     sms_texto = str(extraer_primer_valor(final_payload, ALIAS_SMS, "")).strip()
-    monto_val = extraer_primer_valor(final_payload, ALIAS_MONTO)
+
+    # Para el monto, priorizar el primer alias que devuelva un valor numérico real > 0
+    monto_val = None
+    for alias in ALIAS_MONTO:
+        alias_clean = (
+            alias.strip().lower()
+            .replace("á", "a")
+            .replace("é", "e")
+            .replace("í", "i")
+            .replace("ó", "o")
+            .replace("ú", "u")
+            .replace("ñ", "n")
+        )
+        if alias_clean in final_payload:
+            val = final_payload[alias_clean]
+            if val is not None and str(val).strip() not in ("", "null", "none"):
+                if abs(limpiar_monto(val)) > 0:
+                    monto_val = val
+                    break
+    if monto_val is None:
+        monto_val = extraer_primer_valor(final_payload, ALIAS_MONTO)
+
     comercio_val = extraer_primer_valor(final_payload, ALIAS_COMERCIO)
     tarjeta_val = extraer_primer_valor(final_payload, ALIAS_TARJETA)
 
@@ -332,6 +353,15 @@ async def procesar_atajo_ios(
     if medio_final == "APPLE_PAY":
         monto_raw = monto_val if monto_val is not None else 0.0
         monto = abs(limpiar_monto(monto_raw))
+
+        # Búsqueda de rescate: Si el monto sigue siendo 0, escanear todo el payload buscando cualquier número > 0
+        if monto <= 0:
+            for k, v in final_payload.items():
+                if k not in ["usuario_id", "user_id", "token", "test", "dry_run", "dryrun", "simular"]:
+                    val = abs(limpiar_monto(v))
+                    if val > 0:
+                        monto = val
+                        break
 
         comercio = str(comercio_val or "Comercio Apple Pay").strip()
         tarjeta_nombre = str(tarjeta_val).strip() if tarjeta_val else None

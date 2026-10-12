@@ -5,17 +5,51 @@ from datetime import datetime
 
 def limpiar_monto(monto_val: Any) -> float:
     """
-    Convierte cadenas o números en montos float limpios en Pesos Colombianos (COP).
+    Convierte cadenas, números, listas o diccionarios en montos float limpios en Pesos Colombianos (COP).
     Soporta formato colombiano (150.000 o 150.000,00), formato estadounidense/iOS (150,000 o 150,000.00),
-    símbolos de moneda ('$', 'COP'), y valores numéricos directos.
+    símbolos de moneda ('$', 'COP'), estructuras JSON anidadas de Apple Pay y valores numéricos directos.
     """
     if monto_val is None:
         return 0.0
     if isinstance(monto_val, (int, float)):
         return float(monto_val)
+    if isinstance(monto_val, dict):
+        # Buscar claves prioritarias de monto dentro del diccionario
+        for k in ["amount", "monto", "valor", "value", "price", "precio", "cantidad", "total", "costo", "pago", "charge"]:
+            for dk, dv in monto_val.items():
+                if str(dk).lower().strip() == k:
+                    val = limpiar_monto(dv)
+                    if val > 0:
+                        return val
+        # Buscar cualquier número positivo directo en los valores
+        for v in monto_val.values():
+            if isinstance(v, (int, float)) and float(v) > 0:
+                return float(v)
+            val = limpiar_monto(v)
+            if val > 0:
+                return val
+        return 0.0
+    if isinstance(monto_val, list):
+        for item in monto_val:
+            val = limpiar_monto(item)
+            if val > 0:
+                return val
+        return 0.0
+
     s = str(monto_val).strip()
     if not s:
         return 0.0
+
+    # Si es una cadena JSON serializada, deserializarla
+    if (s.startswith("{") and s.endswith("}")) or (s.startswith("[") and s.endswith("]")):
+        import json
+        try:
+            parsed = json.loads(s)
+            val = limpiar_monto(parsed)
+            if val > 0:
+                return val
+        except Exception:
+            pass
     
     # Remover símbolos de moneda y caracteres no numéricos excepto puntos, comas y guiones
     s = re.sub(r"[^\d\.,\-]", "", s)

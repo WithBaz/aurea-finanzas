@@ -8,6 +8,11 @@ def test_limpiar_monto_colombiano():
     assert limpiar_monto("200.000") == 200000.0
     assert limpiar_monto("$15.500,50") == 15500.50
     assert limpiar_monto("") == 0.0
+    # Soporte de diccionarios, listas y JSON serializado de Apple Pay
+    assert limpiar_monto({"amount": 11500, "currency": "COP"}) == 11500.0
+    assert limpiar_monto({"valor": "$ 25.000", "moneda": "COP"}) == 25000.0
+    assert limpiar_monto([35000.0]) == 35000.0
+    assert limpiar_monto('{"amount": 50000}') == 50000.0
 
 
 def test_parse_bancolombia_compra_debito():
