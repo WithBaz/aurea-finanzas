@@ -533,8 +533,8 @@ async def procesar_atajo_ios(
         # Validación de monto y soporte de simulación al presionar Play en Atajos de iOS
         if monto <= 0:
             es_disparo_manual_play = (
-                (monto_val is None or str(monto_val).strip() in ("", "0", "0.0", "null", "None"))
-                and (comercio_val is None or str(comercio_val).strip() in ("", "Comercio Apple Pay", "null", "None"))
+                comercio_val is None
+                or str(comercio_val).strip() in ("", "Comercio Apple Pay", "null", "None")
             )
             if es_disparo_manual_play or es_dry_run or es_prueba:
                 cuenta_mostrar = cuenta.nombre if cuenta else "Bancolombia Única"
