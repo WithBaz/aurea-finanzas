@@ -147,7 +147,9 @@ class TransaccionUpdate(BaseModel):
 
 class TransaccionResponse(TransaccionBase):
     id: int
+    monto: float = Field(0.0, ge=0)
     hash_idempotencia: Optional[str] = None
+    raw_payload: Optional[str] = None
     usuario_id: Optional[int] = None
     created_at: datetime
     categoria: Optional[CategoriaResponse] = None

@@ -177,6 +177,8 @@ def obtener_resumen_dashboard(
                 "monto": t.monto,
                 "tipo": t.tipo.value if hasattr(t.tipo, "value") else str(t.tipo),
                 "comercio": t.comercio,
+                "descripcion": t.descripcion,
+                "raw_payload": t.raw_payload,
                 "fecha": formatear_fecha_iso_colombia(t.fecha),
                 "medio": t.medio.value if hasattr(t.medio, "value") else str(t.medio),
                 "es_gasto_hormiga": t.es_gasto_hormiga,
