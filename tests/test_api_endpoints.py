@@ -345,3 +345,66 @@ def test_webhook_apple_pay_amount_priority_and_rescue(client):
     assert res2.status_code == 200
     assert res2.json()["monto_cop"] == 22000.0
 
+
+def test_webhook_apple_pay_no_crea_cuenta_falsa_con_comercio(client):
+    """Valida que si el usuario mapeó por error Comercio en el campo tarjeta, NO se cree una cuenta falsa con el nombre del comercio."""
+    payload = {
+        "medio": "APPLE_PAY",
+        "monto": "$ 11.500",
+        "comercio": "Panamericana Lib Y Pap",
+        "tarjeta": "Panamericana Lib Y Pap",
+    }
+    res = client.post("/api/v1/webhooks/ios-shortcut", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "exitoso"
+    assert data["monto_cop"] == 11500.0
+    assert data["cuenta_afectada"] == "Tarjeta Visa"
+
+    cuentas = client.get("/api/v1/cuentas").json()
+    nombres_cuentas = [c["nombre"] for c in cuentas]
+    assert "Panamericana Lib Y Pap" not in nombres_cuentas
+
+
+def test_webhook_apple_pay_no_rescata_numero_de_nombre_comercio(client):
+    """Valida que si monto es 0 y el comercio tiene un número en el nombre (ej. Local 3), no tome 3 como monto."""
+    payload = {
+        "medio": "APPLE_PAY",
+        "monto": 0,
+        "comercio": "Drogueria Farmanorte 3",
+        "tarjeta": "Panamericana Lib Y Pap",
+    }
+    res = client.post("/api/v1/webhooks/ios-shortcut", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "exitoso_monto_pendiente"
+    assert data["monto_cop"] == 0.0
+    assert data["cuenta_afectada"] == "Tarjeta Visa"
+
+    # Verificar que GET /api/v1/transacciones no falle con HTTP 500 cuando existe una transacción con monto=0.0
+    res_txs = client.get("/api/v1/transacciones")
+    assert res_txs.status_code == 200
+    assert any(tx["comercio"] == "Drogueria Farmanorte 3" and tx["monto"] == 0.0 for tx in res_txs.json())
+
+
+def test_webhook_apple_pay_formatos_colombianos_interpolados(client):
+    """Valida extracción de montos interpolados en Atajos de iOS (ej. '$$ 11.500', 'COP. 25.000', '$ 18.900 -')."""
+    for raw_monto, esperado in [
+        ("$$ 11.500", 11500.0),
+        ("COP. 25.000", 25000.0),
+        ("$ 18.900 -", 18900.0),
+    ]:
+        res = client.post(
+            "/api/v1/webhooks/ios-shortcut",
+            json={
+                "medio": "APPLE_PAY",
+                "monto": raw_monto,
+                "comercio": "Panamericana",
+                "tarjeta": "Bancolombia",
+                "dry_run": True,
+            },
+        )
+        assert res.status_code == 200
+        assert res.json()["monto_cop"] == esperado
+
+

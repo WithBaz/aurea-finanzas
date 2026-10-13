@@ -51,8 +51,20 @@ def limpiar_monto(monto_val: Any) -> float:
         except Exception:
             pass
     
-    # Remover símbolos de moneda y caracteres no numéricos excepto puntos, comas y guiones
-    s = re.sub(r"[^\d\.,\-]", "", s)
+    # Extraer el token numérico monetario de forma segura (evita que 'COP. 15000' o '$ 15.000 -' fallen)
+    match_moneda = re.search(
+        r"(?:\$|cop|valor|monto|total|por)\s*[:=\.\-\s\$]*(-?\d+(?:[\.,]\d+)*)",
+        s,
+        re.IGNORECASE,
+    )
+    if match_moneda:
+        s = match_moneda.group(1)
+    else:
+        match_num = re.search(r"-?\d+(?:[\.,]\d+)*", s)
+        if not match_num:
+            return 0.0
+        s = match_num.group(0)
+
     if not s:
         return 0.0
 
@@ -118,6 +130,7 @@ class SMSParser:
                 "tipo": "TRANSFERENCIA_INTERNA",
                 "monto": limpiar_monto(monto_raw),
                 "comercio": f"Retiro {comercio}",
+                "banco": "Bancolombia" if "bancolombia" in t.lower() else None,
                 "es_retiro_cajero": True,
                 "medio": "SMS",
                 "descripcion": f"Retiro de efectivo conciliado: {t[:60]}"
@@ -139,6 +152,7 @@ class SMSParser:
                 "tipo": "EGRESO",
                 "monto": limpiar_monto(monto_raw),
                 "comercio": comercio,
+                "banco": "Bancolombia",
                 "es_credito": es_credito,
                 "es_retiro_cajero": False,
                 "medio": "SMS",
@@ -159,6 +173,7 @@ class SMSParser:
                 "tipo": "INGRESO",
                 "monto": limpiar_monto(monto_raw),
                 "comercio": f"Transferencia de {origen}",
+                "banco": "Bancolombia",
                 "es_retiro_cajero": False,
                 "medio": "SMS",
                 "descripcion": f"Ingreso recibido de {origen}"
@@ -178,6 +193,7 @@ class SMSParser:
                 "tipo": "EGRESO",
                 "monto": limpiar_monto(monto_raw),
                 "comercio": destino,
+                "banco": "Nequi",
                 "es_retiro_cajero": False,
                 "medio": "SMS",
                 "descripcion": f"Pago Nequi a {destino}"
@@ -197,6 +213,7 @@ class SMSParser:
                 "tipo": "INGRESO",
                 "monto": limpiar_monto(monto_raw),
                 "comercio": f"Nequi de {origen}",
+                "banco": "Nequi",
                 "es_retiro_cajero": False,
                 "medio": "SMS",
                 "descripcion": f"Transferencia Nequi recibida de {origen}"
@@ -216,6 +233,7 @@ class SMSParser:
                 "tipo": "EGRESO",
                 "monto": limpiar_monto(monto_raw),
                 "comercio": destino,
+                "banco": "DaviPlata",
                 "es_retiro_cajero": False,
                 "medio": "SMS",
                 "descripcion": f"Paso plata DaviPlata a {destino}"
@@ -227,11 +245,17 @@ class SMSParser:
             tipo = "EGRESO"
             if any(k in t.lower() for k in ["recibiste", "abono", "consignacion", "te enviaron", "transferencia recibida"]):
                 tipo = "INGRESO"
+            banco_gen = None
+            for b_cand in ["Bancolombia", "Nequi", "DaviPlata", "Davivienda", "Rappi", "Nu"]:
+                if b_cand.lower() in t.lower():
+                    banco_gen = b_cand
+                    break
             return {
                 "es_valido": True,
                 "tipo": tipo,
                 "monto": limpiar_monto(monto_gen),
                 "comercio": "Movimiento Bancario Detectado",
+                "banco": banco_gen,
                 "es_retiro_cajero": False,
                 "medio": "SMS",
                 "descripcion": t[:100]

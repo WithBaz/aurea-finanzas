@@ -94,6 +94,10 @@ def desanidar_y_normalizar_dict(obj: Any, nivel: int = 0) -> Dict[str, Any]:
                 resultado[k_norm] = v
             else:
                 if isinstance(v, (int, float)) or (isinstance(v, str) and not v.startswith("{")):
+                    # No sobrescribir un monto positivo ya extraído con un 0
+                    if k_norm in [a.lower() for a in ALIAS_MONTO]:
+                        if abs(limpiar_monto(resultado[k_norm])) > 0 and abs(limpiar_monto(v)) == 0:
+                            continue
                     resultado[k_norm] = v
 
     return resultado
@@ -214,7 +218,7 @@ async def procesar_atajo_ios(
                             raw_sources.append(json.loads(body_str))
                         except Exception:
                             pass
-                    elif "=" in body_str:
+                    elif "=" in body_str and "&" in body_str:
                         import urllib.parse
                         try:
                             qs_dict = {k: v[0] if len(v) == 1 else v for k, v in urllib.parse.parse_qs(body_str).items()}
@@ -222,6 +226,25 @@ async def procesar_atajo_ios(
                                 raw_sources.append(qs_dict)
                         except Exception:
                             pass
+                    elif "|" in body_str:
+                        # Formato texto libre separado por pipes: "monto|comercio|tarjeta"
+                        partes_pipe = [p.strip() for p in body_str.split("|") if p.strip()]
+                        if len(partes_pipe) >= 1:
+                            pipe_dict: Dict[str, Any] = {"monto": partes_pipe[0]}
+                            if len(partes_pipe) >= 2:
+                                pipe_dict["comercio"] = partes_pipe[1]
+                            if len(partes_pipe) >= 3:
+                                pipe_dict["tarjeta"] = partes_pipe[2]
+                            raw_sources.append(pipe_dict)
+                    elif "\n" in body_str and ":" in body_str:
+                        # Formato líneas clave: valor en texto libre
+                        kv_dict: Dict[str, Any] = {}
+                        for linea in body_str.splitlines():
+                            if ":" in linea:
+                                k_l, v_l = linea.split(":", 1)
+                                kv_dict[k_l.strip()] = v_l.strip()
+                        if kv_dict:
+                            raw_sources.append(kv_dict)
         except Exception:
             pass
 
@@ -236,6 +259,10 @@ async def procesar_atajo_ios(
             if k not in final_payload or final_payload[k] is None or final_payload[k] == "":
                 final_payload[k] = v
             elif v is not None and v != "":
+                # Evitar que un 0 sobrescriba un monto positivo ya encontrado en otra fuente (ej. query param o sub-objeto)
+                if k in [a.lower() for a in ALIAS_MONTO]:
+                    if abs(limpiar_monto(final_payload[k])) > 0 and abs(limpiar_monto(v)) == 0:
+                        continue
                 final_payload[k] = v
 
     # 3. Verificación de token criptográfico
@@ -344,8 +371,16 @@ async def procesar_atajo_ios(
     fecha_param = extraer_primer_valor(final_payload, ALIAS_FECHA)
     fecha_movimiento = parsear_fecha_para_db(fecha_param) if fecha_param else ahora_utc_db()
 
+    tiene_cuentas_propias = (
+        db.query(Cuenta).filter(Cuenta.usuario_id == target_user_id, Cuenta.activa == True).count() > 0
+        if target_user_id
+        else False
+    )
+
     def _filtrar_cuenta(query):
         if target_user_id:
+            if tiene_cuentas_propias:
+                return query.filter(Cuenta.usuario_id == target_user_id)
             return query.filter((Cuenta.usuario_id == target_user_id) | (Cuenta.usuario_id == None))
         return query
 
@@ -354,10 +389,29 @@ async def procesar_atajo_ios(
         monto_raw = monto_val if monto_val is not None else 0.0
         monto = abs(limpiar_monto(monto_raw))
 
-        # Búsqueda de rescate: Si el monto sigue siendo 0, escanear todo el payload buscando cualquier número > 0
+        # Búsqueda de rescate: Si el monto sigue siendo 0, escanear el payload evitando extraer números de nombres de comercios/fechas
+        CAMPOS_NO_MONTO = set(
+            [a.lower() for a in ALIAS_COMERCIO]
+            + [a.lower() for a in ALIAS_TARJETA]
+            + [a.lower() for a in ALIAS_FECHA]
+            + [a.lower() for a in ALIAS_MEDIO]
+            + [
+                "usuario_id", "user_id", "usuario", "user", "username",
+                "token", "test", "prueba", "is_test", "dry_run", "dryrun",
+                "simular", "simulacion", "dry",
+            ]
+        )
         if monto <= 0:
             for k, v in final_payload.items():
-                if k not in ["usuario_id", "user_id", "token", "test", "dry_run", "dryrun", "simular"]:
+                if k in CAMPOS_NO_MONTO:
+                    # En campos de comercio/tarjeta solo rescatar si trae explícitamente signo '$' o 'COP'
+                    s_v = str(v) if v is not None else ""
+                    if "$" in s_v or "cop" in s_v.lower():
+                        val = abs(limpiar_monto(v))
+                        if val > 0:
+                            monto = val
+                            break
+                else:
                     val = abs(limpiar_monto(v))
                     if val > 0:
                         monto = val
@@ -366,75 +420,103 @@ async def procesar_atajo_ios(
         comercio = str(comercio_val or "Comercio Apple Pay").strip()
         tarjeta_nombre = str(tarjeta_val).strip() if tarjeta_val else None
 
-        # Buscar cuenta asociada (Bancolombia, Nu, o auto-crear si es nueva / fallback)
+        # Buscar cuenta asociada (Bancolombia, Nu, o auto-crear si es nueva tarjeta bancaria reconocida / fallback)
         STOPWORDS_TARJETA = {
             "visa", "mastercard", "tarjeta", "card", "credito", "crédito",
             "debito", "débito", "de", "the", "cuenta", "ahorros", "corriente",
             "banco", "bank", "digital", "unica", "única", "principal"
         }
+        BANCOS_Y_TARJETAS_RECONOCIDOS = {
+            "bancolombia", "rappi", "rappicard", "nu", "nubank", "nequi",
+            "daviplata", "davivienda", "bogota", "bogotá", "bbva", "scotiabank",
+            "colpatria", "itau", "itaú", "avvillas", "popular",
+            "occidente", "falabella", "lulo", "lulobank", "uala", "ualá",
+            "bold", "movii", "dale", "pibank", "global66", "littio", "amex",
+            "diners", "visa", "mastercard", "maestro",
+            "tarjeta", "card", "credito", "crédito", "debito", "débito",
+            "ahorros", "corriente", "efectivo", "billetera", "banco", "bank"
+        }
         cuenta = None
         if tarjeta_nombre:
             tarjeta_clean = str(tarjeta_nombre).strip()
-            # 1. Búsqueda directa por coincidencia de subcadena (ej: cuenta="Bancolombia Única", Apple Pay="Bancolombia")
-            cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{tarjeta_clean}%"), Cuenta.activa == True)).first()
+            palabras_t_lower = {p.lower().strip(".,-*()") for p in tarjeta_clean.split() if p.strip()}
+            tiene_palabra_bancaria = bool(palabras_t_lower & BANCOS_Y_TARJETAS_RECONOCIDOS) or (
+                "american express" in tarjeta_clean.lower() or "av villas" in tarjeta_clean.lower()
+            )
+            # Detectar si el usuario mapeó por error "Comercio" en el campo "tarjeta" del Atajo
+            es_mismo_comercio = (
+                bool(comercio)
+                and comercio.lower() != "comercio apple pay"
+                and (
+                    tarjeta_clean.lower() == comercio.lower()
+                    or tarjeta_clean.lower() in comercio.lower()
+                    or comercio.lower() in tarjeta_clean.lower()
+                )
+                and not tiene_palabra_bancaria
+            )
 
-            # 2. Búsqueda inversa: el nombre de la cuenta está dentro del string de Apple Pay (ej: cuenta="Nu", Apple Pay="Nu Mastercard")
-            if not cuenta:
-                cuentas_activas = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.activa == True)).all()
-                for c in cuentas_activas:
-                    c_nom = c.nombre.strip().lower()
-                    if c_nom not in STOPWORDS_TARJETA and len(c_nom) >= 3 and c_nom in tarjeta_clean.lower():
-                        cuenta = c
-                        break
+            if not es_mismo_comercio:
+                # 1. Búsqueda directa por coincidencia de subcadena (ej: cuenta="Bancolombia Única", Apple Pay="Bancolombia")
+                cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{tarjeta_clean}%"), Cuenta.activa == True).order_by(Cuenta.id.asc())).first()
 
-            # 3. Búsqueda cruzada por palabras significativas (ej. "Bancolombia" en "Mastercard Bancolombia" -> Bancolombia Única)
-            if not cuenta:
-                palabras_tarjeta = [p for p in tarjeta_clean.split() if len(p) >= 3 and p.lower() not in STOPWORDS_TARJETA]
-                for p in palabras_tarjeta:
-                    c = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{p}%"), Cuenta.activa == True)).first()
-                    if c:
-                        cuenta = c
-                        break
+                # 2. Búsqueda inversa: el nombre de la cuenta está dentro del string de Apple Pay (ej: cuenta="Nu", Apple Pay="Nu Mastercard")
+                if not cuenta:
+                    cuentas_activas = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.activa == True).order_by(Cuenta.id.asc())).all()
+                    for c in cuentas_activas:
+                        c_nom = c.nombre.strip().lower()
+                        if c_nom not in STOPWORDS_TARJETA and len(c_nom) >= 3 and c_nom in tarjeta_clean.lower():
+                            cuenta = c
+                            break
 
-            # 4. Búsqueda por palabras significativas de las cuentas existentes
-            if not cuenta:
-                cuentas_activas = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.activa == True)).all()
-                for c in cuentas_activas:
-                    palabras_c = [w for w in c.nombre.lower().split() if len(w) >= 3 and w not in STOPWORDS_TARJETA]
-                    if any(w in tarjeta_clean.lower() for w in palabras_c):
-                        cuenta = c
-                        break
+                # 3. Búsqueda cruzada por palabras significativas (ej. "Bancolombia" en "Mastercard Bancolombia" -> Bancolombia Única)
+                if not cuenta:
+                    palabras_tarjeta = [p for p in tarjeta_clean.split() if len(p) >= 3 and p.lower() not in STOPWORDS_TARJETA]
+                    for p in palabras_tarjeta:
+                        c = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.nombre.ilike(f"%{p}%"), Cuenta.activa == True).order_by(Cuenta.id.asc())).first()
+                        if c:
+                            cuenta = c
+                            break
 
-            # 5. Si la tarjeta enviada es genérica (ej: "Visa", "Mastercard", "Tarjeta de Crédito")
-            # asociarla a la tarjeta de crédito activa o débito activa
-            if not cuenta:
-                es_generica = all(p.lower() in STOPWORDS_TARJETA for p in tarjeta_clean.split())
-                if es_generica:
-                    cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.CREDITO, Cuenta.activa == True)).first()
-                    if not cuenta:
-                        cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.DEBITO, Cuenta.activa == True)).first()
+                # 4. Búsqueda por palabras significativas de las cuentas existentes
+                if not cuenta:
+                    cuentas_activas = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.activa == True).order_by(Cuenta.id.asc())).all()
+                    for c in cuentas_activas:
+                        palabras_c = [w for w in c.nombre.lower().split() if len(w) >= 3 and w not in STOPWORDS_TARJETA]
+                        if any(w in tarjeta_clean.lower() for w in palabras_c):
+                            cuenta = c
+                            break
 
-            # 6. Si no existe ninguna coincidencia y no es puramente genérica, auto-crear la tarjeta de crédito (Zero-Setup)
-            if not cuenta and tarjeta_clean:
-                es_generica = all(p.lower() in STOPWORDS_TARJETA for p in tarjeta_clean.split())
-                if not es_generica:
-                    cuenta = Cuenta(
-                        nombre=tarjeta_clean,
-                        tipo=TipoCuenta.CREDITO,
-                        saldo_actual=0.0,
-                        cupo_total=0.0,
-                        activa=True,
-                        usuario_id=target_user_id
-                    )
-                    db.add(cuenta)
-                    db.commit()
-                    db.refresh(cuenta)
+                # 5. Si la tarjeta enviada es genérica (ej: "Visa", "Mastercard", "Tarjeta de Crédito")
+                # asociarla a la tarjeta de crédito activa o débito activa
+                if not cuenta:
+                    es_generica = all(p.lower() in STOPWORDS_TARJETA for p in tarjeta_clean.split())
+                    if es_generica:
+                        cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.CREDITO, Cuenta.activa == True).order_by(Cuenta.id.asc())).first()
+                        if not cuenta:
+                            cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.DEBITO, Cuenta.activa == True).order_by(Cuenta.id.asc())).first()
 
-        # 7. Fallback final: Si no se especificó o no se encontró tarjeta, asociar a la tarjeta de crédito o cuenta principal
+                # 6. Si no existe coincidencia, auto-crear la tarjeta SOLO si contiene palabras bancarias/franquicias reconocidas
+                # (evita crear cuentas falsas cuando Atajos envía nombres de comercios o centros comerciales en 'tarjeta')
+                if not cuenta and tarjeta_clean and tiene_palabra_bancaria:
+                    es_generica = all(p.lower() in STOPWORDS_TARJETA for p in tarjeta_clean.split())
+                    if not es_generica:
+                        cuenta = Cuenta(
+                            nombre=tarjeta_clean,
+                            tipo=TipoCuenta.CREDITO,
+                            saldo_actual=0.0,
+                            cupo_total=0.0,
+                            activa=True,
+                            usuario_id=target_user_id
+                        )
+                        db.add(cuenta)
+                        db.commit()
+                        db.refresh(cuenta)
+
+        # 7. Fallback final: Si no se especificó o no se encontró tarjeta, asociar a la tarjeta de crédito o cuenta principal más antigua
         if not cuenta:
-            cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.CREDITO, Cuenta.activa == True)).first()
+            cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.CREDITO, Cuenta.activa == True).order_by(Cuenta.id.asc())).first()
             if not cuenta:
-                cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo.in_([TipoCuenta.DEBITO, TipoCuenta.ALTO_RENDIMIENTO, TipoCuenta.EFECTIVO]), Cuenta.activa == True)).first()
+                cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo.in_([TipoCuenta.DEBITO, TipoCuenta.ALTO_RENDIMIENTO, TipoCuenta.EFECTIVO]), Cuenta.activa == True).order_by(Cuenta.id.asc())).first()
 
         if not cuenta:
             raise HTTPException(
@@ -587,6 +669,7 @@ async def procesar_atajo_ios(
     comercio = resultado_parser["comercio"]
     tipo_str = resultado_parser["tipo"]
     es_retiro = resultado_parser.get("es_retiro_cajero", False)
+    banco_sms = resultado_parser.get("banco")
 
     # Idempotencia
     fecha_clave = fecha_movimiento.strftime("%Y-%m-%d_%H:%M")
@@ -606,8 +689,8 @@ async def procesar_atajo_ios(
 
     # Caso Especial: Retiro en cajero -> Transferencia interna (Débito a Efectivo)
     if es_retiro or tipo_str == "TRANSFERENCIA_INTERNA":
-        cuenta_bancaria = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.DEBITO, Cuenta.activa == True)).first()
-        billetera_efectivo = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.EFECTIVO, Cuenta.activa == True)).first()
+        cuenta_bancaria = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.DEBITO, Cuenta.activa == True).order_by(Cuenta.id.asc())).first()
+        billetera_efectivo = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.EFECTIVO, Cuenta.activa == True).order_by(Cuenta.id.asc())).first()
 
         if not billetera_efectivo:
             billetera_efectivo = Cuenta(
@@ -658,15 +741,18 @@ async def procesar_atajo_ios(
     if tipo_str == "EGRESO":
         es_credito = resultado_parser.get("es_credito", False)
         tipo_filtro = TipoCuenta.CREDITO if es_credito else TipoCuenta.DEBITO
-        cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == tipo_filtro, Cuenta.activa == True)).first()
+        cuenta = None
+        if banco_sms:
+            cuenta = _filtrar_cuenta(
+                db.query(Cuenta).filter(
+                    Cuenta.nombre.ilike(f"%{banco_sms}%"),
+                    Cuenta.activa == True
+                ).order_by(Cuenta.id.asc())
+            ).first()
         if not cuenta:
-            cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.DEBITO, Cuenta.activa == True)).first()
-
-        if cuenta:
-            if cuenta.tipo == TipoCuenta.DEBITO:
-                cuenta.saldo_actual -= monto
-            else:
-                cuenta.saldo_actual += monto
+            cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == tipo_filtro, Cuenta.activa == True).order_by(Cuenta.id.asc())).first()
+        if not cuenta:
+            cuenta = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.DEBITO, Cuenta.activa == True).order_by(Cuenta.id.asc())).first()
 
         cat_nombre, cat_id = CategorizadorComercios.sugerir_categoria(comercio, db)
         es_hormiga = CategorizadorComercios.es_gasto_hormiga(monto)
@@ -675,16 +761,14 @@ async def procesar_atajo_ios(
         # Si existe una transacción previa de Apple Pay con monto 0 en la misma cuenta o comercio,
         # conciliarla actualizando el monto real del SMS en vez de duplicar el gasto
         comercio_clean = comercio.strip().lower()
-        txs_pendientes = (
-            db.query(Transaccion)
-            .filter(
-                Transaccion.medio == MedioCaptura.APPLE_PAY,
-                Transaccion.monto == 0.0
-            )
-            .order_by(Transaccion.id.desc())
-            .limit(10)
-            .all()
+        q_pend = db.query(Transaccion).filter(
+            Transaccion.medio == MedioCaptura.APPLE_PAY,
+            Transaccion.monto == 0.0
         )
+        if target_user_id:
+            q_pend = q_pend.filter((Transaccion.usuario_id == target_user_id) | (Transaccion.usuario_id == None))
+        txs_pendientes = q_pend.order_by(Transaccion.id.desc()).limit(10).all()
+
         tx_apple_pay_pendiente = None
         for tx in txs_pendientes:
             tx_com = (tx.comercio or "").lower()
@@ -693,7 +777,14 @@ async def procesar_atajo_ios(
                 break
 
         if tx_apple_pay_pendiente:
+            cuenta_conciliada = tx_apple_pay_pendiente.cuenta_origen or cuenta
+            if cuenta_conciliada:
+                if cuenta_conciliada.tipo == TipoCuenta.CREDITO:
+                    cuenta_conciliada.saldo_actual += monto
+                else:
+                    cuenta_conciliada.saldo_actual -= monto
             tx_apple_pay_pendiente.monto = monto
+            tx_apple_pay_pendiente.es_gasto_hormiga = es_hormiga
             tx_apple_pay_pendiente.descripcion = f"Pago Apple Pay en {tx_apple_pay_pendiente.comercio} (Conciliado con SMS Bancolombia)"
             tx_apple_pay_pendiente.raw_payload = f"{tx_apple_pay_pendiente.raw_payload or ''} | SMS: {texto_sms}"
             if cat_id:
@@ -708,9 +799,15 @@ async def procesar_atajo_ios(
                 tipo_detectado="EGRESO",
                 monto_cop=monto,
                 comercio=tx_apple_pay_pendiente.comercio,
-                cuenta_afectada=cuenta.nombre if cuenta else "Cuenta Principal",
+                cuenta_afectada=cuenta_conciliada.nombre if cuenta_conciliada else "Cuenta Principal",
                 es_transferencia_interna=False
             )
+
+        if cuenta:
+            if cuenta.tipo == TipoCuenta.CREDITO:
+                cuenta.saldo_actual += monto
+            else:
+                cuenta.saldo_actual -= monto
 
         transaccion = Transaccion(
             monto=monto,
@@ -743,7 +840,7 @@ async def procesar_atajo_ios(
         )
 
     # Caso Ingreso
-    cuenta_ingreso = db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.DEBITO, Cuenta.activa == True).first()
+    cuenta_ingreso = _filtrar_cuenta(db.query(Cuenta).filter(Cuenta.tipo == TipoCuenta.DEBITO, Cuenta.activa == True).order_by(Cuenta.id.asc())).first()
     if cuenta_ingreso:
         cuenta_ingreso.saldo_actual += monto
 

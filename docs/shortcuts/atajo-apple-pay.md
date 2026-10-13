@@ -57,11 +57,11 @@ Sigue estos pasos en la app **Atajos** de tu iPhone para que cada compra real se
      * Clave: `Content-Type`
      * Texto: `application/json`
    * **Cuerpo de la petición (Request Body):** Cambia a `JSON`.
-   * Añade los siguientes 4 campos usando la variable mágica **Entrada de atajo** (*Shortcut Input*):
-     1. **`medio`**: Tipo *Texto* → escribe `APPLE_PAY`
-     2. **`monto`**: Tipo *Texto* (o *Número*) → toca el valor, selecciona la variable mágica **Entrada de atajo** en la barra superior del teclado, pulsa sobre la pastilla azul recién insertada y cámbiala a **Monto** (*Amount*).
-     3. **`comercio`**: Tipo *Texto* → selecciona **Entrada de atajo** → pulsa sobre ella → cámbiala a **Comercio** (*Merchant*).
-     4. **`tarjeta`**: Tipo *Texto* → selecciona **Entrada de atajo** → pulsa sobre ella → cámbiala a **Tarjeta** (*Card*).
+   * Añade los siguientes 4 campos como tipo **Texto** (**NUNCA uses tipo Número** porque Apple Wallet en Colombia entrega `"$ 11.500"` con signo `$` y punto, y si la fila JSON es tipo *Número*, iOS la convierte en `0`):
+     1. **`medio`**: Tipo **Texto** → escribe `APPLE_PAY`
+     2. **`monto`**: Tipo **Texto** (*jamás Número*) → toca el campo de texto, escribe un signo `$` (o un espacio) y selecciona la variable **Entrada de atajo** → toca la pastilla azul `Entrada de atajo` → selecciona **Cantidad** (*Amount*). *(Tip: si el teclado te deja escribir letras o `$` antes de la pastilla `Cantidad`, es que la fila sí es de tipo Texto; si ya la habías creado como Número, bórrala con el botón rojo `⊖` y agrégala de nuevo como **Texto**)*.
+     3. **`comercio`**: Tipo **Texto** → selecciona **Entrada de atajo** → toca la pastilla azul → selecciona **Comercio** (*Merchant*).
+     4. **`tarjeta`**: Tipo **Texto** → selecciona **Entrada de atajo** → toca la pastilla azul → selecciona **Tarjeta o pase** (*Card or Pass*) — o escribe directamente `Bancolombia`.
 4. Toca **Listo**.
 
 ---
